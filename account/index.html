@@ -956,11 +956,11 @@
 
     <!-- Nav -->
     <nav>
-        <a href="https://balancewises.io/bscan.html" class="nav-brand">
+        <a href="/" class="nav-brand">
             <span class="nav-brand-text">Balancewise <span class="highlight">Technologies</span></span>
         </a>
         <div class="nav-right" id="nav-right">
-            <a href="https://balancewises.io/bscan.html" class="nav-link">Scanner</a>
+            <a href="/" class="nav-link">Scanner</a>
             <a href="https://balancewises.io/#services" class="nav-link">Services</a>
             <div class="nav-user" id="nav-user" style="display:none;">
                 <div class="nav-user-avatar" id="nav-avatar">?</div>
@@ -1052,12 +1052,12 @@
                 <h3>Manage Subscription</h3>
                 <p>Update payment method, change plan, or cancel via the Stripe portal.</p>
             </div>
-            <a class="action-card" href="https://balancewises.io/team.html">
+            <a class="action-card" href="/team">
                 <div class="action-icon history" style="background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.08);">&#128101;</div>
                 <h3>Team Management</h3>
                 <p>Invite team members to share your Agency plan benefits.</p>
             </a>
-            <a class="action-card" href="https://balancewises.io/api.html">
+            <a class="action-card" href="/api">
                 <div class="action-icon export" style="background:rgba(245,166,35,0.12);border-color:rgba(245,166,35,0.08);">&#128273;</div>
                 <h3>API Keys</h3>
                 <p>Generate keys to integrate BSCAN into your workflows.</p>
@@ -1431,7 +1431,7 @@
 
             document.getElementById('stat-scans').textContent = currentUser.scans_this_month || 0;
             if (plan === 'free') {
-                document.getElementById('stat-scans-sub').innerHTML = 'of 3 free scans · <a href="https://balancewises.io/bscan.html#pricing">Upgrade</a>';
+                document.getElementById('stat-scans-sub').innerHTML = 'of 3 free scans · <a href="/#pricing">Upgrade</a>';
             } else {
                 document.getElementById('stat-scans-sub').textContent = 'unlimited scans';
             }
