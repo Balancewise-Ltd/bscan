@@ -38,6 +38,9 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        *, *::before, *::after { max-width: 100vw; }
+        nav, section, footer, .wrap, .dashboard { max-width: 100%; }
 
         body {
             font-family: 'DM Sans', sans-serif;
@@ -1548,7 +1551,7 @@
                 <div class="plan-divider"></div>
                 <div class="plan-features-title">Everything in Free, plus</div>
                 <ul class="plan-features">
-                    <li>Unlimited website scans</li>
+                    <li>30 website scans / month</li>
                     <li>Detailed PDF export</li>
                     <li>Full scan history</li>
                     <li>Priority email support</li>
@@ -1570,9 +1573,9 @@
                 <div class="plan-divider"></div>
                 <div class="plan-features-title">Everything in Pro, plus</div>
                 <ul class="plan-features">
-                    <li>Multi-user team dashboard</li>
+                    <li>Unlimited website scans</li>
+                    <li>Up to 5 team members</li>
                     <li>White-label PDF reports</li>
-                    <li>Dedicated account manager</li>
                     <li>API access</li>
                     <li>Priority support</li>
                 </ul>
