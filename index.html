@@ -573,6 +573,7 @@ const API='https://api-bscan.balancewises.io';
 const PRICING={pro:{monthly:9,annual:7},agency:{monthly:29,annual:23}};
 let currentInterval='monthly',checkoutPlan='',pendingUrl='';
 let capturedEmail=localStorage.getItem('bscan_email')||'',capturedName=localStorage.getItem('bscan_name')||'';
+if(!localStorage.getItem('bscan_token')){capturedEmail='';capturedName='';}
 let lastCheckResult=null;
 
 function setBillingInterval(i){currentInterval=i;document.querySelectorAll('.billing-toggle-label').forEach(e=>e.classList.toggle('active',e.dataset.interval===i));const p=PRICING.pro[i];document.getElementById('pro-price').textContent=p;document.getElementById('pro-interval').textContent='/mo';document.getElementById('pro-annual-note').innerHTML=i==='annual'?'Billed as <strong>£'+(p*12)+'/year</strong> · <span class="save-text">Save 20%</span>':'&nbsp;';const a=PRICING.agency[i];document.getElementById('agency-price').textContent=a;document.getElementById('agency-interval').textContent='/mo';document.getElementById('agency-annual-note').innerHTML=i==='annual'?'Billed as <strong>£'+(a*12)+'/year</strong> · <span class="save-text">Save 20%</span>':'&nbsp;';}
