@@ -1043,9 +1043,17 @@
 @media (max-width: 640px) {
   .mobile-menu-btn { display: inline-flex; }
   .mobile-menu { display: block; }
- 
-  /* Hide the desktop account icon since we have the hamburger now */
+  .nav-links .nav-link { display: none !important; }
+  .nav-links .nav-cta { display: none !important; }
   .nav-links .nav-account { display: none !important; }
+  .nav-r .nav-link { display: none !important; }
+  .nav-r .btn-cta { display: none !important; }
+  .nav-r .chip { display: none !important; }
+  .nav-brand { text-decoration: none; display: flex; align-items: center; gap: 12px; }
+.nav-brand-text { font-weight: 700; font-size: 16px; font-style: italic; letter-spacing: -0.3px; color: #e2e8f0; }
+.nav-brand-text .highlight { color: #f5a623; }
+.nav-cta { padding: 8px 20px; border-radius: 8px; background: #3b82f6; color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: .2s; }
+.nav-cta:hover { opacity: .9; }
 }
 </style>
 </head>
