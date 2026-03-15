@@ -35,6 +35,298 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
     <style>
+      /*
+═══════════════════════════════════════════════════════════
+BSCAN Interactive Score Cards — Drop-in upgrade
+═══════════════════════════════════════════════════════════
+
+Replaces the static score grid with clickable cards that:
+1. Show a mini summary inside each card
+2. Expand on click to show category-specific data
+3. Free users see upgrade prompts for locked features
+4. Adds new cards: Business Intel, Consumer Intel, UX Patterns, Keywords, Backlinks
+*/
+
+/* ── Enhanced Score Cards ──────────────────────────── */
+.scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.s-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+    transition: .25s;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.s-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+}
+
+.s-card.excellent::before { background: var(--success); }
+.s-card.good::before { background: var(--info); }
+.s-card.warning::before { background: var(--warning); }
+.s-card.poor::before { background: var(--danger); }
+
+.s-card:hover {
+    border-color: var(--border-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+
+.s-card:active { transform: translateY(0); }
+
+.s-num {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.s-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.s-tag {
+    font-family: "Space Mono", monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    display: inline-block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Mini summary inside card */
+.s-mini {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    text-align: left;
+}
+
+.s-mini-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+
+.s-mini-stat .val {
+    font-family: "Space Mono", monospace;
+    font-weight: 600;
+}
+
+.s-mini-stat .val.good { color: var(--success); }
+.s-mini-stat .val.warn { color: var(--warning); }
+.s-mini-stat .val.bad { color: var(--danger); }
+
+/* Tap hint */
+.s-tap {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    opacity: .5;
+    font-family: "Space Mono", monospace;
+}
+
+/* ── Expanded Detail Panel ─────────────────────────── */
+.detail-panel {
+    display: none;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    animation: fadeUp .3s ease-out;
+}
+
+.detail-panel.active { display: block; }
+
+.detail-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.detail-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.detail-score-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.detail-score-badge.excellent { background: var(--success-dim); color: var(--success); }
+.detail-score-badge.good { background: var(--info-dim); color: var(--info); }
+.detail-score-badge.warning { background: var(--warning-dim); color: var(--warning); }
+.detail-score-badge.poor { background: var(--danger-dim); color: var(--danger); }
+
+.detail-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.detail-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.detail-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: "DM Sans", sans-serif;
+    transition: .15s;
+}
+
+.detail-close:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.detail-body {
+    padding: 18px 22px;
+}
+
+.detail-issues {
+    margin-bottom: 12px;
+}
+
+.detail-issue {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    transition: .1s;
+}
+
+.detail-issue:hover { background: var(--bg-primary); }
+
+.detail-issue-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 10px;
+}
+
+.detail-issue-icon.crit { background: var(--danger-dim); color: var(--danger); }
+.detail-issue-icon.warn { background: var(--warning-dim); color: var(--warning); }
+.detail-issue-icon.pass { background: var(--success-dim); color: var(--success); }
+
+.detail-issue-text { flex: 1; color: var(--text-secondary); line-height: 1.5; }
+.detail-issue-text strong { color: var(--text-primary); font-weight: 600; }
+.detail-fix { color: var(--accent-blue); font-size: 11px; font-style: italic; margin-top: 3px; }
+
+/* Upgrade prompt inside detail panel */
+.detail-upgrade {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(245,166,35,.06), rgba(59,130,246,.04));
+    border-radius: 10px;
+    margin-top: 12px;
+}
+
+.detail-upgrade p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.detail-upgrade-btn {
+    display: inline-block;
+    padding: 10px 22px;
+    background: var(--accent-gold);
+    color: var(--bg-deep);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    text-decoration: none;
+    transition: .2s;
+}
+
+.detail-upgrade-btn:hover { opacity: .9; }
+
+/* ── New Feature Cards (Business, Consumer, UX, etc.) ── */
+.s-card.feature-card {
+    border-style: dashed;
+    border-color: var(--border-light);
+}
+
+.s-card.feature-card .s-num {
+    font-size: 20px;
+    letter-spacing: 0;
+}
+
+.s-card.feature-card .s-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+
+.s-card.locked {
+    opacity: .7;
+}
+
+.s-card.locked .s-lock {
+    font-size: 10px;
+    color: var(--accent-gold);
+    font-family: "Space Mono", monospace;
+    margin-top: 4px;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 640px) {
+    .scores-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .s-card { padding: 14px; }
+    .s-num { font-size: 28px; }
+    .s-label { font-size: 11px; }
+    .s-mini { font-size: 9px; }
+    .detail-header { padding: 14px 16px; }
+    .detail-body { padding: 14px 16px; }
+    .detail-score-badge { width: 40px; height: 40px; font-size: 18px; }
+    .detail-title { font-size: 14px; }
+}
       :root {
         --bg-deep: #0b1121;
         --bg-primary: #0f172a;
@@ -352,15 +644,118 @@
       <div class="email-gate" id="email-gate"><div class="gate-card"><div class="gate-header"><span style="font-size:1.4rem">&#9889;</span><div><div class="gate-title">Almost there — enter your details to get your report</div><div class="gate-sub" id="gate-url-preview">Scanning: example.com</div></div></div><div class="gate-fields"><div class="gate-field"><label for="lead-email">Email address *</label><input type="email" id="lead-email" placeholder="you@company.com" autocomplete="email" required></div><div class="gate-field"><label for="lead-name">Business / your name</label><input type="text" id="lead-name" placeholder="e.g. Acme Ltd" autocomplete="organization" maxlength="255"></div></div><button class="audit-btn gate-btn" id="gate-submit" onclick="submitGateAndScan()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Start Free Audit</button><p class="gate-privacy">We'll send your report here. No spam, ever. See our <a href="https://balancewises.io/privacy.html" target="_blank">privacy policy</a>.</p></div></div>
       <div class="scan-terminal-wrap" id="terminal-wrap"><div class="terminal" id="terminal"></div><div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div></div>
     </section>
-    <section class="pricing-section" id="pricing">
-      <div class="pricing-header"><div class="pricing-badge">Pricing</div><h2 class="pricing-title">Simple Pricing, <span class="gold">Unbeatable Value</span></h2><p class="pricing-subtitle">Start free, upgrade when you need more power. All paid plans include a 14-day money-back guarantee.</p><div class="billing-toggle-wrap"><span class="billing-toggle-label active" data-interval="monthly" onclick="setBillingInterval('monthly')">Monthly</span><span class="billing-toggle-label" data-interval="annual" onclick="setBillingInterval('annual')">Annual <span class="save-badge">Save 20%</span></span></div></div>
-      <div class="plans-grid">
-        <div class="plan-card"><div class="plan-name">Free</div><div class="plan-desc">Get started with basic audits</div><div class="plan-price-row"><span class="plan-currency">£</span><span class="plan-amount">0</span><span class="plan-interval">/mo</span></div><div class="plan-annual-note">&nbsp;</div><div class="plan-divider"></div><div class="plan-features-title">What's included</div><ul class="plan-features"><li>3 website scans</li><li>Basic audit report</li><li>Overall health score</li><li class="disabled">Core Web Vitals</li><li class="disabled">PDF export</li><li class="disabled">Full enrichment data</li></ul><button class="plan-cta outline" disabled>Current Plan</button></div>
-        <div class="plan-card featured" id="plan-card-pro"><div class="featured-badge">Most Popular</div><div class="plan-name">Pro</div><div class="plan-desc">For freelancers &amp; growing businesses</div><div class="plan-price-row"><span class="plan-currency">£</span><span class="plan-amount" id="pro-price">9</span><span class="plan-interval" id="pro-interval">/mo</span></div><div class="plan-annual-note" id="pro-annual-note">&nbsp;</div><div class="plan-divider"></div><div class="plan-features-title">Everything in Free, plus</div><ul class="plan-features"><li>30 website scans / month</li><li>Core Web Vitals (Lighthouse)</li><li>Full site intelligence</li><li>Detailed PDF export</li><li>Full scan history</li><li>Priority email support</li></ul><button class="plan-cta gold" onclick="startStripeCheckout('pro')">Upgrade to Pro</button></div>
-        <div class="plan-card" id="plan-card-agency"><div class="plan-name">Agency</div><div class="plan-desc">For agencies &amp; large teams</div><div class="plan-price-row"><span class="plan-currency">£</span><span class="plan-amount" id="agency-price">29</span><span class="plan-interval" id="agency-interval">/mo</span></div><div class="plan-annual-note" id="agency-annual-note">&nbsp;</div><div class="plan-divider"></div><div class="plan-features-title">Everything in Pro, plus</div><ul class="plan-features"><li>Unlimited website scans</li><li>Cloudflare Browser Rendering</li><li>Up to 5 team members</li><li>White-label PDF reports</li><li>API access</li><li>Priority support</li></ul><button class="plan-cta primary" onclick="startStripeCheckout('agency')">Upgrade to Agency</button></div>
+    <section id="pricing" style="padding:60px 0 40px;">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div class="badge">Pricing</div>
+    <h2 style="font-size:clamp(24px,3.5vw,34px);font-weight:800;font-style:italic;letter-spacing:-1px;margin-bottom:8px;">Choose Your <span style="color:color:var(--accent-gold);">Plan</span></h2>
+    <p style="color:var(--text-secondary);font-size:14px;">Start free. Upgrade when you need more power.</p>
+    <div style="margin-top:16px;display:inline-flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:3px;">
+      <button id="tog-m" onclick="setBillingInterval('monthly')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:var(--accent-blue);color:#fff;">Monthly</button>
+      <button id="tog-a" onclick="setBillingInterval('annual')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:transparent;color:color:var(--text-secondary);">Annual <span style="color:var(--success);font-size:10px;">Save 20%</span></button>
+    </div>
+  </div>
+ 
+  <div class="pricing-grid">
+    <!-- FREE PLAN (shows first on mobile) -->
+    <div class="plan-card plan-free">
+      <div class="plan-header">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">£0</div>
+        <div class="plan-period">forever</div>
       </div>
-      <div class="pricing-trust"><div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Secure payments via Stripe</div><div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>14-day money-back guarantee</div><div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Cancel anytime</div></div>
-    </section>
+      <div class="plan-desc">Perfect for quick checks and getting started.</div>
+      <a href="#scan" class="plan-btn plan-btn-outline">Start Scanning</a>
+      <div class="plan-features">
+        <div class="plan-feat-group">Core</div>
+        <div class="plan-feat yes">3 scans per month</div>
+        <div class="plan-feat yes">6-category audit (25+ checks)</div>
+        <div class="plan-feat yes">AI chat assistant</div>
+        <div class="plan-feat yes">Basic AI summary</div>
+        <div class="plan-feat yes">Basic site intelligence</div>
+        <div class="plan-feat-group">SEO Tools</div>
+        <div class="plan-feat yes">Keyword research (unlimited)</div>
+        <div class="plan-feat yes">Backlink overview</div>
+        <div class="plan-feat yes">Google Search Console rankings</div>
+        <div class="plan-feat-group">Viral</div>
+        <div class="plan-feat yes">Achievement badges</div>
+        <div class="plan-feat yes">Challenge sharing</div>
+        <div class="plan-feat yes">Public leaderboard</div>
+        <div class="plan-feat-group">Locked</div>
+        <div class="plan-feat no">Competitor compare</div>
+        <div class="plan-feat no">Business intelligence</div>
+        <div class="plan-feat no">Consumer intelligence</div>
+        <div class="plan-feat no">UX pattern detection</div>
+        <div class="plan-feat no">Industry benchmarking</div>
+        <div class="plan-feat no">Lighthouse / Core Web Vitals</div>
+        <div class="plan-feat no">PDF export</div>
+        <div class="plan-feat no">Scan history</div>
+      </div>
+    </div>
+ 
+    <!-- PRO PLAN (highlighted) -->
+    <div class="plan-card plan-pro featured">
+      <div class="plan-popular">Most Popular</div>
+      <div class="plan-header">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price"><span class="price-monthly">£9</span><span class="price-annual" style="display:none;">£7</span></div>
+        <div class="plan-period">per month</div>
+      </div>
+      <div class="plan-desc">Full audit power for freelancers and small businesses.</div>
+      <button class="plan-btn plan-btn-primary" onclick="startStripeCheckout('pro')">Upgrade to Pro</button>
+      <div class="plan-features">
+        <div class="plan-feat-group">Everything in Free, plus:</div>
+        <div class="plan-feat yes">30 scans per month</div>
+        <div class="plan-feat yes">Core Web Vitals (LCP, CLS, TBT)</div>
+        <div class="plan-feat yes">Full site intelligence (10 data points)</div>
+        <div class="plan-feat yes">Advanced AI-powered summary</div>
+        <div class="plan-feat yes">Scan history dashboard</div>
+        <div class="plan-feat-group">Intelligence</div>
+        <div class="plan-feat yes">Competitor compare tool</div>
+        <div class="plan-feat yes">Business intelligence (CTAs, payments, social)</div>
+        <div class="plan-feat yes">Consumer intelligence (reviews, trust, support)</div>
+        <div class="plan-feat yes">UX pattern detection (30+ patterns)</div>
+        <div class="plan-feat yes">Industry benchmarking & percentile</div>
+        <div class="plan-feat yes">Price extraction</div>
+        <div class="plan-feat-group">Export</div>
+        <div class="plan-feat yes">PDF reports (branded)</div>
+        <div class="plan-feat yes">Email reports (full detail)</div>
+        <div class="plan-feat-group">Locked</div>
+        <div class="plan-feat no">Deep page rendering</div>
+        <div class="plan-feat no">AI SEO strategy</div>
+        <div class="plan-feat no">Team members</div>
+        <div class="plan-feat no">API access</div>
+        <div class="plan-feat no">White-label PDFs</div>
+      </div>
+    </div>
+ 
+    <!-- AGENCY PLAN -->
+    <div class="plan-card plan-agency">
+      <div class="plan-header">
+        <div class="plan-name">Agency</div>
+        <div class="plan-price"><span class="price-monthly">£29</span><span class="price-annual" style="display:none;">£23</span></div>
+        <div class="plan-period">per month</div>
+      </div>
+      <div class="plan-desc">For agencies and teams managing multiple client sites.</div>
+      <button class="plan-btn plan-btn-gold" onclick="startStripeCheckout('agency')">Go Agency</button>
+      <div class="plan-features">
+        <div class="plan-feat-group">Everything in Pro, plus:</div>
+        <div class="plan-feat yes">Unlimited scans</div>
+        <div class="plan-feat yes">Deep page rendering (JS apps & SPAs)</div>
+        <div class="plan-feat yes">AI SEO strategy (intent, clusters, gaps)</div>
+        <div class="plan-feat-group">Team & API</div>
+        <div class="plan-feat yes">5 team members</div>
+        <div class="plan-feat yes">5 API keys (programmatic access)</div>
+        <div class="plan-feat yes">Team management dashboard</div>
+        <div class="plan-feat-group">Export</div>
+        <div class="plan-feat yes">White-label PDF reports</div>
+        <div class="plan-feat yes">Custom branding on exports</div>
+        <div class="plan-feat-group">Priority</div>
+        <div class="plan-feat yes">Priority support</div>
+        <div class="plan-feat yes">Early access to new features</div>
+      </div>
+    </div>
+  </div>
+</section>
     <div class="checkout-overlay" id="checkout-overlay" onclick="if(event.target===this)closeCheckoutModal()"><div class="checkout-modal"><button class="checkout-close" onclick="closeCheckoutModal()">✕</button><div class="checkout-icon" id="checkout-icon">⚡</div><div class="checkout-plan-tag" id="checkout-plan-tag">Pro · Monthly</div><h3>Upgrade to <span class="gold" id="checkout-plan-name">Pro</span></h3><p class="checkout-sub" id="checkout-sub">Enter your email to continue to secure checkout via Stripe.</p><div class="checkout-field"><label for="checkout-email">Email address</label><input type="email" id="checkout-email" placeholder="you@company.com" autocomplete="email"><div class="checkout-error" id="checkout-email-error">Please enter a valid email address.</div></div><button class="checkout-submit gold" id="checkout-submit-btn" onclick="submitCheckout()">Continue to Checkout →</button><div class="checkout-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Secured by Stripe · 256-bit encryption</div></div></div>
     <div class="paywall-overlay" id="paywall"><div class="paywall-card"><h2 id="paywall-title">You've used your 3 free scans</h2><p class="sub" id="paywall-msg">Upgrade to Pro for unlimited website audits, PDF exports, and scan history — or let our team handle the fixes for you.</p><div class="paywall-options"><a class="paywall-opt primary" href="https://balancewises.io/#contact">Get Us to Fix Your Site →</a><button class="paywall-opt secondary" onclick="startStripeCheckout('pro')">Upgrade to Pro · £9/month</button><button class="paywall-opt ghost" onclick="closePaywall()">Maybe later</button></div></div></div>
     <section class="results" id="results">
@@ -527,6 +922,41 @@
 .mobile-menu-cta {
   color: #f5a623;
   font-weight: 700;
+}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:960px;margin:0 auto;padding:0 16px;}
+.plan-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px 22px;position:relative;transition:.2s;}
+.plan-card:hover{border-color:var(--border-light);}
+.plan-card.featured{border:2px solid var(--accent-gold);box-shadow:0 0 30px rgba(245,166,35,.08);}
+.plan-popular{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent-gold);color:var(--bg-deep);font-size:11px;font-weight:700;padding:4px 16px;border-radius:100px;white-space:nowrap;}
+.plan-header{margin-bottom:12px;}
+.plan-name{font-size:14px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:4px;}
+.plan-price{font-size:40px;font-weight:800;color:var(--text-primary);letter-spacing:-2px;line-height:1;}
+.plan-period{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.plan-desc{font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px;min-height:36px;}
+.plan-btn{display:block;width:100%;padding:12px;border-radius:8px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;transition:.2s;border:none;font-family:inherit;text-decoration:none;}
+.plan-btn-outline{background:transparent;border:1px solid var(--border-light);color:var(--text-secondary);}.plan-btn-outline:hover{border-color:var(--text-secondary);color:var(--text-primary);}
+.plan-btn-primary{background:var(--accent-blue);color:#fff;}.plan-btn-primary:hover{opacity:.9;}
+.plan-btn-gold{background:linear-gradient(135deg,var(--accent-gold),#e09500);color:var(--bg-deep);}.plan-btn-gold:hover{box-shadow:0 4px 16px rgba(245,166,35,.3);}
+.plan-features{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
+.plan-feat-group{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-top:12px;margin-bottom:6px;}
+.plan-feat-group:first-child{margin-top:0;}
+.plan-feat{font-size:12px;color:var(--text-secondary);padding:4px 0;padding-left:20px;position:relative;line-height:1.4;}
+.plan-feat.yes::before{content:"✓";position:absolute;left:0;color:var(--success);font-weight:700;font-size:12px;}
+.plan-feat.no{color:var(--text-muted);opacity:.5;}
+.plan-feat.no::before{content:"—";position:absolute;left:0;color:var(--text-muted);font-size:12px;}
+ 
+/* MOBILE: Free first, stack vertically */
+@media(max-width:768px){
+  .pricing-grid{grid-template-columns:1fr;max-width:400px;}
+  .plan-free{order:1;}
+  .plan-pro{order:2;}
+  .plan-agency{order:3;}
+}
+@media(min-width:769px) and (max-width:1024px){
+  .pricing-grid{grid-template-columns:1fr 1fr;max-width:660px;}
+  .plan-free{order:1;}
+  .plan-pro{order:2;}
+  .plan-agency{order:3;grid-column:span 2;max-width:330px;justify-self:center;}
 }
  
 /* Only show on mobile */
@@ -720,7 +1150,537 @@ function renderEnrichment(e,isPaid){
     if(!isPaid&&tech.technologies&&tech.technologies.length>0){h+='<div style="background:var(--bg-card);border:2px dashed var(--border-light);border-radius:14px;padding:24px;text-align:center;margin-bottom:16px;"><div style="font-size:24px;margin-bottom:8px">🔬</div><h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">Full Site Intelligence</h3><p style="font-size:12px;color:var(--text-secondary);line-height:1.6;max-width:380px;margin:0 auto 12px">Upgrade to Pro to unlock domain age, WHOIS data, W3C validation, Mozilla Observatory score, Wayback history, and more.</p><a href="/#pricing" style="display:inline-block;padding:8px 20px;background:var(--accent-gold);color:var(--bg-deep);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none">Upgrade to Pro — £9/mo</a></div>';}
     box.innerHTML=h;
 }
+</script>
+<script>
+function renderScoreCards(gridEl, scores, scanData, isPaid, scannedUrl) {
+    gridEl.innerHTML = '';
 
+    // ── Core 6 score categories ──────────────────────
+    var categories = [
+        {
+            key: 'seo', label: 'SEO', icon: '🔍',
+            getMini: function(issues) {
+                var seoIssues = issues.filter(function(i) { return i.category === 'seo'; });
+                var crits = seoIssues.filter(function(i) { return i.severity === 'critical'; }).length;
+                var warns = seoIssues.filter(function(i) { return i.severity === 'warning'; }).length;
+                var pass = seoIssues.filter(function(i) { return i.severity === 'pass'; }).length;
+                return [
+                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
+                    { label: 'Warnings', val: warns, cls: warns > 0 ? 'warn' : 'good' },
+                    { label: 'Passed', val: pass, cls: 'good' },
+                ];
+            }
+        },
+        {
+            key: 'performance', label: 'Performance', icon: '⚡',
+            getMini: function(issues) {
+                var perfIssues = issues.filter(function(i) { return i.category === 'performance'; });
+                var crits = perfIssues.filter(function(i) { return i.severity === 'critical'; }).length;
+                var warns = perfIssues.filter(function(i) { return i.severity === 'warning'; }).length;
+                return [
+                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
+                    { label: 'Warnings', val: warns, cls: warns > 0 ? 'warn' : 'good' },
+                ];
+            }
+        },
+        {
+            key: 'accessibility', label: 'Accessibility', icon: '♿',
+            getMini: function(issues) {
+                var a11y = issues.filter(function(i) { return i.category === 'accessibility'; });
+                var crits = a11y.filter(function(i) { return i.severity === 'critical'; }).length;
+                var pass = a11y.filter(function(i) { return i.severity === 'pass'; }).length;
+                return [
+                    { label: 'Issues', val: crits, cls: crits > 0 ? 'bad' : 'good' },
+                    { label: 'Passed', val: pass, cls: 'good' },
+                ];
+            }
+        },
+        {
+            key: 'security', label: 'Security', icon: '🔒',
+            getMini: function(issues, enrichment) {
+                var secIssues = issues.filter(function(i) { return i.category === 'security'; });
+                var crits = secIssues.filter(function(i) { return i.severity === 'critical'; }).length;
+                var ssl = (enrichment && enrichment.ssl_details) ? enrichment.ssl_details.ssl_grade : null;
+                var stats = [
+                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
+                ];
+                if (ssl) stats.push({ label: 'SSL Grade', val: ssl, cls: ssl === 'A+' || ssl === 'A' ? 'good' : 'warn' });
+                return stats;
+            }
+        },
+        {
+            key: 'mobile', label: 'Mobile', icon: '📱',
+            getMini: function(issues) {
+                var mob = issues.filter(function(i) { return i.category === 'mobile'; });
+                var crits = mob.filter(function(i) { return i.severity === 'critical'; }).length;
+                var pass = mob.filter(function(i) { return i.severity === 'pass'; }).length;
+                return [
+                    { label: 'Issues', val: crits, cls: crits > 0 ? 'bad' : 'good' },
+                    { label: 'Passed', val: pass, cls: 'good' },
+                ];
+            }
+        },
+        {
+            key: 'links', label: 'Links', icon: '🔗',
+            getMini: function(issues) {
+                var lnk = issues.filter(function(i) { return i.category === 'links'; });
+                var broken = lnk.filter(function(i) { return i.severity === 'critical'; }).length;
+                var pass = lnk.filter(function(i) { return i.severity === 'pass'; }).length;
+                return [
+                    { label: 'Broken', val: broken, cls: broken > 0 ? 'bad' : 'good' },
+                    { label: 'Healthy', val: pass, cls: 'good' },
+                ];
+            }
+        },
+    ];
+
+    var issues = scanData.issues || [];
+    var enrichment = scanData.enrichment || {};
+
+    // Render core cards
+    categories.forEach(function(cat) {
+        var score = scores[cat.key] || 0;
+        var level = score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'warning' : 'poor';
+        var levelText = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Warning' : 'Poor';
+        var miniStats = cat.getMini(issues, enrichment);
+
+        var card = document.createElement('div');
+        card.className = 's-card ' + level;
+        card.onclick = function() { toggleDetail(cat.key, score, level, cat.label, cat.icon, issues, enrichment, isPaid, scannedUrl); };
+
+        var miniHtml = '<div class="s-mini">';
+        miniStats.forEach(function(s) {
+            miniHtml += '<div class="s-mini-stat"><span>' + s.label + '</span><span class="val ' + s.cls + '">' + s.val + '</span></div>';
+        });
+        miniHtml += '</div>';
+
+        card.innerHTML =
+            '<div class="s-num">' + score + '</div>' +
+            '<div class="s-label">' + cat.label + '</div>' +
+            '<div class="s-tag">' + levelText + '</div>' +
+            miniHtml +
+            '<div class="s-tap">tap for details →</div>';
+
+        gridEl.appendChild(card);
+    });
+
+    // ── New feature cards ────────────────────────────
+    var featureCards = [
+        {
+            key: 'business_intel',
+            icon: '💼',
+            label: 'Business Intel',
+            free: false,
+            getData: function() {
+                var bi = scanData.business_intel || {};
+                var ctaCount = bi.ctas ? bi.ctas.total_ctas || 0 : 0;
+                var payments = bi.payment_methods ? bi.payment_methods.methods || [] : [];
+                var social = bi.social_media ? bi.social_media.count || 0 : 0;
+                return { count: ctaCount + payments.length + social, sub: 'CTAs, payments, social' };
+            }
+        },
+        {
+            key: 'consumer_intel',
+            icon: '🛍️',
+            label: 'Consumer Intel',
+            free: false,
+            getData: function() {
+                var ci = scanData.consumer_intel || {};
+                var trust = ci.trust_signals ? ci.trust_signals.count || 0 : 0;
+                var support = ci.customer_support ? ci.customer_support.score || 0 : 0;
+                return { count: trust, sub: 'Trust: ' + trust + ' · Support: ' + support + '/100' };
+            }
+        },
+        {
+            key: 'ux_patterns',
+            icon: '🎨',
+            label: 'UX Patterns',
+            free: false,
+            getData: function() {
+                var bench = scanData.benchmarks || {};
+                var ux = bench.ux_patterns || {};
+                return { count: ux.total_detected || 0, sub: (ux.ux_score || 0) + '/100 UX score' };
+            }
+        },
+        {
+            key: 'keywords',
+            icon: '🔍',
+            label: 'Keywords',
+            free: true,
+            getData: function() {
+                var bi = scanData.business_intel || {};
+                var kw = bi.keywords || {};
+                var top = kw.top_words || [];
+                return { count: top.length, sub: top.slice(0, 3).join(', ') || 'Run scan first' };
+            }
+        },
+        {
+            key: 'benchmarks',
+            icon: '📊',
+            label: 'Industry Rank',
+            free: false,
+            getData: function() {
+                var bench = scanData.benchmarks || {};
+                var ind = bench.industry || {};
+                return { count: ind.detected_industry ? 1 : 0, sub: ind.industry_label || 'Not detected' };
+            }
+        },
+    ];
+
+    featureCards.forEach(function(feat) {
+        var data = feat.getData();
+        var isLocked = !isPaid && !feat.free;
+
+        var card = document.createElement('div');
+        card.className = 's-card feature-card' + (isLocked ? ' locked' : '');
+
+        card.onclick = function() {
+            if (isLocked) {
+                toggleFeatureDetail(feat.key, feat.label, feat.icon, true);
+            } else {
+                toggleFeatureDetail(feat.key, feat.label, feat.icon, false, scanData);
+            }
+        };
+
+        card.innerHTML =
+            '<div class="s-icon">' + feat.icon + '</div>' +
+            '<div class="s-num" style="font-size:24px;">' + (data.count || '—') + '</div>' +
+            '<div class="s-label">' + feat.label + '</div>' +
+            (data.sub ? '<div class="s-mini" style="border-top:none;text-align:center;padding-top:4px;">' + escH(data.sub) + '</div>' : '') +
+            (isLocked ? '<div class="s-lock">🔒 Pro</div>' : '<div class="s-tap">tap for details →</div>');
+
+        gridEl.appendChild(card);
+    });
+}
+
+
+// ── Toggle detail panel for core categories ──────────
+function toggleDetail(key, score, level, label, icon, issues, enrichment, isPaid, url) {
+    var panelId = 'detail-' + key;
+    var existing = document.getElementById(panelId);
+
+    // Close if already open
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    // Close any other open panels
+    document.querySelectorAll('.detail-panel').forEach(function(p) { p.remove(); });
+
+    // Get category issues
+    var catIssues = issues.filter(function(i) { return i.category === key; });
+    var crits = catIssues.filter(function(i) { return i.severity === 'critical'; });
+    var warns = catIssues.filter(function(i) { return i.severity === 'warning'; });
+    var passes = catIssues.filter(function(i) { return i.severity === 'pass'; });
+
+    // Build detail panel
+    var panel = document.createElement('div');
+    panel.className = 'detail-panel active';
+    panel.id = panelId;
+
+    var html = '';
+
+    // Header
+    html += '<div class="detail-header"><div class="detail-header-left">';
+    html += '<div class="detail-score-badge ' + level + '">' + score + '</div>';
+    html += '<div><div class="detail-title">' + icon + ' ' + label + '</div>';
+    html += '<div class="detail-subtitle">' + catIssues.length + ' checks · ' + crits.length + ' critical · ' + warns.length + ' warnings</div>';
+    html += '</div></div>';
+    html += '<button class="detail-close" onclick="document.getElementById(\'' + panelId + '\').remove()">Close ✕</button></div>';
+
+    // Body
+    html += '<div class="detail-body">';
+
+    // Critical issues
+    if (crits.length) {
+        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:8px;font-family:Space Mono,monospace;">CRITICAL (' + crits.length + ')</div>';
+        crits.forEach(function(issue, idx) {
+            if (!isPaid && idx >= 2) {
+                // Blur for free users
+                html += '<div class="detail-issue" style="filter:blur(4px);pointer-events:none;"><div class="detail-issue-icon crit">✗</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description) + '</div></div>';
+            } else {
+                html += '<div class="detail-issue"><div class="detail-issue-icon crit">✗</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description);
+                if (issue.fix) html += '<div class="detail-fix">Fix: ' + escH(issue.fix) + '</div>';
+                html += '</div></div>';
+            }
+        });
+        if (!isPaid && crits.length > 2) {
+            html += '<div style="text-align:center;padding:10px;font-size:11px;color:var(--text-muted);">🔒 ' + (crits.length - 2) + ' more hidden · <a href="/#pricing" style="color:var(--accent-gold);text-decoration:none;font-weight:700;">Upgrade to see all</a></div>';
+        }
+        html += '</div>';
+    }
+
+    // Warnings
+    if (warns.length) {
+        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--warning);margin-bottom:8px;font-family:Space Mono,monospace;">WARNINGS (' + warns.length + ')</div>';
+        warns.forEach(function(issue, idx) {
+            if (!isPaid && idx >= 2) {
+                html += '<div class="detail-issue" style="filter:blur(4px);pointer-events:none;"><div class="detail-issue-icon warn">⚠</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong></div></div>';
+            } else {
+                html += '<div class="detail-issue"><div class="detail-issue-icon warn">⚠</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description);
+                if (issue.fix) html += '<div class="detail-fix">Fix: ' + escH(issue.fix) + '</div>';
+                html += '</div></div>';
+            }
+        });
+        if (!isPaid && warns.length > 2) {
+            html += '<div style="text-align:center;padding:10px;font-size:11px;color:var(--text-muted);">🔒 ' + (warns.length - 2) + ' more hidden · <a href="/#pricing" style="color:var(--accent-gold);text-decoration:none;font-weight:700;">Upgrade</a></div>';
+        }
+        html += '</div>';
+    }
+
+    // Passed
+    if (passes.length) {
+        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:8px;font-family:Space Mono,monospace;">PASSED (' + passes.length + ')</div>';
+        passes.slice(0, isPaid ? 50 : 3).forEach(function(issue) {
+            html += '<div class="detail-issue"><div class="detail-issue-icon pass">✓</div><div class="detail-issue-text">' + escH(issue.title) + '</div></div>';
+        });
+        if (!isPaid && passes.length > 3) {
+            html += '<div style="text-align:center;padding:6px;font-size:11px;color:var(--text-muted);">+ ' + (passes.length - 3) + ' more</div>';
+        }
+        html += '</div>';
+    }
+
+    // Category-specific enrichment data
+    if (key === 'security' && enrichment.ssl_details) {
+        var ssl = enrichment.ssl_details;
+        html += '<div style="margin-top:12px;padding:14px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">SSL CERTIFICATE</div>';
+        if (ssl.ssl_grade) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Grade: <strong style="color:' + (ssl.ssl_grade === 'A+' || ssl.ssl_grade === 'A' ? 'var(--success)' : 'var(--warning)') + '">' + ssl.ssl_grade + '</strong></div>';
+        if (ssl.ssl_issuer) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Issuer: ' + escH(ssl.ssl_issuer) + '</div>';
+        if (ssl.ssl_days_remaining) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Expires in: ' + ssl.ssl_days_remaining + ' days</div>';
+        html += '</div>';
+    }
+
+    if (key === 'performance' && enrichment.server_location) {
+        var geo = enrichment.server_location;
+        html += '<div style="margin-top:12px;padding:14px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">SERVER</div>';
+        if (geo.server_country) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Location: ' + (geo.server_city ? geo.server_city + ', ' : '') + geo.server_country + '</div>';
+        if (geo.server_isp) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">ISP: ' + escH(geo.server_isp) + '</div>';
+        html += '</div>';
+    }
+
+    // Fix CTA
+    if (crits.length > 0 || warns.length > 0) {
+        html += '<div style="margin-top:16px;text-align:center;">';
+        html += '<a href="https://balancewises.io/#contact?issue=' + encodeURIComponent(label + ' issues') + '&url=' + encodeURIComponent(url) + '" target="_blank" style="display:inline-block;padding:10px 20px;background:var(--accent-gold);color:var(--bg-deep);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;">Get Balancewise to Fix ' + label + ' →</a>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+
+    // Insert after the scores grid
+    var grid = document.getElementById('scores-grid');
+    grid.parentNode.insertBefore(panel, grid.nextSibling);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+
+// ── Toggle detail for feature cards ──────────────────
+function toggleFeatureDetail(key, label, icon, isLocked, scanData) {
+    var panelId = 'detail-' + key;
+    var existing = document.getElementById(panelId);
+    if (existing) { existing.remove(); return; }
+    document.querySelectorAll('.detail-panel').forEach(function(p) { p.remove(); });
+
+    var panel = document.createElement('div');
+    panel.className = 'detail-panel active';
+    panel.id = panelId;
+
+    var html = '';
+
+    // Header
+    html += '<div class="detail-header"><div class="detail-header-left">';
+    html += '<div style="font-size:28px;">' + icon + '</div>';
+    html += '<div><div class="detail-title">' + label + '</div>';
+    html += '<div class="detail-subtitle">' + (isLocked ? 'Pro/Agency feature' : 'Included in your plan') + '</div>';
+    html += '</div></div>';
+    html += '<button class="detail-close" onclick="document.getElementById(\'' + panelId + '\').remove()">Close ✕</button></div>';
+
+    html += '<div class="detail-body">';
+
+    if (isLocked) {
+        // Show upgrade prompt
+        var featureDescriptions = {
+            'business_intel': {
+                title: 'Business Intelligence',
+                desc: 'See exactly how this website drives revenue: payment methods, CTAs, email capture, urgency tactics, social proof, live chat, and conversion tools.',
+                features: ['Payment Methods', 'CTA Detection', 'Email Capture', 'Urgency Tactics', 'Social Proof', 'Live Chat', 'Conversion Tools']
+            },
+            'consumer_intel': {
+                title: 'Consumer Intelligence',
+                desc: 'Understand the customer experience: reviews, support channels, trust signals, loyalty programs, delivery options, pricing psychology, and personalization.',
+                features: ['Reviews & Ratings', 'Customer Support Score', 'Trust Signals', 'Loyalty Programs', 'Pricing Psychology', 'Delivery Options', 'Personalization']
+            },
+            'ux_patterns': {
+                title: 'UX Pattern Detection',
+                desc: '30+ UX patterns detected across navigation, product pages, conversion, mobile, content, and trust categories.',
+                features: ['Navigation', 'Product Page', 'Conversion', 'Mobile UX', 'Content', 'Trust Elements']
+            },
+            'benchmarks': {
+                title: 'Industry Benchmarking',
+                desc: 'See how this site ranks against others in its industry. Percentile scores, industry averages, and specific recommendations.',
+                features: ['Industry Detection', 'Percentile Ranking', 'Score Comparison', 'Recommendations']
+            }
+        };
+
+        var info = featureDescriptions[key] || { title: label, desc: 'Detailed analysis available with upgrade.', features: [] };
+
+        html += '<div class="detail-upgrade">';
+        html += '<div style="font-size:32px;margin-bottom:10px;">' + icon + '</div>';
+        html += '<h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">' + info.title + '</h3>';
+        html += '<p>' + info.desc + '</p>';
+        if (info.features.length) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">';
+            info.features.forEach(function(f) {
+                html += '<span style="font-size:10px;padding:4px 10px;border-radius:100px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.15);color:#06b6d4;">' + f + '</span>';
+            });
+            html += '</div>';
+        }
+        html += '<a class="detail-upgrade-btn" href="/#pricing">Upgrade to Pro — £9/mo</a>';
+        html += '</div>';
+    } else {
+        // Show actual data
+        if (key === 'business_intel' && scanData) {
+            var bi = scanData.business_intel || {};
+            html += renderBusinessIntelDetail(bi);
+        } else if (key === 'consumer_intel' && scanData) {
+            var ci = scanData.consumer_intel || {};
+            html += renderConsumerIntelDetail(ci);
+        } else if (key === 'ux_patterns' && scanData) {
+            var bench = scanData.benchmarks || {};
+            html += renderUXDetail(bench.ux_patterns || {});
+        } else if (key === 'keywords' && scanData) {
+            var bi2 = scanData.business_intel || {};
+            html += renderKeywordsDetail(bi2.keywords || {});
+        } else if (key === 'benchmarks' && scanData) {
+            var bench2 = scanData.benchmarks || {};
+            html += renderBenchmarkDetail(bench2.industry || {});
+        } else {
+            html += '<div class="empty"><p>No data available for this scan.</p></div>';
+        }
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+
+    var grid = document.getElementById('scores-grid');
+    grid.parentNode.insertBefore(panel, grid.nextSibling);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+
+// ── Feature detail renderers ─────────────────────────
+
+function renderBusinessIntelDetail(bi) {
+    var h = '';
+    var sections = [
+        { key: 'ctas', icon: '🎯', title: 'CTAs', render: function(d) { return 'Total: ' + (d.total_ctas || 0) + ' · Purchase: ' + ((d.purchase_ctas || []).length) + ' · Signup: ' + ((d.signup_ctas || []).length); }},
+        { key: 'payment_methods', icon: '💳', title: 'Payment Methods', render: function(d) { return (d.methods || []).join(', ') || 'None detected'; }},
+        { key: 'social_proof', icon: '⭐', title: 'Social Proof', render: function(d) { return 'Score: ' + (d.score || 0) + ' · Signals: ' + ((d.signals || []).join(', ') || 'None'); }},
+        { key: 'email_capture', icon: '✉️', title: 'Email Capture', render: function(d) { return (d.methods || []).join(', ') || 'None detected'; }},
+        { key: 'urgency_tactics', icon: '⏰', title: 'Urgency Tactics', render: function(d) { return (d.tactics || []).join(', ') || 'None detected'; }},
+        { key: 'social_media', icon: '📱', title: 'Social Media', render: function(d) { var p = d.platforms || {}; return Object.keys(p).join(', ') || 'None linked'; }},
+        { key: 'live_chat', icon: '💬', title: 'Live Chat', render: function(d) { return d.has_live_chat ? (d.tools || []).join(', ') : 'Not detected'; }},
+        { key: 'pricing', icon: '💰', title: 'Pricing', render: function(d) { return d.prices_found ? d.prices_found + ' prices · ' + (d.currency || '') + ' ' + (d.price_range || '') : 'No prices found'; }},
+    ];
+
+    sections.forEach(function(s) {
+        var data = bi[s.key] || {};
+        h += '<div class="detail-issue"><div style="font-size:16px;width:28px;text-align:center;flex-shrink:0;">' + s.icon + '</div>';
+        h += '<div class="detail-issue-text"><strong>' + s.title + '</strong><br>' + s.render(data) + '</div></div>';
+    });
+    return h;
+}
+
+function renderConsumerIntelDetail(ci) {
+    var h = '';
+    var sections = [
+        { key: 'reviews_ratings', icon: '⭐', title: 'Reviews', render: function(d) { return d.has_reviews ? 'Found · Platforms: ' + (d.review_platforms || []).join(', ') + (d.star_rating ? ' · ' + d.star_rating + ' stars' : '') : 'No reviews detected'; }},
+        { key: 'customer_support', icon: '🎧', title: 'Support', render: function(d) { return 'Score: ' + (d.score || 0) + '/100 · Channels: ' + ((d.channels || []).join(', ') || 'None'); }},
+        { key: 'trust_signals', icon: '🛡️', title: 'Trust Signals', render: function(d) { return (d.count || 0) + ' found: ' + ((d.signals || []).slice(0, 4).join(', ') || 'None'); }},
+        { key: 'loyalty_program', icon: '🎁', title: 'Loyalty', render: function(d) { return d.has_loyalty_program ? (d.program_type || []).join(', ') : 'Not detected'; }},
+        { key: 'pricing_psychology', icon: '💰', title: 'Pricing Tactics', render: function(d) { return (d.count || 0) + ' tactics · ' + (d.sophistication || 'None') + ': ' + ((d.tactics || []).slice(0, 3).join(', ')); }},
+        { key: 'delivery_shipping', icon: '🚚', title: 'Delivery', render: function(d) { return (d.signals || []).join(', ') || 'No delivery info detected'; }},
+        { key: 'personalization', icon: '🎯', title: 'Personalization', render: function(d) { return (d.sophistication || 'None') + ': ' + ((d.features || []).join(', ') || 'None detected'); }},
+        { key: 'return_policy', icon: '↩️', title: 'Returns', render: function(d) { return d.has_return_policy ? (d.signals || []).join(', ') : 'No return policy found'; }},
+    ];
+
+    sections.forEach(function(s) {
+        var data = ci[s.key] || {};
+        h += '<div class="detail-issue"><div style="font-size:16px;width:28px;text-align:center;flex-shrink:0;">' + s.icon + '</div>';
+        h += '<div class="detail-issue-text"><strong>' + s.title + '</strong><br>' + s.render(data) + '</div></div>';
+    });
+    return h;
+}
+
+function renderUXDetail(ux) {
+    var h = '';
+    h += '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:32px;font-weight:800;color:var(--cyan);">' + (ux.ux_score || 0) + '<span style="font-size:16px;color:var(--text-muted)">/100</span></div><div style="font-size:12px;color:var(--text-muted);">UX Score · ' + (ux.total_detected || 0) + ' patterns detected</div></div>';
+    var patterns = ux.all_patterns || [];
+    if (patterns.length) {
+        h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        patterns.forEach(function(p) {
+            var name = typeof p === 'string' ? p : (p.name || p.pattern || 'Unknown');
+            h += '<span style="font-size:11px;padding:5px 12px;border-radius:100px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.15);color:var(--cyan);font-family:Space Mono,monospace;">' + escH(name) + '</span>';
+        });
+        h += '</div>';
+    }
+    return h;
+}
+
+function renderKeywordsDetail(kw) {
+    var h = '';
+    var topWords = kw.top_words || [];
+    var headings = kw.h1_headings || [];
+    if (headings.length) {
+        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;font-family:Space Mono,monospace;">H1 HEADINGS</div>';
+        headings.forEach(function(heading) { h += '<div style="font-size:13px;color:var(--text-primary);padding:4px 0;">"' + escH(heading) + '"</div>'; });
+        h += '<div style="height:12px;"></div>';
+    }
+    if (topWords.length) {
+        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">TOP KEYWORDS</div>';
+        h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        topWords.forEach(function(w) {
+            var word = typeof w === 'string' ? w : (w.word || w);
+            h += '<span style="font-size:11px;padding:5px 12px;border-radius:100px;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-secondary);font-family:Space Mono,monospace;">' + escH(word) + '</span>';
+        });
+        h += '</div>';
+    }
+    h += '<div style="margin-top:16px;text-align:center;"><a href="/seo" style="display:inline-block;padding:10px 20px;background:var(--cyan);color:var(--bg);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;">Full Keyword Research →</a></div>';
+    return h;
+}
+
+function renderBenchmarkDetail(ind) {
+    var h = '';
+    if (ind.industry_label) {
+        h += '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:14px;color:var(--text-muted);margin-bottom:4px;">Detected Industry</div><div style="font-size:22px;font-weight:800;color:var(--gold);">' + escH(ind.industry_label) + '</div></div>';
+    }
+    if (ind.comparisons) {
+        var comp = ind.comparisons;
+        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">VS INDUSTRY AVERAGE</div>';
+        Object.keys(comp).forEach(function(cat) {
+            var c = comp[cat] || {};
+            var yours = c.score || 0;
+            var avg = c.industry_avg || 0;
+            var diff = yours - avg;
+            var diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+            h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+            h += '<span style="color:var(--text-secondary);text-transform:capitalize;">' + cat + '</span>';
+            h += '<span><strong style="color:var(--text-primary);">' + yours + '</strong> <span style="color:var(--text-muted);">vs</span> ' + avg + ' <span style="color:' + diffColor + ';font-weight:700;">(' + (diff >= 0 ? '+' : '') + diff + ')</span></span>';
+            h += '</div>';
+        });
+    }
+    if (ind.summary) {
+        h += '<div style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.6;border-left:3px solid var(--gold);">' + escH(ind.summary) + '</div>';
+    }
+    return h;
+}
+
+function escH(t) { return (t || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }</script>
+<script>
 function showResults(url,d,checkResult){
     const btn=document.getElementById('audit-btn');btn.classList.remove('scanning');btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> BSCAN It';document.getElementById('terminal-wrap').classList.remove('active');
     const isPaid=checkResult&&(checkResult.plan==='pro'||checkResult.plan==='agency');const hasAccount=checkResult&&checkResult.has_account;const o=d.overall_score||0;
@@ -737,7 +1697,7 @@ function showResults(url,d,checkResult){
     const sumBox=document.getElementById('summary-box');sumBox.innerHTML='';
     if(d.summary)sumBox.innerHTML='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:var(--text-secondary);line-height:1.7;border-left:3px solid '+color+'">'+d.summary+'</div>';
     const g=document.getElementById('scores-grid');g.innerHTML='';
-    [{k:'seo',l:'SEO'},{k:'performance',l:'Performance'},{k:'accessibility',l:'Accessibility'},{k:'security',l:'Security'},{k:'mobile',l:'Mobile'},{k:'links',l:'Links'}].forEach(c=>{const s=sc[c.k],lv=s>=80?'excellent':s>=60?'good':s>=40?'warning':'poor',lt=s>=80?'Excellent':s>=60?'Good':s>=40?'Warning':'Poor';g.innerHTML+='<div class="s-card '+lv+'"><div class="s-num">'+s+'</div><div class="s-label">'+c.l+'</div><div class="s-tag">'+lt+'</div></div>';});
+    renderScoreCards(g, sc, d, isPaid, url);
     // Enrichment display
     renderEnrichment(d.enrichment||{},isPaid);
     // Issues

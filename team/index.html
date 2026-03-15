@@ -1184,11 +1184,6 @@ window.toggleChat = function() {
         currentScanId = getScanId();
     }
 };
-    if (chatOpen) {
-        document.getElementById('chat-input').focus();
-        currentScanId = getScanId();
-    }
-};
 
 window.sendQuick = function(text) {
     document.getElementById('chat-quick').style.display = 'none';
