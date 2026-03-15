@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BSCAN — Free Website Audit | Balancewise Technologies</title>
     <meta name="description" content="Scan any website instantly. Get a free SEO, performance, accessibility, and security audit with actionable fixes. Powered by Balancewise Technologies." />
-    <!-- OG tags for social sharing -->
     <meta property="og:title" content="BSCAN — Free Website Audit | Balancewise Technologies" />
     <meta property="og:description" content="Paste a URL and get an instant website health report — SEO, performance, security, tech stack, SSL grade, and more." />
     <meta property="og:type" content="website" />
@@ -15,623 +14,48 @@
     <meta name="twitter:title" content="BSCAN — Free Website Audit" />
     <meta name="twitter:description" content="Instant SEO, performance, security & accessibility audit with actionable fixes." />
     <meta name="twitter:image" content="https://bscan.balancewises.io/Og-image.png" />
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "BSCAN Website Analyzer",
-      "url": "https://bscan.balancewises.io/",
-      "applicationCategory": "Web Application",
-      "description": "Scan any website instantly! Get your Overall Score, detailed issue breakdown, tech stack, SSL grade, domain age, and an AI-powered summary.",
-      "operatingSystem": "All",
-      "offers": {
-        "@type": "Offer",
-        "price": "0.00",
-        "priceCurrency": "GBP",
-        "description": "Free website scan — see issues, tech stack, and AI-written summary"
-      }
-    }
-    </script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"BSCAN Website Analyzer","url":"https://bscan.balancewises.io/","applicationCategory":"Web Application","description":"Scan any website instantly! Get your Overall Score, detailed issue breakdown, tech stack, SSL grade, domain age, and an AI-powered summary.","operatingSystem":"All","offers":{"@type":"Offer","price":"0.00","priceCurrency":"GBP","description":"Free website scan — see issues, tech stack, and AI-written summary"}}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-    <style>
-      /*
-═══════════════════════════════════════════════════════════
-BSCAN Interactive Score Cards — Drop-in upgrade
-═══════════════════════════════════════════════════════════
-
-Replaces the static score grid with clickable cards that:
-1. Show a mini summary inside each card
-2. Expand on click to show category-specific data
-3. Free users see upgrade prompts for locked features
-4. Adds new cards: Business Intel, Consumer Intel, UX Patterns, Keywords, Backlinks
-*/
-
-/* ── Enhanced Score Cards ──────────────────────────── */
-.scores-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-    gap: 12px;
-    margin-bottom: 28px;
-}
-
-.s-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px;
-    text-align: center;
-    transition: .25s;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.s-card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-}
-
-.s-card.excellent::before { background: var(--success); }
-.s-card.good::before { background: var(--info); }
-.s-card.warning::before { background: var(--warning); }
-.s-card.poor::before { background: var(--danger); }
-
-.s-card:hover {
-    border-color: var(--border-light);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.2);
-}
-
-.s-card:active { transform: translateY(0); }
-
-.s-num {
-    font-size: 36px;
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1;
-    margin-bottom: 2px;
-}
-
-.s-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.s-tag {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 100px;
-    display: inline-block;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-/* Mini summary inside card */
-.s-mini {
-    font-size: 10px;
-    color: var(--text-muted);
-    line-height: 1.4;
-    margin-top: 6px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    text-align: left;
-}
-
-.s-mini-stat {
-    display: flex;
-    justify-content: space-between;
-    padding: 2px 0;
-}
-
-.s-mini-stat .val {
-    font-family: "Space Mono", monospace;
-    font-weight: 600;
-}
-
-.s-mini-stat .val.good { color: var(--success); }
-.s-mini-stat .val.warn { color: var(--warning); }
-.s-mini-stat .val.bad { color: var(--danger); }
-
-/* Tap hint */
-.s-tap {
-    font-size: 9px;
-    color: var(--text-muted);
-    margin-top: 6px;
-    opacity: .5;
-    font-family: "Space Mono", monospace;
-}
-
-/* ── Expanded Detail Panel ─────────────────────────── */
-.detail-panel {
-    display: none;
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 14px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    animation: fadeUp .3s ease-out;
-}
-
-.detail-panel.active { display: block; }
-
-.detail-header {
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.detail-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.detail-score-badge {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -1px;
-}
-
-.detail-score-badge.excellent { background: var(--success-dim); color: var(--success); }
-.detail-score-badge.good { background: var(--info-dim); color: var(--info); }
-.detail-score-badge.warning { background: var(--warning-dim); color: var(--warning); }
-.detail-score-badge.poor { background: var(--danger-dim); color: var(--danger); }
-
-.detail-title {
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.detail-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.detail-close {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 6px 12px;
-    font-size: 11px;
-    font-family: "DM Sans", sans-serif;
-    transition: .15s;
-}
-
-.detail-close:hover {
-    border-color: var(--text-secondary);
-    color: var(--text-secondary);
-}
-
-.detail-body {
-    padding: 18px 22px;
-}
-
-.detail-issues {
-    margin-bottom: 12px;
-}
-
-.detail-issue {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    font-size: 12px;
-    transition: .1s;
-}
-
-.detail-issue:hover { background: var(--bg-primary); }
-
-.detail-issue-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
-}
-
-.detail-issue-icon.crit { background: var(--danger-dim); color: var(--danger); }
-.detail-issue-icon.warn { background: var(--warning-dim); color: var(--warning); }
-.detail-issue-icon.pass { background: var(--success-dim); color: var(--success); }
-
-.detail-issue-text { flex: 1; color: var(--text-secondary); line-height: 1.5; }
-.detail-issue-text strong { color: var(--text-primary); font-weight: 600; }
-.detail-fix { color: var(--accent-blue); font-size: 11px; font-style: italic; margin-top: 3px; }
-
-/* Upgrade prompt inside detail panel */
-.detail-upgrade {
-    text-align: center;
-    padding: 24px;
-    background: linear-gradient(135deg, rgba(245,166,35,.06), rgba(59,130,246,.04));
-    border-radius: 10px;
-    margin-top: 12px;
-}
-
-.detail-upgrade p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-    line-height: 1.6;
-}
-
-.detail-upgrade-btn {
-    display: inline-block;
-    padding: 10px 22px;
-    background: var(--accent-gold);
-    color: var(--bg-deep);
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 12px;
-    text-decoration: none;
-    transition: .2s;
-}
-
-.detail-upgrade-btn:hover { opacity: .9; }
-
-/* ── New Feature Cards (Business, Consumer, UX, etc.) ── */
-.s-card.feature-card {
-    border-style: dashed;
-    border-color: var(--border-light);
-}
-
-.s-card.feature-card .s-num {
-    font-size: 20px;
-    letter-spacing: 0;
-}
-
-.s-card.feature-card .s-icon {
-    font-size: 24px;
-    margin-bottom: 6px;
-}
-
-.s-card.locked {
-    opacity: .7;
-}
-
-.s-card.locked .s-lock {
-    font-size: 10px;
-    color: var(--accent-gold);
-    font-family: "Space Mono", monospace;
-    margin-top: 4px;
-}
-
-/* ── Responsive ──────────────────────────────────── */
-@media (max-width: 640px) {
-    .scores-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .s-card { padding: 14px; }
-    .s-num { font-size: 28px; }
-    .s-label { font-size: 11px; }
-    .s-mini { font-size: 9px; }
-    .detail-header { padding: 14px 16px; }
-    .detail-body { padding: 14px 16px; }
-    .detail-score-badge { width: 40px; height: 40px; font-size: 18px; }
-    .detail-title { font-size: 14px; }
-}
-      :root {
-        --bg-deep: #0b1121;
-        --bg-primary: #0f172a;
-        --bg-card: #141d33;
-        --bg-card-hover: #192340;
-        --bg-elevated: #1a2542;
-        --border: #1e2d4a;
-        --border-light: #2a3f6b;
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --accent-gold: #f5a623;
-        --accent-gold-dim: #f5a62320;
-        --accent-blue: #3b82f6;
-        --accent-blue-dim: #3b82f620;
-        --success: #22c55e;
-        --success-dim: #22c55e20;
-        --warning: #f5a623;
-        --warning-dim: #f5a62320;
-        --danger: #ef4444;
-        --danger-dim: #ef444420;
-        --info: #3b82f6;
-        --info-dim: #3b82f620;
-        --white: #ffffff;
-      }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { overflow-x: hidden; max-width: 100vw; }
-      img, video, iframe, pre { max-width: 100%; }
-      nav, section, footer { max-width: 100%; }
-      input, select, textarea { font-size: 16px !important; min-width: 0; }
-      body { font-family: "DM Sans", sans-serif; background: var(--bg-deep); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-      .bg-gradient { position: fixed; inset: 0; background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(59,130,246,.08), transparent), radial-gradient(ellipse 40% 30% at 80% 20%, rgba(245,166,35,.04), transparent); pointer-events: none; }
-      .bg-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(30,45,74,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(30,45,74,.3) 1px, transparent 1px); background-size: 80px 80px; opacity: .15; pointer-events: none; }
-      nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(11,17,33,.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
-      .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-      .nav-brand-text { font-weight: 700; font-size: 16px; font-style: italic; letter-spacing: -.3px; color: var(--text-primary); }
-      .nav-brand-text .highlight { color: var(--accent-gold); }
-      .nav-links { display: flex; align-items: center; gap: 6px; }
-      .nav-link { padding: 8px 14px; border-radius: 8px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; transition: .2s; }
-      .nav-link:hover { color: var(--text-primary); }
-      .nav-cta { padding: 8px 20px; border-radius: 8px; background: var(--accent-blue); color: var(--white); text-decoration: none; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: .2s; }
-      .nav-cta:hover { opacity: .9; }
-      .hero { padding: 130px 40px 50px; max-width: 860px; margin: 0 auto; text-align: center; position: relative; }
-      .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 100px; background: var(--accent-gold-dim); border: 1px solid rgba(245,166,35,.15); font-size: 12px; font-weight: 600; color: var(--accent-gold); font-family: "Space Mono", monospace; margin-bottom: 28px; text-transform: uppercase; letter-spacing: 1px; animation: fadeIn .5s ease-out; }
-      .hero-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-gold); animation: pulse 2s infinite; }
-      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-      h1 { font-size: clamp(34px,5vw,52px); font-weight: 700; font-style: italic; line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 18px; animation: fadeUp .5s ease-out .1s both; }
-      h1 .gold { color: var(--accent-gold); }
-      .hero-sub { font-size: 16px; color: var(--text-secondary); line-height: 1.6; max-width: 520px; margin: 0 auto 36px; animation: fadeUp .5s ease-out .15s both; }
-      .audit-box { max-width: 640px; margin: 0 auto; animation: fadeUp .5s ease-out .2s both; }
-      .audit-input-row { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 5px; transition: .3s; }
-      .audit-input-row:focus-within { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-dim), 0 16px 48px rgba(0,0,0,.3); }
-      .audit-input { flex: 1; background: none; border: none; padding: 14px 18px; font-size: 15px; font-family: "Space Mono", monospace; color: var(--text-primary); outline: none; min-width: 0; }
-      .audit-input::placeholder { color: var(--text-muted); }
-      .audit-btn { padding: 14px 24px; background: var(--accent-blue); color: var(--white); border: none; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: "DM Sans", sans-serif; cursor: pointer; transition: .2s; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-      .audit-btn:hover { background: #2563eb; }
-      .audit-btn:active { transform: scale(.97); }
-      .audit-btn.scanning { background: var(--bg-elevated); color: var(--accent-blue); pointer-events: none; }
-      .audit-btn svg { width: 16px; height: 16px; }
-      .scan-count { text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-muted); font-family: "Space Mono", monospace; }
-      .scan-count strong { color: var(--accent-gold); }
-      .quick-urls { display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-      .quick-url { font-size: 11px; color: var(--text-muted); font-family: "Space Mono", monospace; padding: 4px 10px; border-radius: 6px; background: var(--bg-card); border: 1px solid var(--border); cursor: pointer; transition: .2s; }
-      .quick-url:hover { color: var(--text-secondary); border-color: var(--border-light); }
-      .email-gate { display: none; margin-top: 20px; animation: fadeUp .3s ease-out; }
-      .email-gate.active { display: block; }
-      .gate-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 24px; text-align: left; }
-      .gate-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-      .gate-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-      .gate-sub { font-size: 12px; font-family: "Space Mono", monospace; color: var(--accent-gold); margin-top: 2px; }
-      .gate-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-      .gate-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-      .gate-field input { width: 100%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: "DM Sans", sans-serif; color: var(--text-primary); outline: none; transition: border-color .2s; }
-      .gate-field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-dim); }
-      .gate-field input::placeholder { color: var(--text-muted); }
-      .gate-btn { width: 100%; justify-content: center; padding: 14px; font-size: 15px; background: var(--accent-gold); color: var(--bg-deep); }
-      .gate-btn:hover { background: #e09500; }
-      .gate-privacy { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 12px; }
-      .gate-privacy a { color: var(--accent-blue); text-decoration: none; }
-      .scan-terminal-wrap { display: none; margin-top: 28px; }
-      .scan-terminal-wrap.active { display: block; animation: fadeUp .3s ease-out; }
-      .terminal { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; font-family: "Space Mono", monospace; font-size: 12px; max-height: 180px; overflow-y: auto; text-align: left; }
-      .t-line { padding: 2px 0; opacity: 0; animation: lineIn .25s ease-out forwards; }
-      .t-prefix { color: var(--accent-blue); } .t-text { color: var(--text-secondary); } .t-ok { color: var(--success); } .t-warn { color: var(--warning); } .t-fail { color: var(--danger); }
-      @keyframes lineIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
-      .progress-track { margin-top: 12px; background: var(--bg-card); border-radius: 4px; height: 3px; overflow: hidden; }
-      .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-gold)); border-radius: 4px; width: 0%; transition: width .3s ease; }
-      .pricing-section { position: relative; max-width: 1100px; margin: 70px auto 50px; padding: 60px 24px 50px; text-align: center; }
-      .pricing-section::before { content: ""; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 600px; height: 300px; background: radial-gradient(ellipse, rgba(59,130,246,.07), transparent 70%); pointer-events: none; }
-      .pricing-header { margin-bottom: 40px; }
-      .pricing-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 100px; background: var(--accent-blue-dim); border: 1px solid rgba(59,130,246,.15); font-size: 11px; font-weight: 600; color: var(--accent-blue); font-family: "Space Mono", monospace; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 18px; }
-      .pricing-title { font-size: clamp(28px,4vw,42px); font-weight: 800; font-style: italic; letter-spacing: -1.5px; margin-bottom: 12px; color: var(--text-primary); }
-      .pricing-title .gold { color: var(--accent-gold); }
-      .pricing-subtitle { font-size: 15px; color: var(--text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.6; }
-      .billing-toggle-wrap { display: inline-flex; align-items: center; gap: 14px; margin: 28px auto 0; padding: 6px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 100px; }
-      .billing-toggle-label { font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; padding: 6px 14px; border-radius: 100px; transition: .25s; user-select: none; }
-      .billing-toggle-label.active { color: var(--white); background: var(--accent-blue); }
-      .billing-toggle-label:hover:not(.active) { color: var(--text-secondary); }
-      .save-badge { font-size: 10px; font-weight: 700; color: var(--success); background: var(--success-dim); padding: 2px 8px; border-radius: 100px; font-family: "Space Mono", monospace; letter-spacing: .5px; }
-      .plans-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 40px; align-items: start; }
-      .plan-card { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px 24px 28px; text-align: left; transition: .3s ease; display: flex; flex-direction: column; }
-      .plan-card:hover { border-color: var(--border-light); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
-      .plan-card.featured { border-color: var(--accent-gold); background: linear-gradient(180deg, #192340 0%, var(--bg-card) 100%); box-shadow: 0 0 0 1px var(--accent-gold), 0 8px 40px rgba(245,166,35,.08); }
-      .plan-card.featured:hover { box-shadow: 0 0 0 1px var(--accent-gold), 0 24px 60px rgba(245,166,35,.12); }
-      .featured-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--accent-gold), #e09500); color: var(--bg-deep); font-size: 11px; font-weight: 800; padding: 4px 16px; border-radius: 100px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; box-shadow: 0 4px 12px rgba(245,166,35,.3); }
-      .plan-name { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-      .plan-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
-      .plan-price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
-      .plan-currency { font-size: 18px; font-weight: 700; color: var(--text-secondary); align-self: flex-start; margin-top: 6px; }
-      .plan-amount { font-size: 48px; font-weight: 800; letter-spacing: -3px; line-height: 1; color: var(--text-primary); }
-      .plan-card.featured .plan-amount { color: var(--accent-gold); }
-      .plan-interval { font-size: 14px; color: var(--text-muted); font-weight: 500; }
-      .plan-annual-note { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; min-height: 18px; }
-      .plan-annual-note .save-text { color: var(--success); font-weight: 600; }
-      .plan-divider { height: 1px; background: var(--border); margin: 0 -24px 20px; }
-      .plan-features-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
-      .plan-features { list-style: none; margin: 0 0 28px; padding: 0; flex: 1; }
-      .plan-features li { font-size: 13px; color: var(--text-secondary); padding: 6px 0 6px 26px; position: relative; line-height: 1.5; }
-      .plan-features li::before { content: ""; position: absolute; left: 0; top: 9px; width: 16px; height: 16px; background: var(--success-dim); border-radius: 50%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; }
-      .plan-features li.disabled { color: var(--text-muted); opacity: .5; text-decoration: line-through; }
-      .plan-features li.disabled::before { background: var(--danger-dim); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; }
-      .plan-cta { display: block; width: 100%; padding: 14px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; font-family: "DM Sans", sans-serif; cursor: pointer; transition: .2s; text-align: center; }
-      .plan-cta.outline { background: transparent; border: 1px solid var(--border-light); color: var(--text-primary); }
-      .plan-cta.outline:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--accent-blue-dim); }
-      .plan-cta.primary { background: var(--accent-blue); color: var(--white); }
-      .plan-cta.primary:hover { background: #2563eb; box-shadow: 0 8px 24px rgba(59,130,246,.25); }
-      .plan-cta.gold { background: linear-gradient(135deg, var(--accent-gold), #e09500); color: var(--bg-deep); }
-      .plan-cta.gold:hover { box-shadow: 0 8px 24px rgba(245,166,35,.25); transform: translateY(-1px); }
-      .plan-cta:disabled { opacity: .4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-      .pricing-trust { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 36px; flex-wrap: wrap; }
-      .trust-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
-      .trust-item svg { width: 14px; height: 14px; color: var(--success); }
-      .checkout-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(10px); z-index: 250; align-items: center; justify-content: center; }
-      .checkout-overlay.active { display: flex; }
-      .checkout-modal { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 16px; padding: 36px 32px; max-width: 420px; width: 90%; animation: fadeUp .25s ease-out; position: relative; }
-      .checkout-close { position: absolute; top: 14px; right: 14px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; transition: .2s; line-height: 1; font-size: 18px; }
-      .checkout-close:hover { color: var(--text-primary); background: var(--bg-elevated); }
-      .checkout-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--accent-gold-dim); border: 1px solid rgba(245,166,35,.15); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; font-size: 22px; }
-      .checkout-modal h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-      .checkout-modal h3 .gold { color: var(--accent-gold); }
-      .checkout-modal .checkout-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 22px; line-height: 1.5; }
-      .checkout-plan-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 700; font-family: "Space Mono", monospace; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 20px; }
-      .checkout-plan-tag.pro { background: var(--accent-gold-dim); color: var(--accent-gold); border: 1px solid rgba(245,166,35,.15); }
-      .checkout-plan-tag.agency { background: var(--accent-blue-dim); color: var(--accent-blue); border: 1px solid rgba(59,130,246,.15); }
-      .checkout-field { margin-bottom: 16px; }
-      .checkout-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-      .checkout-field input { width: 100%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: "DM Sans", sans-serif; color: var(--text-primary); outline: none; transition: .2s; }
-      .checkout-field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-dim); }
-      .checkout-field input::placeholder { color: var(--text-muted); }
-      .checkout-field input.error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-dim); }
-      .checkout-error { font-size: 12px; color: var(--danger); margin-top: 6px; display: none; }
-      .checkout-error.active { display: block; }
-      .checkout-submit { width: 100%; padding: 14px; border-radius: 10px; border: none; font-size: 15px; font-weight: 700; font-family: "DM Sans", sans-serif; cursor: pointer; transition: .2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
-      .checkout-submit.gold { background: linear-gradient(135deg, var(--accent-gold), #e09500); color: var(--bg-deep); }
-      .checkout-submit.gold:hover { box-shadow: 0 8px 24px rgba(245,166,35,.3); }
-      .checkout-submit.blue { background: var(--accent-blue); color: var(--white); }
-      .checkout-submit.blue:hover { box-shadow: 0 8px 24px rgba(59,130,246,.3); }
-      .checkout-submit:disabled { opacity: .6; cursor: wait; }
-      .checkout-footer { text-align: center; margin-top: 14px; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
-      .checkout-footer svg { width: 12px; height: 12px; color: var(--success); }
-      .paywall-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; }
-      .paywall-overlay.active { display: flex; }
-      .paywall-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 16px; padding: 40px; max-width: 480px; width: 90%; text-align: center; animation: fadeUp .3s ease-out; }
-      .paywall-card h2 { font-size: 24px; font-weight: 700; font-style: italic; margin-bottom: 8px; }
-      .paywall-card .sub { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
-      .paywall-options { display: flex; flex-direction: column; gap: 12px; }
-      .paywall-opt { display: block; padding: 14px 20px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; transition: .2s; cursor: pointer; border: none; font-family: "DM Sans", sans-serif; text-align: center; }
-      .paywall-opt.primary { background: var(--accent-gold); color: var(--bg-deep); }
-      .paywall-opt.primary:hover { opacity: .9; }
-      .paywall-opt.secondary { background: transparent; border: 1px solid var(--border-light); color: var(--text-primary); }
-      .paywall-opt.secondary:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
-      .paywall-opt.ghost { background: transparent; color: var(--text-muted); font-weight: 400; font-size: 13px; }
-      .paywall-opt.ghost:hover { color: var(--text-secondary); }
-      .results { display: none; max-width: 920px; margin: 0 auto; padding: 0 40px 80px; overflow: hidden; }
-      .results.active { display: block; animation: fadeUp .4s ease-out; }
-      .results-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
-      .results-url { font-family: "Space Mono", monospace; font-size: 13px; color: var(--text-secondary); background: var(--bg-card); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); word-break: break-all; min-width: 0; }
-      .results-btns { display: flex; gap: 8px; }
-      .btn-sm { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; transition: .2s; font-family: "DM Sans", sans-serif; }
-      .btn-sm:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
-      .overall-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px; margin-bottom: 24px; display: flex; align-items: center; gap: 28px; }
-      .ring-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
-      .ring-svg { width: 110px; height: 110px; transform: rotate(-90deg); }
-      .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
-      .ring-fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1.2s ease-out; }
-      .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      .ring-num { font-size: 32px; font-weight: 800; letter-spacing: -2px; }
-      .ring-sub { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-      .overall-text h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-      .overall-text p { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
-      .scores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 28px; }
-      .s-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; transition: .2s; position: relative; overflow: hidden; }
-      .s-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-      .s-card.excellent::before { background: var(--success); } .s-card.good::before { background: var(--info); } .s-card.warning::before { background: var(--warning); } .s-card.poor::before { background: var(--danger); }
-      .s-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
-      .s-num { font-size: 36px; font-weight: 800; letter-spacing: -2px; line-height: 1; margin-bottom: 4px; }
-      .s-card.excellent .s-num { color: var(--success); } .s-card.good .s-num { color: var(--info); } .s-card.warning .s-num { color: var(--warning); } .s-card.poor .s-num { color: var(--danger); }
-      .s-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
-      .s-tag { font-family: "Space Mono", monospace; font-size: 10px; margin-top: 8px; padding: 3px 8px; border-radius: 100px; display: inline-block; font-weight: 600; }
-      .s-card.excellent .s-tag { background: var(--success-dim); color: var(--success); } .s-card.good .s-tag { background: var(--info-dim); color: var(--info); } .s-card.warning .s-tag { background: var(--warning-dim); color: var(--warning); } .s-card.poor .s-tag { background: var(--danger-dim); color: var(--danger); }
-      .issues-group { margin-bottom: 24px; }
-      .issues-group h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-      .count-badge { font-family: "Space Mono", monospace; font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 600; }
-      .count-badge.crit { background: var(--danger-dim); color: var(--danger); } .count-badge.warn { background: var(--warning-dim); color: var(--warning); } .count-badge.pass { background: var(--success-dim); color: var(--success); }
-      .issue { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 6px; display: flex; align-items: flex-start; gap: 12px; transition: .2s; }
-      .issue:hover { border-color: var(--border-light); }
-      .issue-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; margin-top: 1px; }
-      .issue-icon.crit { background: var(--danger-dim); color: var(--danger); } .issue-icon.warn { background: var(--warning-dim); color: var(--warning); } .issue-icon.pass { background: var(--success-dim); color: var(--success); }
-      .issue-body { flex: 1; min-width: 0; }
-      .issue-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
-      .issue-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; word-break: break-word; }
-      .issue-fix { font-size: 12px; color: var(--accent-blue); margin-top: 4px; font-style: italic; word-break: break-word; }
-      .issue-tag { font-family: "Space Mono", monospace; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-primary); color: var(--text-muted); margin-top: 6px; display: inline-block; }
-      .cta-banner { background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(245,166,35,.08)); border: 1px solid var(--border-light); border-radius: 14px; padding: 32px 36px; display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 36px; flex-wrap: wrap; }
-      .cta-banner h3 { font-size: 20px; font-weight: 700; font-style: italic; margin-bottom: 4px; }
-      .cta-banner p { color: var(--text-secondary); font-size: 13px; }
-      .cta-banner-btns { display: flex; gap: 10px; flex-wrap: wrap; }
-      .cta-btn { padding: 12px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: .2s; text-decoration: none; display: inline-block; font-family: "DM Sans", sans-serif; border: none; }
-      .cta-btn.gold { background: var(--accent-gold); color: var(--bg-deep); } .cta-btn.gold:hover { opacity: .9; }
-      .cta-btn.outline { background: transparent; border: 1px solid var(--border-light); color: var(--text-primary); } .cta-btn.outline:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
-      /* Enrichment grid */
-      .enrich-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--border); }
-      .enrich-cell { background: var(--bg-card); padding: 16px; }
-      .enrich-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-family: "Space Mono", monospace; margin-bottom: 6px; }
-      .enrich-val { font-size: 16px; font-weight: 700; }
-      .enrich-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-      .tech-tag { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 100px; font-family: "Space Mono", monospace; display: inline-block; margin: 3px; }
-      footer { max-width: 920px; margin: 0 auto; padding: 40px; margin-top: 40px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-      .footer-left { font-size: 12px; color: var(--text-muted); } .footer-left a { color: var(--accent-gold); text-decoration: none; }
-      .footer-right { display: flex; gap: 16px; } .footer-right a { font-size: 12px; color: var(--text-muted); text-decoration: none; transition: color .2s; } .footer-right a:hover { color: var(--text-secondary); }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes spin { to { transform: rotate(360deg); } }
-      .spinner { width: 14px; height: 14px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin .7s linear infinite; }
-      @media (max-width: 900px) { .plans-grid { grid-template-columns: 1fr; max-width: 400px; margin: 40px auto 0; } .plan-card.featured { order: -1; } }
-      @media (max-width: 640px) { nav { padding: 12px 16px; } .nav-links .nav-link { display: none; } .nav-links .nav-cta { display: none; } .nav-links .nav-account { display: inline-flex; padding: 6px; border-radius: 50%; background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.15); color: var(--accent-gold); } .nav-links .nav-account .acc-text { display: none; } .nav-links .nav-account .acc-icon { display: block !important; } .hero { padding: 100px 16px 32px; max-width: 100%; overflow: hidden; } h1 { font-size: 28px; letter-spacing: -1px; } .hero-sub { font-size: 14px; margin-bottom: 24px; } .audit-box { width: 100%; max-width: 100%; } .audit-input-row { flex-direction: column; max-width: 100%; } .audit-input { padding: 12px 14px; min-width: 0; width: 100%; } .audit-btn { justify-content: center; width: 100%; padding: 14px; } .quick-urls { gap: 6px; } .quick-url { font-size: 10px; padding: 3px 8px; } .gate-fields { grid-template-columns: 1fr; } .gate-card { padding: 18px; } .terminal { font-size: 11px; max-height: 150px; padding: 12px 14px; } .results { padding: 0 12px 40px; } .results-bar { flex-direction: column; align-items: flex-start; gap: 8px; } .results-url { font-size: 10px; width: 100%; overflow: hidden; text-overflow: ellipsis; word-break: break-all; } .overall-row { flex-direction: column; text-align: center; padding: 16px; gap: 14px; } .ring-wrap { width: 90px; height: 90px; } .ring-svg { width: 90px; height: 90px; } .ring-num { font-size: 26px; } .overall-text h3 { font-size: 16px; } .overall-text p { font-size: 12px; } .scores-grid { grid-template-columns: repeat(2,1fr); gap: 8px; } .s-card { padding: 14px; } .s-num { font-size: 28px; } .s-label { font-size: 11px; } .issue { padding: 12px 14px; } .issue-title { font-size: 12px; } .issue-desc { font-size: 11px; } .cta-banner { flex-direction: column; text-align: center; padding: 18px 14px; gap: 14px; } .cta-banner h3 { font-size: 15px; } .cta-banner-btns { justify-content: center; width: 100%; } .cta-btn { width: 100%; text-align: center; } .pricing-section { padding: 40px 16px 30px; overflow: hidden; } .plans-grid { gap: 14px; } .plan-card { padding: 24px 18px 22px; } .pricing-trust { gap: 14px; } .checkout-modal { padding: 28px 20px; width: 94%; } .paywall-card { padding: 28px 20px; } .paywall-card h2 { font-size: 20px; } footer { padding: 32px 16px; margin-top: 24px; flex-direction: column; text-align: center; gap: 8px; } .enrich-grid { grid-template-columns: 1fr 1fr; } }
-      @media (max-width: 380px) { h1 { font-size: 24px; } .scores-grid { grid-template-columns: 1fr 1fr; gap: 6px; } .s-num { font-size: 24px; } .enrich-grid { grid-template-columns: 1fr; } }
-    </style>
+    <link rel="stylesheet" href="/assets/css/scanner.css" />
   </head>
   <body>
     <div class="bg-gradient"></div>
     <div class="bg-grid"></div>
+
+    <!-- ── Nav (standard across all pages) ────────────── -->
     <nav>
-  <a href="/" class="nav-brand"><span class="nav-brand-text">Balancewise <span class="highlight">Technologies</span></span></a>
-  <div class="nav-links">
-    <a href="https://balancewises.io/#services" class="nav-link">Services</a>
-    <a href="/leaderboard" class="nav-link">🏆 Leaderboard</a>
-    <a href="/seo" class="nav-link">📊 SEO</a>
-    <a href="/compare" class="nav-link">⚔️ Compare</a>
-    <a class="nav-cta" href="https://balancewises.io/#contact">Get a Quote</a>
-    <a href="/account" class="nav-link nav-account" style="color:var(--accent-gold)" title="My Account"><span class="acc-text">⚡ Account</span><svg class="acc-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
-    <!-- Mobile menu toggle -->
-    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
-      <svg id="menu-icon-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      <svg id="menu-icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-</nav>
- 
-<!-- Mobile dropdown menu (place right after </nav>) -->
-<div class="mobile-menu" id="mobile-menu">
-  <div class="mobile-menu-inner">
-    <a href="/account" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">👤</span>
-      <span>Login / Account</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="/seo" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">📊</span>
-      <span>SEO Dashboard</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="/account" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">📊</span>
-      <span>Dashboard</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="/compare" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">⚔️</span>
-      <span>Compare</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="/leaderboard" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">🏆</span>
-      <span>Leaderboard</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="/" class="mobile-menu-item" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">🔍</span>
-      <span>Scanner</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <div class="mobile-menu-divider"></div>
-    <a href="https://balancewises.io/#services" class="mobile-menu-item mobile-menu-sub" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">🛠️</span>
-      <span>Services</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-    <a href="https://balancewises.io/#contact" class="mobile-menu-item mobile-menu-cta" onclick="closeMobileMenu()">
-      <span class="mobile-menu-icon">💬</span>
-      <span>Get a Quote</span>
-      <span class="mobile-menu-arrow">›</span>
-    </a>
-  </div>
-</div>
+        <a href="/" class="nav-brand"><span class="nav-brand-text">Balancewise <span class="highlight">Technologies</span></span></a>
+        <div class="nav-links">
+            <a href="/" class="nav-link active">🔍 Scanner</a>
+            <a href="/leaderboard" class="nav-link">🏆 Leaderboard</a>
+            <a href="/seo" class="nav-link">📊 SEO</a>
+            <a href="/compare" class="nav-link">⚔️ Compare</a>
+            <a class="nav-cta" href="https://balancewises.io/#contact">Get a Quote</a>
+            <a href="/account" class="nav-link nav-account" title="My Account"><span class="acc-text">⚡ Account</span><svg class="acc-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+            <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                <svg id="menu-icon-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <svg id="menu-icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ── Mobile Menu ────────────────────────────────── -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-inner">
+            <a href="/account" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">👤</span><span>Login / Account</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="/seo" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">📊</span><span>SEO Dashboard</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="/account" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">📊</span><span>Dashboard</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="/compare" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">⚔️</span><span>Compare</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="/leaderboard" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">🏆</span><span>Leaderboard</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="/" class="mobile-menu-item" onclick="closeMobileMenu()"><span class="mobile-menu-icon">🔍</span><span>Scanner</span><span class="mobile-menu-arrow">›</span></a>
+            <div class="mobile-menu-divider"></div>
+            <a href="https://balancewises.io/#services" class="mobile-menu-item mobile-menu-sub" onclick="closeMobileMenu()"><span class="mobile-menu-icon">🛠️</span><span>Services</span><span class="mobile-menu-arrow">›</span></a>
+            <a href="https://balancewises.io/#contact" class="mobile-menu-item mobile-menu-cta" onclick="closeMobileMenu()"><span class="mobile-menu-icon">💬</span><span>Get a Quote</span><span class="mobile-menu-arrow">›</span></a>
+        </div>
+    </div>
+
+    <!-- ── Hero ───────────────────────────────────────── -->
     <section class="hero">
       <div class="hero-badge">BSCAN · Free Website Audit Tool</div>
       <h1>Audit Any Website.<br><span class="gold">Instantly.</span></h1>
@@ -644,120 +68,110 @@ Replaces the static score grid with clickable cards that:
       <div class="email-gate" id="email-gate"><div class="gate-card"><div class="gate-header"><span style="font-size:1.4rem">&#9889;</span><div><div class="gate-title">Almost there — enter your details to get your report</div><div class="gate-sub" id="gate-url-preview">Scanning: example.com</div></div></div><div class="gate-fields"><div class="gate-field"><label for="lead-email">Email address *</label><input type="email" id="lead-email" placeholder="you@company.com" autocomplete="email" required></div><div class="gate-field"><label for="lead-name">Business / your name</label><input type="text" id="lead-name" placeholder="e.g. Acme Ltd" autocomplete="organization" maxlength="255"></div></div><button class="audit-btn gate-btn" id="gate-submit" onclick="submitGateAndScan()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Start Free Audit</button><p class="gate-privacy">We'll send your report here. No spam, ever. See our <a href="https://balancewises.io/privacy.html" target="_blank">privacy policy</a>.</p></div></div>
       <div class="scan-terminal-wrap" id="terminal-wrap"><div class="terminal" id="terminal"></div><div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div></div>
     </section>
+
+    <!-- ── Pricing ────────────────────────────────────── -->
     <section id="pricing" style="padding:60px 0 40px;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div class="badge">Pricing</div>
-    <h2 style="font-size:clamp(24px,3.5vw,34px);font-weight:800;font-style:italic;letter-spacing:-1px;margin-bottom:8px;">Choose Your <span style="color:var(--accent-gold);">Plan</span></h2>
-    <p style="color:var(--text-secondary);font-size:14px;">Start free. Upgrade when you need more power.</p>
-    <div style="margin-top:16px;display:inline-flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:3px;">
-      <button id="tog-m" onclick="setBillingInterval('monthly')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:var(--accent-blue);color:#fff;">Monthly</button>
-      <button id="tog-a" onclick="setBillingInterval('annual')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:transparent;color:var(--text-secondary);">Annual <span style="color:var(--success);font-size:10px;">Save 20%</span></button>
-    </div>
-  </div>
- 
-  <div class="pricing-grid">
-    <!-- FREE PLAN (shows first on mobile) -->
-    <div class="plan-card plan-free">
-      <div class="plan-header">
-        <div class="plan-name">Free</div>
-        <div class="plan-price">£0</div>
-        <div class="plan-period">forever</div>
+      <div style="text-align:center;margin-bottom:32px;">
+        <div class="badge">Pricing</div>
+        <h2 style="font-size:clamp(24px,3.5vw,34px);font-weight:800;font-style:italic;letter-spacing:-1px;margin-bottom:8px;">Choose Your <span style="color:var(--accent-gold);">Plan</span></h2>
+        <p style="color:var(--text-secondary);font-size:14px;">Start free. Upgrade when you need more power.</p>
+        <div style="margin-top:16px;display:inline-flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:3px;">
+          <button id="tog-m" onclick="setBillingInterval('monthly')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:var(--accent-blue);color:#fff;">Monthly</button>
+          <button id="tog-a" onclick="setBillingInterval('annual')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:transparent;color:var(--text-secondary);">Annual <span style="color:var(--success);font-size:10px;">Save 20%</span></button>
+        </div>
       </div>
-      <div class="plan-desc">Perfect for quick checks and getting started.</div>
-      <a href="#scan" class="plan-btn plan-btn-outline">Start Scanning</a>
-      <div class="plan-features">
-        <div class="plan-feat-group">Core</div>
-        <div class="plan-feat yes">3 scans per month</div>
-        <div class="plan-feat yes">6-category audit (25+ checks)</div>
-        <div class="plan-feat yes">AI chat assistant</div>
-        <div class="plan-feat yes">Basic AI summary</div>
-        <div class="plan-feat yes">Basic site intelligence</div>
-        <div class="plan-feat-group">SEO Tools</div>
-        <div class="plan-feat yes">Keyword research (unlimited)</div>
-        <div class="plan-feat yes">Backlink overview</div>
-        <div class="plan-feat yes">Google Search Console rankings</div>
-        <div class="plan-feat-group">Viral</div>
-        <div class="plan-feat yes">Achievement badges</div>
-        <div class="plan-feat yes">Challenge sharing</div>
-        <div class="plan-feat yes">Public leaderboard</div>
-        <div class="plan-feat-group">Locked</div>
-        <div class="plan-feat no">Competitor compare</div>
-        <div class="plan-feat no">Business intelligence</div>
-        <div class="plan-feat no">Consumer intelligence</div>
-        <div class="plan-feat no">UX pattern detection</div>
-        <div class="plan-feat no">Industry benchmarking</div>
-        <div class="plan-feat no">Lighthouse / Core Web Vitals</div>
-        <div class="plan-feat no">PDF export</div>
-        <div class="plan-feat no">Scan history</div>
+      <div class="pricing-grid">
+        <div class="plan-card plan-free">
+          <div class="plan-header"><div class="plan-name">Free</div><div class="plan-price">£0</div><div class="plan-period">forever</div></div>
+          <div class="plan-desc">Perfect for quick checks and getting started.</div>
+          <a href="#scan" class="plan-btn plan-btn-outline">Start Scanning</a>
+          <div class="plan-features">
+            <div class="plan-feat-group">Core</div>
+            <div class="plan-feat yes">3 scans per month</div>
+            <div class="plan-feat yes">6-category audit (25+ checks)</div>
+            <div class="plan-feat yes">AI chat assistant</div>
+            <div class="plan-feat yes">Basic AI summary</div>
+            <div class="plan-feat yes">Basic site intelligence</div>
+            <div class="plan-feat-group">SEO Tools</div>
+            <div class="plan-feat yes">Keyword research (unlimited)</div>
+            <div class="plan-feat yes">Backlink overview</div>
+            <div class="plan-feat yes">Google Search Console rankings</div>
+            <div class="plan-feat-group">Viral</div>
+            <div class="plan-feat yes">Achievement badges</div>
+            <div class="plan-feat yes">Challenge sharing</div>
+            <div class="plan-feat yes">Public leaderboard</div>
+            <div class="plan-feat-group">Locked</div>
+            <div class="plan-feat no">Competitor compare</div>
+            <div class="plan-feat no">Business intelligence</div>
+            <div class="plan-feat no">Consumer intelligence</div>
+            <div class="plan-feat no">UX pattern detection</div>
+            <div class="plan-feat no">Industry benchmarking</div>
+            <div class="plan-feat no">Lighthouse / Core Web Vitals</div>
+            <div class="plan-feat no">PDF export</div>
+            <div class="plan-feat no">Scan history</div>
+          </div>
+        </div>
+        <div class="plan-card plan-pro featured">
+          <div class="plan-popular">Most Popular</div>
+          <div class="plan-header"><div class="plan-name">Pro</div><div class="plan-price"><span class="price-monthly">£9</span><span class="price-annual" style="display:none;">£7</span></div><div class="plan-period">per month</div></div>
+          <div class="plan-desc">Full audit power for freelancers and small businesses.</div>
+          <button class="plan-btn plan-btn-primary" onclick="startStripeCheckout('pro')">Upgrade to Pro</button>
+          <div class="plan-features">
+            <div class="plan-feat-group">Everything in Free, plus:</div>
+            <div class="plan-feat yes">30 scans per month</div>
+            <div class="plan-feat yes">Core Web Vitals (LCP, CLS, TBT)</div>
+            <div class="plan-feat yes">Full site intelligence (10 data points)</div>
+            <div class="plan-feat yes">Advanced AI-powered summary</div>
+            <div class="plan-feat yes">Scan history dashboard</div>
+            <div class="plan-feat-group">Intelligence</div>
+            <div class="plan-feat yes">Competitor compare tool</div>
+            <div class="plan-feat yes">Business intelligence (CTAs, payments, social)</div>
+            <div class="plan-feat yes">Consumer intelligence (reviews, trust, support)</div>
+            <div class="plan-feat yes">UX pattern detection (30+ patterns)</div>
+            <div class="plan-feat yes">Industry benchmarking & percentile</div>
+            <div class="plan-feat yes">Price extraction</div>
+            <div class="plan-feat-group">Export</div>
+            <div class="plan-feat yes">PDF reports (branded)</div>
+            <div class="plan-feat yes">Email reports (full detail)</div>
+            <div class="plan-feat-group">Locked</div>
+            <div class="plan-feat no">Deep page rendering</div>
+            <div class="plan-feat no">AI SEO strategy</div>
+            <div class="plan-feat no">Team members</div>
+            <div class="plan-feat no">API access</div>
+            <div class="plan-feat no">White-label PDFs</div>
+          </div>
+        </div>
+        <div class="plan-card plan-agency">
+          <div class="plan-header"><div class="plan-name">Agency</div><div class="plan-price"><span class="price-monthly">£29</span><span class="price-annual" style="display:none;">£23</span></div><div class="plan-period">per month</div></div>
+          <div class="plan-desc">For agencies and teams managing multiple client sites.</div>
+          <button class="plan-btn plan-btn-gold" onclick="startStripeCheckout('agency')">Go Agency</button>
+          <div class="plan-features">
+            <div class="plan-feat-group">Everything in Pro, plus:</div>
+            <div class="plan-feat yes">Unlimited scans</div>
+            <div class="plan-feat yes">Deep page rendering (JS apps & SPAs)</div>
+            <div class="plan-feat yes">AI SEO strategy (intent, clusters, gaps)</div>
+            <div class="plan-feat-group">Team & API</div>
+            <div class="plan-feat yes">5 team members</div>
+            <div class="plan-feat yes">5 API keys (programmatic access)</div>
+            <div class="plan-feat yes">Team management dashboard</div>
+            <div class="plan-feat-group">Export</div>
+            <div class="plan-feat yes">White-label PDF reports</div>
+            <div class="plan-feat yes">Custom branding on exports</div>
+            <div class="plan-feat-group">Priority</div>
+            <div class="plan-feat yes">Priority support</div>
+            <div class="plan-feat yes">Early access to new features</div>
+          </div>
+        </div>
       </div>
-    </div>
- 
-    <!-- PRO PLAN (highlighted) -->
-    <div class="plan-card plan-pro featured">
-      <div class="plan-popular">Most Popular</div>
-      <div class="plan-header">
-        <div class="plan-name">Pro</div>
-        <div class="plan-price"><span class="price-monthly">£9</span><span class="price-annual" style="display:none;">£7</span></div>
-        <div class="plan-period">per month</div>
-      </div>
-      <div class="plan-desc">Full audit power for freelancers and small businesses.</div>
-      <button class="plan-btn plan-btn-primary" onclick="startStripeCheckout('pro')">Upgrade to Pro</button>
-      <div class="plan-features">
-        <div class="plan-feat-group">Everything in Free, plus:</div>
-        <div class="plan-feat yes">30 scans per month</div>
-        <div class="plan-feat yes">Core Web Vitals (LCP, CLS, TBT)</div>
-        <div class="plan-feat yes">Full site intelligence (10 data points)</div>
-        <div class="plan-feat yes">Advanced AI-powered summary</div>
-        <div class="plan-feat yes">Scan history dashboard</div>
-        <div class="plan-feat-group">Intelligence</div>
-        <div class="plan-feat yes">Competitor compare tool</div>
-        <div class="plan-feat yes">Business intelligence (CTAs, payments, social)</div>
-        <div class="plan-feat yes">Consumer intelligence (reviews, trust, support)</div>
-        <div class="plan-feat yes">UX pattern detection (30+ patterns)</div>
-        <div class="plan-feat yes">Industry benchmarking & percentile</div>
-        <div class="plan-feat yes">Price extraction</div>
-        <div class="plan-feat-group">Export</div>
-        <div class="plan-feat yes">PDF reports (branded)</div>
-        <div class="plan-feat yes">Email reports (full detail)</div>
-        <div class="plan-feat-group">Locked</div>
-        <div class="plan-feat no">Deep page rendering</div>
-        <div class="plan-feat no">AI SEO strategy</div>
-        <div class="plan-feat no">Team members</div>
-        <div class="plan-feat no">API access</div>
-        <div class="plan-feat no">White-label PDFs</div>
-      </div>
-    </div>
- 
-    <!-- AGENCY PLAN -->
-    <div class="plan-card plan-agency">
-      <div class="plan-header">
-        <div class="plan-name">Agency</div>
-        <div class="plan-price"><span class="price-monthly">£29</span><span class="price-annual" style="display:none;">£23</span></div>
-        <div class="plan-period">per month</div>
-      </div>
-      <div class="plan-desc">For agencies and teams managing multiple client sites.</div>
-      <button class="plan-btn plan-btn-gold" onclick="startStripeCheckout('agency')">Go Agency</button>
-      <div class="plan-features">
-        <div class="plan-feat-group">Everything in Pro, plus:</div>
-        <div class="plan-feat yes">Unlimited scans</div>
-        <div class="plan-feat yes">Deep page rendering (JS apps & SPAs)</div>
-        <div class="plan-feat yes">AI SEO strategy (intent, clusters, gaps)</div>
-        <div class="plan-feat-group">Team & API</div>
-        <div class="plan-feat yes">5 team members</div>
-        <div class="plan-feat yes">5 API keys (programmatic access)</div>
-        <div class="plan-feat yes">Team management dashboard</div>
-        <div class="plan-feat-group">Export</div>
-        <div class="plan-feat yes">White-label PDF reports</div>
-        <div class="plan-feat yes">Custom branding on exports</div>
-        <div class="plan-feat-group">Priority</div>
-        <div class="plan-feat yes">Priority support</div>
-        <div class="plan-feat yes">Early access to new features</div>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
+
+    <!-- ── Checkout Modal ─────────────────────────────── -->
     <div class="checkout-overlay" id="checkout-overlay" onclick="if(event.target===this)closeCheckoutModal()"><div class="checkout-modal"><button class="checkout-close" onclick="closeCheckoutModal()">✕</button><div class="checkout-icon" id="checkout-icon">⚡</div><div class="checkout-plan-tag" id="checkout-plan-tag">Pro · Monthly</div><h3>Upgrade to <span class="gold" id="checkout-plan-name">Pro</span></h3><p class="checkout-sub" id="checkout-sub">Enter your email to continue to secure checkout via Stripe.</p><div class="checkout-field"><label for="checkout-email">Email address</label><input type="email" id="checkout-email" placeholder="you@company.com" autocomplete="email"><div class="checkout-error" id="checkout-email-error">Please enter a valid email address.</div></div><button class="checkout-submit gold" id="checkout-submit-btn" onclick="submitCheckout()">Continue to Checkout →</button><div class="checkout-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Secured by Stripe · 256-bit encryption</div></div></div>
+
+    <!-- ── Paywall ────────────────────────────────────── -->
     <div class="paywall-overlay" id="paywall"><div class="paywall-card"><h2 id="paywall-title">You've used your 3 free scans</h2><p class="sub" id="paywall-msg">Upgrade to Pro for unlimited website audits, PDF exports, and scan history — or let our team handle the fixes for you.</p><div class="paywall-options"><a class="paywall-opt primary" href="https://balancewises.io/#contact">Get Us to Fix Your Site →</a><button class="paywall-opt secondary" onclick="startStripeCheckout('pro')">Upgrade to Pro · £9/month</button><button class="paywall-opt ghost" onclick="closePaywall()">Maybe later</button></div></div></div>
+
+    <!-- ── Results ────────────────────────────────────── -->
     <section class="results" id="results">
       <div class="results-bar"><span class="results-url" id="results-url"></span><div class="results-btns"><button class="btn-sm" onclick="window.print()">Export</button><button class="btn-sm" onclick="location.href='#url-input'">New Scan</button></div></div>
       <div class="overall-row"><div class="ring-wrap"><svg class="ring-svg" viewBox="0 0 110 110"><circle class="ring-bg" cx="55" cy="55" r="47"/><circle class="ring-fg" id="ring-fg" cx="55" cy="55" r="47" stroke-dasharray="295.31" stroke-dashoffset="295.31"/></svg><div class="ring-label"><span class="ring-num" id="ring-num">0</span><span class="ring-sub">Overall</span></div></div><div class="overall-text"><h3 id="o-title">Analysing...</h3><p id="o-desc">Your audit results will appear here.</p></div></div>
@@ -768,1144 +182,41 @@ Replaces the static score grid with clickable cards that:
       <div id="badge-box"></div>
       <div class="cta-banner"><div><h3>Want us to fix these issues?</h3><p>Our team builds websites, APIs, and cloud infrastructure — we respond within 24 hours.</p></div><div class="cta-banner-btns"><a class="cta-btn gold" href="https://balancewises.io/#contact">Get a Free Quote →</a><a class="cta-btn outline" href="https://balancewises.io/#services">View Services</a></div></div>
     </section>
+
+    <!-- ── Footer ─────────────────────────────────────── -->
     <footer><div class="footer-left">BSCAN by <a href="https://balancewises.io">Balancewise Technologies</a> · © 2026 Balancewise Ltd</div><div class="footer-right"><a href="https://balancewises.io/privacy">Privacy</a><a href="https://balancewises.io/terms">Terms</a><a href="/leaderboard">Leaderboard</a><a href="https://github.com/Balancewise-Ltd" target="_blank">GitHub</a></div></footer>
 
-<!-- Chat Widget -->
-<div id="bscan-chat" style="position:fixed;bottom:24px;right:24px;z-index:300;font-family:'DM Sans',sans-serif;">
-  <!-- Chat Button -->
-  <div id="chat-btn" onclick="toggleChat()" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f5a623,#e09500);box-shadow:0 4px 20px rgba(245,166,35,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;user-select:none;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-    <span id="chat-btn-icon" style="font-size:24px;">💬</span>
-  </div>
-  <!-- Unread dot -->
-  <div id="chat-unread" style="display:none;position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:2px solid #0b1121;font-size:10px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;">1</div>
-
-  <!-- Chat Window -->
-  <div id="chat-window" style="display:none;position:absolute;bottom:70px;right:0;width:380px;max-width:calc(100vw - 32px);background:#0f172a;border:1px solid #1e2d4a;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;animation:chatOpen .25s ease-out;">
-    <!-- Header -->
-    <div style="padding:16px 18px;background:linear-gradient(135deg,#141d33,#1a2542);border-bottom:1px solid #1e2d4a;display:flex;align-items:center;gap:10px;">
-      <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.2);display:flex;align-items:center;justify-content:center;font-size:18px;">🤖</div>
-      <div style="flex:1;">
-        <div style="font-weight:700;font-size:14px;color:#e2e8f0;">BSCAN Assistant</div>
-        <div style="font-size:11px;color:#22c55e;display:flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Online — powered by AI</div>
-      </div>
-      <button onclick="toggleChat()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;padding:4px;border-radius:6px;transition:.15s;" onmouseover="this.style.background='#1a2542'" onmouseout="this.style.background='none'">✕</button>
-    </div>
-
-    <!-- Messages -->
-    <div id="chat-messages" style="height:340px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;">
-      <!-- Welcome message -->
-      <div class="chat-msg bot">
-        <div style="max-width:85%;background:#141d33;border:1px solid #1e2d4a;border-radius:12px 12px 12px 4px;padding:12px 14px;">
-          <div style="font-size:13px;color:#e2e8f0;line-height:1.6;">Hi! I'm your BSCAN assistant. I can help you understand your scan results, explain what scores mean, and show you how to fix issues. What would you like to know?</div>
+    <!-- ── Chat Widget ────────────────────────────────── -->
+    <div id="bscan-chat" style="position:fixed;bottom:24px;right:24px;z-index:300;font-family:'DM Sans',sans-serif;">
+        <div id="chat-btn" onclick="toggleChat()" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f5a623,#e09500);box-shadow:0 4px 20px rgba(245,166,35,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;user-select:none;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+            <span id="chat-btn-icon" style="font-size:24px;">💬</span>
         </div>
-      </div>
-      <!-- Quick actions -->
-      <div id="chat-quick" style="display:flex;flex-wrap:wrap;gap:6px;">
-        <button onclick="sendQuick('What does BSCAN check and how does it score my site?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.15);color:#f5a623;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(245,166,35,.15)'" onmouseout="this.style.background='rgba(245,166,35,.08)'">What does BSCAN check?</button>
-        <button onclick="sendQuick('What does my overall score mean?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);color:#3b82f6;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(59,130,246,.15)'" onmouseout="this.style.background='rgba(59,130,246,.08)'">What does my score mean?</button>
-        <button onclick="sendQuick('What should I fix first?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.15);color:#f5a623;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(245,166,35,.15)'" onmouseout="this.style.background='rgba(245,166,35,.08)'">What should I fix first?</button>
-        <button onclick="sendQuick('How do I improve my SEO?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">How do I improve my SEO?</button>
-        <button onclick="sendQuick('What is the compare feature?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.15);color:#8b5cf6;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(139,92,246,.15)'" onmouseout="this.style.background='rgba(139,92,246,.08)'">What is the compare feature?</button>
-        <button onclick="sendQuick('How do I upgrade my plan?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.15);color:#94a3b8;cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background='rgba(100,116,139,.15)'" onmouseout="this.style.background='rgba(100,116,139,.08)'">How do I upgrade?</button>
-      </div>
+        <div id="chat-unread" style="display:none;position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:#ef4444;border:2px solid #0b1121;font-size:10px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;">1</div>
+        <div id="chat-window" style="display:none;position:absolute;bottom:70px;right:0;width:380px;max-width:calc(100vw - 32px);background:#0f172a;border:1px solid #1e2d4a;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;animation:chatOpen .25s ease-out;">
+            <div style="padding:16px 18px;background:linear-gradient(135deg,#141d33,#1a2542);border-bottom:1px solid #1e2d4a;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.2);display:flex;align-items:center;justify-content:center;font-size:18px;">🤖</div>
+                <div style="flex:1;"><div style="font-weight:700;font-size:14px;color:#e2e8f0;">BSCAN Assistant</div><div style="font-size:11px;color:#22c55e;display:flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Online — powered by AI</div></div>
+                <button onclick="toggleChat()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;padding:4px;border-radius:6px;transition:.15s;" onmouseover="this.style.background='#1a2542'" onmouseout="this.style.background='none'">✕</button>
+            </div>
+            <div id="chat-messages" style="height:340px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div class="chat-msg bot"><div style="max-width:85%;background:#141d33;border:1px solid #1e2d4a;border-radius:12px 12px 12px 4px;padding:12px 14px;"><div style="font-size:13px;color:#e2e8f0;line-height:1.6;">Hi! I'm your BSCAN assistant. I can help you understand your scan results, explain what scores mean, and show you how to fix issues.</div></div></div>
+                <div id="chat-quick" style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <button onclick="sendQuick('What does BSCAN check?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.15);color:#f5a623;cursor:pointer;font-family:inherit;transition:.15s;">What does BSCAN check?</button>
+                    <button onclick="sendQuick('What does my score mean?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);color:#3b82f6;cursor:pointer;font-family:inherit;transition:.15s;">What does my score mean?</button>
+                    <button onclick="sendQuick('What should I fix first?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.15);color:#f5a623;cursor:pointer;font-family:inherit;transition:.15s;">What should I fix first?</button>
+                    <button onclick="sendQuick('How do I improve my SEO?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;transition:.15s;">How do I improve my SEO?</button>
+                    <button onclick="sendQuick('How do I upgrade?')" style="font-size:11px;padding:6px 12px;border-radius:100px;background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.15);color:#94a3b8;cursor:pointer;font-family:inherit;transition:.15s;">How do I upgrade?</button>
+                </div>
+            </div>
+            <div style="padding:12px 16px;border-top:1px solid #1e2d4a;display:flex;gap:8px;background:#0b1121;">
+                <input type="text" id="chat-input" placeholder="Ask anything about your scan..." style="flex:1;background:#141d33;border:1px solid #1e2d4a;border-radius:10px;padding:10px 14px;font-size:13px;color:#e2e8f0;outline:none;font-family:inherit;min-width:0;" onkeydown="if(event.key==='Enter')sendChat()">
+                <button onclick="sendChat()" style="width:40px;height:40px;border-radius:10px;background:#f5a623;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0;" onmouseover="this.style.background='#e09500'" onmouseout="this.style.background='#f5a623'">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b1121" stroke-width="2.5" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Input -->
-    <div style="padding:12px 16px;border-top:1px solid #1e2d4a;display:flex;gap:8px;background:#0b1121;">
-      <input type="text" id="chat-input" placeholder="Ask anything about your scan..." style="flex:1;background:#141d33;border:1px solid #1e2d4a;border-radius:10px;padding:10px 14px;font-size:13px;color:#e2e8f0;outline:none;font-family:inherit;min-width:0;" onkeydown="if(event.key==='Enter')sendChat()">
-      <button onclick="sendChat()" id="chat-send" style="width:40px;height:40px;border-radius:10px;background:#f5a623;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0;" onmouseover="this.style.background='#e09500'" onmouseout="this.style.background='#f5a623'">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b1121" stroke-width="2.5" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-      </button>
-    </div>
-  </div>
-</div>
-
-<style>
-@keyframes chatOpen{from{opacity:0;transform:translateY(12px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
-@keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
-.chat-msg{animation:msgIn .25s ease-out;}
-.chat-msg.bot{align-self:flex-start;}
-.chat-msg.user{align-self:flex-end;}
-#chat-messages::-webkit-scrollbar{width:4px;}
-#chat-messages::-webkit-scrollbar-track{background:transparent;}
-#chat-messages::-webkit-scrollbar-thumb{background:#1e2d4a;border-radius:4px;}
-@media(max-width:480px){
-  #chat-window{width:calc(100vw - 16px) !important;right:-12px !important;bottom:66px !important;border-radius:14px !important;}
-  #chat-messages{height:300px !important;}
-}
-@media(max-width:768px){
-  #chat-window{width:calc(100vw - 32px) !important;}
-}
-</style>
-<style>
-/* ── Mobile Menu ──────────────────────────────────── */
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: 1px solid var(--border, #1e2d4a);
-  border-radius: 8px;
-  padding: 6px;
-  color: var(--accent-gold, #f5a623);
-  cursor: pointer;
-  transition: .2s;
-  line-height: 0;
-}
-.mobile-menu-btn:hover { border-color: var(--accent-gold, #f5a623); }
- 
-.mobile-menu {
-  display: none;
-  position: fixed;
-  top: 52px;
-  left: 0;
-  right: 0;
-  z-index: 99;
-  background: rgba(11, 17, 33, 0.97);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid #1e2d4a;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.25s ease;
-  opacity: 0;
-}
-.mobile-menu.open {
-  max-height: 500px;
-  opacity: 1;
-}
- 
-.mobile-menu-inner {
-  padding: 8px 16px 16px;
-}
- 
-.mobile-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 12px;
-  border-radius: 10px;
-  text-decoration: none;
-  color: #e2e8f0;
-  font-size: 14px;
-  font-weight: 600;
-  transition: .15s;
-}
-.mobile-menu-item:hover,
-.mobile-menu-item:active {
-  background: rgba(59, 130, 246, 0.08);
-}
- 
-.mobile-menu-icon {
-  font-size: 18px;
-  width: 28px;
-  text-align: center;
-  flex-shrink: 0;
-}
- 
-.mobile-menu-arrow {
-  margin-left: auto;
-  color: #64748b;
-  font-size: 18px;
-  font-weight: 400;
-}
- 
-.mobile-menu-divider {
-  height: 1px;
-  background: #1e2d4a;
-  margin: 6px 12px;
-}
- 
-.mobile-menu-sub {
-  color: #94a3b8;
-  font-weight: 500;
-  font-size: 13px;
-}
- 
-.mobile-menu-cta {
-  color: #f5a623;
-  font-weight: 700;
-}
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:960px;margin:0 auto;padding:0 16px;}
-.plan-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px 22px;position:relative;transition:.2s;}
-.plan-card:hover{border-color:var(--border-light);}
-.plan-card.featured{border:2px solid var(--accent-gold);box-shadow:0 0 30px rgba(245,166,35,.08);}
-.plan-popular{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent-gold);color:var(--bg-deep);font-size:11px;font-weight:700;padding:4px 16px;border-radius:100px;white-space:nowrap;}
-.plan-header{margin-bottom:12px;}
-.plan-name{font-size:14px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:4px;}
-.plan-price{font-size:40px;font-weight:800;color:var(--text-primary);letter-spacing:-2px;line-height:1;}
-.plan-period{font-size:12px;color:var(--text-muted);margin-top:2px;}
-.plan-desc{font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px;min-height:36px;}
-.plan-btn{display:block;width:100%;padding:12px;border-radius:8px;font-size:13px;font-weight:700;text-align:center;cursor:pointer;transition:.2s;border:none;font-family:inherit;text-decoration:none;}
-.plan-btn-outline{background:transparent;border:1px solid var(--border-light);color:var(--text-secondary);}.plan-btn-outline:hover{border-color:var(--text-secondary);color:var(--text-primary);}
-.plan-btn-primary{background:var(--accent-blue);color:#fff;}.plan-btn-primary:hover{opacity:.9;}
-.plan-btn-gold{background:linear-gradient(135deg,var(--accent-gold),#e09500);color:var(--bg-deep);}.plan-btn-gold:hover{box-shadow:0 4px 16px rgba(245,166,35,.3);}
-.plan-features{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
-.plan-feat-group{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-top:12px;margin-bottom:6px;}
-.plan-feat-group:first-child{margin-top:0;}
-.plan-feat{font-size:12px;color:var(--text-secondary);padding:4px 0;padding-left:20px;position:relative;line-height:1.4;}
-.plan-feat.yes::before{content:"✓";position:absolute;left:0;color:var(--success);font-weight:700;font-size:12px;}
-.plan-feat.no{color:var(--text-muted);opacity:.5;}
-.plan-feat.no::before{content:"—";position:absolute;left:0;color:var(--text-muted);font-size:12px;}
- 
-/* MOBILE: Free first, stack vertically */
-@media(max-width:768px){
-  .pricing-grid{grid-template-columns:1fr;max-width:400px;}
-  .plan-free{order:1;}
-  .plan-pro{order:2;}
-  .plan-agency{order:3;}
-}
-@media(min-width:769px) and (max-width:1024px){
-  .pricing-grid{grid-template-columns:1fr 1fr;max-width:660px;}
-  .plan-free{order:1;}
-  .plan-pro{order:2;}
-  .plan-agency{order:3;grid-column:span 2;max-width:330px;justify-self:center;}
-}
- 
-/* Only show on mobile */
-@media (max-width: 640px) {
-  .mobile-menu-btn { display: inline-flex; }
-  .mobile-menu { display: block; }
- 
-  /* Hide the desktop account icon since we have the hamburger now */
-  .nav-links .nav-account { display: none !important; }
-}
-</style>
-<script>
-(function(){
-var API_BASE = 'https://api-bscan.balancewises.io';
-var chatOpen = false;
-var chatHistory = [];
-var currentScanId = null;
-
-// Try to get scan ID from the page
-function getScanId() {
-    // Check if there's a scan result on the page
-    if (window._lastScanId) return window._lastScanId;
-    // Check URL for challenge param
-    var params = new URLSearchParams(location.search);
-    if (params.get('challenge')) return params.get('challenge');
-    return null;
-}
-
-window.toggleChat = function() {
-    chatOpen = !chatOpen;
-    document.getElementById('chat-window').style.display = chatOpen ? 'block' : 'none';
-    document.getElementById('chat-btn-icon').textContent = chatOpen ? '✕' : '💬';
-    document.getElementById('chat-unread').style.display = 'none';
-    if (window.innerWidth <= 768) document.body.style.overflow = chatOpen ? 'hidden' : '';
-    if (chatOpen) {
-        document.getElementById('chat-input').focus();
-        currentScanId = getScanId();
-    }
-};
-
-window.sendQuick = function(text) {
-    document.getElementById('chat-quick').style.display = 'none';
-    document.getElementById('chat-input').value = text;
-    sendChat();
-};
-
-window.sendChat = function() {
-    var input = document.getElementById('chat-input');
-    var text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-
-    var msgs = document.getElementById('chat-messages');
-
-    // Add user message
-    var userDiv = document.createElement('div');
-    userDiv.className = 'chat-msg user';
-    userDiv.innerHTML = '<div style="max-width:85%;background:#3b82f6;border-radius:12px 12px 4px 12px;padding:10px 14px;margin-left:auto;"><div style="font-size:13px;color:#fff;line-height:1.5;">' + escHtml(text) + '</div></div>';
-    msgs.appendChild(userDiv);
-
-    // Add typing indicator
-    var typingDiv = document.createElement('div');
-    typingDiv.className = 'chat-msg bot';
-    typingDiv.id = 'chat-typing';
-    typingDiv.innerHTML = '<div style="max-width:85%;background:#141d33;border:1px solid #1e2d4a;border-radius:12px 12px 12px 4px;padding:12px 14px;"><div style="display:flex;gap:4px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:#64748b;animation:pulse 1s infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:#64748b;animation:pulse 1s infinite .2s;"></span><span style="width:6px;height:6px;border-radius:50%;background:#64748b;animation:pulse 1s infinite .4s;"></span></div></div>';
-    msgs.appendChild(typingDiv);
-    msgs.scrollTop = msgs.scrollHeight;
-
-    // Track conversation
-    chatHistory.push({role: 'user', content: text});
-
-    // Call API
-    fetch(API_BASE + '/api/scan/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            message: text,
-            scan_id: currentScanId || getScanId(),
-            conversation_history: chatHistory.slice(-10)
-        })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        // Remove typing indicator
-        var typing = document.getElementById('chat-typing');
-        if (typing) typing.remove();
-
-        var reply = d.reply || 'Sorry, I could not generate a response. Please try again.';
-        chatHistory.push({role: 'assistant', content: reply});
-
-        // Add bot response
-        var botDiv = document.createElement('div');
-        botDiv.className = 'chat-msg bot';
-        botDiv.innerHTML = '<div style="max-width:85%;background:#141d33;border:1px solid #1e2d4a;border-radius:12px 12px 12px 4px;padding:12px 14px;"><div style="font-size:13px;color:#e2e8f0;line-height:1.6;">' + escHtml(reply) + '</div></div>';
-        msgs.appendChild(botDiv);
-        msgs.scrollTop = msgs.scrollHeight;
-
-        // If scan_id was returned, save it
-        if (d.scan_id) currentScanId = d.scan_id;
-    })
-    .catch(function() {
-        var typing = document.getElementById('chat-typing');
-        if (typing) typing.remove();
-
-        var errDiv = document.createElement('div');
-        errDiv.className = 'chat-msg bot';
-        errDiv.innerHTML = '<div style="max-width:85%;background:#141d33;border:1px solid rgba(239,68,68,.2);border-radius:12px 12px 12px 4px;padding:12px 14px;"><div style="font-size:13px;color:#ef4444;line-height:1.5;">Connection error. Please try again or contact us at balancewises.io/#contact</div></div>';
-        msgs.appendChild(errDiv);
-        msgs.scrollTop = msgs.scrollHeight;
-    });
-};
-
-function escHtml(t) {
-    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-}
-
-// Show unread notification after 8 seconds if chat hasn't been opened
-setTimeout(function() {
-    if (!chatOpen) {
-        document.getElementById('chat-unread').style.display = 'flex';
-    }
-}, 8000);
-})();
-</script>
-<script>
-const API='https://api-bscan.balancewises.io';
-const PRICING={pro:{monthly:9,annual:7},agency:{monthly:29,annual:23}};
-let currentInterval='monthly',checkoutPlan='',pendingUrl='';
-let capturedEmail=localStorage.getItem('bscan_email')||'',capturedName=localStorage.getItem('bscan_name')||'';
-// Clear cached email if not logged in (fixes email retention after logout)
-if(!localStorage.getItem('bscan_token')){capturedEmail='';capturedName='';}
-let lastCheckResult=null;
-
-function setBillingInterval(i){
-    currentInterval=i;
-    // Toggle button styles
-    document.getElementById('tog-m').style.background=i==='monthly'?'var(--accent-blue)':'transparent';
-    document.getElementById('tog-m').style.color=i==='monthly'?'#fff':'var(--text-secondary)';
-    document.getElementById('tog-a').style.background=i==='annual'?'var(--accent-blue)':'transparent';
-    document.getElementById('tog-a').style.color=i==='annual'?'#fff':'var(--text-secondary)';
-    // Toggle price displays
-    document.querySelectorAll('.price-monthly').forEach(function(el){el.style.display=i==='monthly'?'inline':'none';});
-    document.querySelectorAll('.price-annual').forEach(function(el){el.style.display=i==='annual'?'inline':'none';});
-    // Update period text
-    document.querySelectorAll('.plan-period').forEach(function(el){
-        if(el.closest('.plan-free'))return;
-        el.textContent=i==='annual'?'per month (billed annually)':'per month';
-    });
-}
-function startStripeCheckout(plan){checkoutPlan=plan;const ia=currentInterval==='annual',pr=PRICING[plan]?PRICING[plan][currentInterval]:'?',pn=plan.charAt(0).toUpperCase()+plan.slice(1);document.getElementById('checkout-plan-name').textContent=pn;document.getElementById('checkout-plan-tag').textContent=pn+' · '+(ia?'Annual':'Monthly');document.getElementById('checkout-plan-tag').className='checkout-plan-tag '+plan;document.getElementById('checkout-sub').textContent='£'+pr+'/'+(ia?'mo (billed annually)':'mo')+' — enter your email to continue to secure checkout.';const b=document.getElementById('checkout-submit-btn');b.className=plan==='pro'?'checkout-submit gold':'checkout-submit blue';b.innerHTML='Continue to Checkout →';b.disabled=false;const ei=document.getElementById('checkout-email');ei.value=localStorage.getItem('bscan_email')||'';ei.classList.remove('error');document.getElementById('checkout-email-error').classList.remove('active');document.getElementById('checkout-overlay').classList.add('active');setTimeout(()=>ei.focus(),100);}
-function closeCheckoutModal(){document.getElementById('checkout-overlay').classList.remove('active');}
-document.getElementById('checkout-email').addEventListener('keydown',e=>{if(e.key==='Enter')submitCheckout();e.target.classList.remove('error');document.getElementById('checkout-email-error').classList.remove('active');});
-async function submitCheckout(){const ei=document.getElementById('checkout-email'),em=ei.value.trim(),er=document.getElementById('checkout-email-error'),b=document.getElementById('checkout-submit-btn');if(!em||!em.includes('@')||!em.includes('.')){ei.classList.add('error');er.classList.add('active');ei.focus();return;}b.disabled=true;b.innerHTML='<div class="spinner"></div> Redirecting to Stripe...';localStorage.setItem('bscan_email',em);try{const r=await fetch(API+'/api/billing/checkout/'+checkoutPlan,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,interval:currentInterval})});const d=await r.json();if(d.checkout_url)window.location=d.checkout_url;else{b.disabled=false;b.innerHTML='Continue to Checkout →';er.textContent=d.detail||'Could not start checkout.';er.classList.add('active');}}catch(e){b.disabled=false;b.innerHTML='Continue to Checkout →';er.textContent='Network error.';er.classList.add('active');}}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCheckoutModal();});
-function updateScanCount(){const el=document.getElementById('scan-count');if(lastCheckResult){const r=lastCheckResult.scans_remaining,plan=lastCheckResult.plan;if(plan==='guest'||plan==='free'){if(r<=0)el.innerHTML='<strong style="color:var(--danger)">0</strong> free scans remaining — <a href="#" onclick="showPaywall();return false" style="color:var(--accent-gold)">upgrade for unlimited</a>';else el.innerHTML='<strong>'+r+'</strong> free scan'+(r!==1?'s':'')+' remaining';}else el.innerHTML='<strong style="color:var(--success)">'+plan.toUpperCase()+'</strong> plan · '+(r>100?'unlimited':r+' scans left');}}
-function showPaywall(title,msg){if(title)document.getElementById('paywall-title').textContent=title;if(msg)document.getElementById('paywall-msg').textContent=msg;document.getElementById('paywall').classList.add('active');}
-function closePaywall(){document.getElementById('paywall').classList.remove('active');}
-function setUrl(u){document.getElementById('url-input').value=u;document.getElementById('url-input').focus();}
-document.getElementById('url-input').addEventListener('keydown',e=>{if(e.key==='Enter')startAudit();});
-function startAudit(){let u=document.getElementById('url-input').value.trim();if(!u)return document.getElementById('url-input').focus();if(!u.startsWith('http'))u='https://'+u;pendingUrl=u;if(capturedEmail){document.getElementById('lead-email').value=capturedEmail;document.getElementById('lead-name').value=capturedName;submitGateAndScan();return;}document.getElementById('gate-url-preview').textContent='Scanning: '+u.replace('https://','').replace('http://','').split('/')[0];document.getElementById('email-gate').classList.add('active');document.getElementById('lead-email').focus();}
-async function submitGateAndScan(){const email=document.getElementById('lead-email').value.trim(),name=document.getElementById('lead-name').value.trim();if(!email||!email.includes('@')||!email.includes('.')){document.getElementById('lead-email').style.borderColor='var(--danger)';document.getElementById('lead-email').focus();return;}document.getElementById('lead-email').style.borderColor='';capturedEmail=email;capturedName=name;localStorage.setItem('bscan_email',email);localStorage.setItem('bscan_name',name);const gateBtn=document.getElementById('gate-submit');gateBtn.disabled=true;gateBtn.innerHTML='<div class="spinner"></div> Checking...';try{const cr=await fetch(API+'/api/scan/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const check=await cr.json();lastCheckResult=check;updateScanCount();if(!check.can_scan){gateBtn.disabled=false;gateBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Start Free Audit';document.getElementById('email-gate').classList.remove('active');showPaywall(check.has_account?'Scan limit reached':"You've used your 3 free scans",check.message||'Create an account and upgrade to Pro for 30 scans/month.');return;}document.getElementById('email-gate').classList.remove('active');gateBtn.disabled=false;gateBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Start Free Audit';runScan(pendingUrl,email,name,check);}catch(e){gateBtn.disabled=false;gateBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Start Free Audit';document.getElementById('email-gate').classList.remove('active');runScan(pendingUrl,email,name,null);}}
-document.getElementById('lead-email').addEventListener('keydown',e=>{if(e.key==='Enter')submitGateAndScan();});
-document.getElementById('lead-name').addEventListener('keydown',e=>{if(e.key==='Enter')submitGateAndScan();});
-async function runScan(url,email,biz,checkResult){const btn=document.getElementById('audit-btn');btn.classList.add('scanning');btn.innerHTML='<div class="spinner"></div> Scanning...';document.getElementById('results').classList.remove('active');const t=document.getElementById('terminal'),w=document.getElementById('terminal-wrap'),b=document.getElementById('progress-fill');t.innerHTML='';w.classList.add('active');b.style.width='0%';const isPaid=checkResult&&(checkResult.plan==='pro'||checkResult.plan==='agency');
-const steps=isPaid?[{t:'Initialising BSCAN engine...',p:3},{t:'Resolving '+url+'...',p:6},{t:'Rendering page via Cloudflare...',p:10},{t:'Verifying SSL certificate...',p:14},{t:'Fetching page content...',p:18},{t:'Detecting technology stack...',p:22},{t:'Scanning meta tags & Open Graph...',p:26},{t:'Analysing heading hierarchy...',p:30},{t:'Crawling links for broken URLs...',p:34},{t:'Auditing image alt text...',p:38},{t:'Checking form labels & ARIA...',p:42},{t:'Scanning for exposed API keys...',p:46},{t:'Connecting to Google Lighthouse...',p:50},{t:'Running Core Web Vitals audit...',p:55},{t:'Measuring Largest Contentful Paint...',p:60},{t:'Measuring Cumulative Layout Shift...',p:64},{t:'Measuring Total Blocking Time...',p:68},{t:'Checking server location & hosting...',p:72},{t:'Validating HTML (W3C)...',p:76},{t:'Checking domain WHOIS...',p:80},{t:'Verifying Google Safe Browsing...',p:84},{t:'Checking green hosting status...',p:88},{t:'Scoring accessibility compliance...',p:91},{t:'Scoring SEO signals...',p:94},{t:'Compiling final report...',p:97}]:[{t:'Initialising BSCAN...',p:5},{t:'Resolving '+url+'...',p:12},{t:'Checking SSL certificate...',p:22},{t:'Fetching page content...',p:34},{t:'Detecting technology stack...',p:44},{t:'Scanning meta tags...',p:54},{t:'Analysing heading hierarchy...',p:62},{t:'Crawling links...',p:70},{t:'Auditing images & accessibility...',p:78},{t:'Scanning security & exposed keys...',p:86},{t:'Checking server & hosting...',p:92},{t:'Compiling report...',p:97}];
-const interval=isPaid?500:400;let li=0;const iv=setInterval(()=>{if(li>=steps.length){clearInterval(iv);return;}addLine(t,li+1,steps[li].t,'ok');b.style.width=steps[li].p+'%';li++;},interval);
-try{const headers={'Content-Type':'application/json'};const token=localStorage.getItem('bscan_token');if(token)headers['Authorization']='Bearer '+token;const r=await fetch(API+'/api/scan',{method:'POST',headers,body:JSON.stringify({url,email,business_name:biz})});clearInterval(iv);if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||'Server error ('+r.status+')');}const d=await r.json();while(li<steps.length){addLine(t,li+1,steps[li].t,'ok');li++;}addLine(t,li+1,'Report generated ✓','ok');b.style.width='100%';if(lastCheckResult){lastCheckResult.scans_used++;lastCheckResult.scans_remaining=Math.max(0,lastCheckResult.scans_remaining-1);updateScanCount();}setTimeout(()=>showResults(url,d,checkResult),600);}catch(err){clearInterval(iv);addLine(t,li+1,'Error: '+err.message,'fail');b.style.width='100%';setTimeout(()=>{btn.classList.remove('scanning');btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> BSCAN It';},1500);}}
-function addLine(t,n,x,s){const l=document.createElement('div');l.className='t-line';const c=s==='ok'?'t-ok':s==='warn'?'t-warn':'t-fail',i=s==='ok'?'✓':s==='warn'?'⚠':'✗';l.innerHTML='<span class="t-prefix">['+String(n).padStart(2,'0')+']</span> <span class="t-text">'+x+'</span> <span class="'+c+'">'+i+'</span>';t.appendChild(l);t.scrollTop=t.scrollHeight;}
-function buildIssue(it,gr,url,showFixBtn){const ct=it.category?it.category.charAt(0).toUpperCase()+it.category.slice(1):'';let f='';if(it.fix){f='<div class="issue-fix">Fix: '+it.fix+'</div>';if(showFixBtn)f+='<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><a href="https://balancewises.io/#contact?issue='+encodeURIComponent(it.title)+'&url='+encodeURIComponent(url)+'" target="_blank" style="font-size:11px;padding:5px 12px;border-radius:6px;background:var(--accent-gold);color:var(--bg-deep);text-decoration:none;font-weight:700;">Get Balancewise to Fix →</a></div>';}return '<div class="issue-icon '+gr.type+'">'+gr.icon+'</div><div class="issue-body"><div class="issue-title">'+it.title+'</div><div class="issue-desc">'+it.description+'</div>'+f+'<span class="issue-tag">'+ct+'</span></div>';}
-
-function renderEnrichment(e,isPaid){
-    const box=document.getElementById('enrichment-box');box.innerHTML='';
-    if(!e||!Object.keys(e).length)return;
-    const tech=e.tech_stack||{},ssl=e.ssl_details||{},whois=e.whois||{},green=e.green_hosting||{},geo=e.server_location||{},safe=e.safe_browsing||{},obs=e.observatory||{},w3c=e.w3c_validation||{},wb=e.wayback||{},screenshot=e.screenshot_url||'';
-    let h='';
-    // Screenshot
-    if(screenshot)h+='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;"><div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;"><span style="font-size:14px">📸</span><span style="font-weight:700;font-size:13px">Site Preview</span></div><div style="padding:12px;text-align:center;background:var(--bg-primary)"><img src="'+screenshot+'" alt="Website Screenshot" style="max-width:100%;border-radius:6px;border:1px solid var(--border)" loading="lazy" onerror="this.parentElement.innerHTML=\'<div style=padding:20px;color:var(--text-muted);font-size:12px>Screenshot unavailable</div>\'"></div></div>';
-    // Intelligence grid
-    h+='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;"><div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:14px">🔬</span><span style="font-weight:700;font-size:13px">Site Intelligence</span><span style="font-size:10px;color:var(--text-muted);margin-left:auto;font-family:Space Mono,monospace">ENRICHED ANALYSIS</span></div><div class="enrich-grid">';
-    // SSL
-    if(ssl.ssl_grade){const sc=ssl.ssl_grade==='A+'||ssl.ssl_grade==='A'?'var(--success)':ssl.ssl_grade==='B'?'var(--warning)':'var(--danger)';h+='<div class="enrich-cell"><div class="enrich-label">SSL Certificate</div><div class="enrich-val" style="font-size:24px;color:'+sc+'">'+ssl.ssl_grade+'</div><div class="enrich-sub">'+(ssl.ssl_issuer||'Unknown')+'</div>'+(ssl.ssl_days_remaining?'<div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+ssl.ssl_days_remaining+' days until expiry</div>':'')+'</div>';}
-    // Server
-    if(geo.server_country)h+='<div class="enrich-cell"><div class="enrich-label">Server Location</div><div class="enrich-val" style="color:var(--text-primary)">'+(geo.server_city?geo.server_city+', ':'')+geo.server_country+'</div><div class="enrich-sub">'+(geo.server_isp||'')+'</div>'+(geo.server_ip?'<div style="font-size:10px;color:var(--text-muted);font-family:Space Mono,monospace;margin-top:2px">'+geo.server_ip+'</div>':'')+'</div>';
-    // Green
-    if(green.is_green!==null&&green.is_green!==undefined){const gi=green.is_green?'🌱':'⚫',gt=green.is_green?'Green Hosted':'Standard Hosting',gc=green.is_green?'var(--success)':'var(--text-muted)';h+='<div class="enrich-cell"><div class="enrich-label">Green Energy</div><div class="enrich-val" style="color:'+gc+'">'+gi+' '+gt+'</div>'+(green.green_hosting_provider?'<div class="enrich-sub">'+green.green_hosting_provider+'</div>':'')+'</div>';}
-    // Safe Browsing
-    if(safe.safe_browsing_status&&safe.safe_browsing_status!=='not_checked'){const si=safe.is_safe?'✓ Safe':'⚠ Flagged',sc2=safe.is_safe?'var(--success)':'var(--danger)';h+='<div class="enrich-cell"><div class="enrich-label">Google Safe Browsing</div><div class="enrich-val" style="color:'+sc2+'">'+si+'</div><div class="enrich-sub">Checked against Google threat database</div></div>';}
-    // Domain Age (paid only)
-    if(whois.domain_age_text){const ac=whois.is_new_domain?'var(--warning)':'var(--success)';h+='<div class="enrich-cell"><div class="enrich-label">Domain Age</div><div class="enrich-val" style="color:'+ac+'">'+whois.domain_age_text+'</div>'+(whois.registrar?'<div class="enrich-sub">Registrar: '+whois.registrar+'</div>':'')+(whois.expiry_date?'<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Expires: '+whois.expiry_date+'</div>':'')+'</div>';}
-    // Observatory (paid only)
-    if(obs.observatory_grade){const oc=obs.observatory_grade.startsWith('A')?'var(--success)':obs.observatory_grade.startsWith('B')?'var(--info)':obs.observatory_grade.startsWith('C')?'var(--warning)':'var(--danger)';h+='<div class="enrich-cell"><div class="enrich-label">Mozilla Observatory</div><div class="enrich-val" style="font-size:24px;color:'+oc+'">'+obs.observatory_grade+'</div><div class="enrich-sub">'+(obs.observatory_score||0)+'/100 · '+(obs.observatory_tests_passed||0)+' passed</div></div>';}
-    // W3C (paid only)
-    if(w3c.html_valid!==null&&w3c.html_valid!==undefined){const wc=w3c.html_valid?'var(--success)':w3c.html_errors>10?'var(--danger)':'var(--warning)',wt=w3c.html_valid?'Valid HTML':w3c.html_errors+' errors';h+='<div class="enrich-cell"><div class="enrich-label">W3C Validation</div><div class="enrich-val" style="color:'+wc+'">'+wt+'</div><div class="enrich-sub">'+(w3c.html_warnings||0)+' warnings</div></div>';}
-    // Wayback (paid only)
-    if(wb.has_archive)h+='<div class="enrich-cell"><div class="enrich-label">Web Archive</div><div class="enrich-val" style="color:var(--info)">Archived</div>'+(wb.first_archived?'<div class="enrich-sub">First seen: '+wb.first_archived+'</div>':'')+(wb.wayback_url?'<div style="margin-top:4px"><a href="'+wb.wayback_url+'" target="_blank" style="font-size:10px;color:var(--accent-blue);text-decoration:none">View on Wayback Machine →</a></div>':'')+'</div>';
-    h+='</div></div>';
-    // Tech Stack
-    if(tech.technologies&&tech.technologies.length>0){h+='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;"><div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px"><span style="font-size:14px">⚙️</span><span style="font-weight:700;font-size:13px">Technology Stack</span><span style="font-size:10px;color:var(--text-muted);margin-left:auto">'+tech.tech_count+' detected</span></div><div style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:6px">';
-        const cats=tech.categories||{};
-        tech.technologies.forEach(function(t){let tc='var(--text-secondary)',tb='var(--bg-primary)';if(t===cats.cms){tc='var(--accent-gold)';tb='rgba(245,166,35,.1)';}else if(t===cats.js_framework){tc='var(--accent-blue)';tb='rgba(59,130,246,.1)';}else if(t===cats.server||t===cats.cdn){tc='var(--success)';tb='rgba(34,197,94,.1)';}else if(t===cats.ecommerce){tc='#8b5cf6';tb='rgba(139,92,246,.1)';}h+='<span class="tech-tag" style="background:'+tb+';color:'+tc+';border:1px solid '+tc+'20">'+t+'</span>';});
-        h+='</div>';
-        const ci=[];if(cats.cms)ci.push('CMS: '+cats.cms);if(cats.js_framework)ci.push('Framework: '+cats.js_framework);if(cats.server)ci.push('Server: '+cats.server);if(cats.cdn)ci.push('CDN: '+cats.cdn);if(cats.ecommerce)ci.push('E-commerce: '+cats.ecommerce);if(cats.analytics)ci.push('Analytics: '+cats.analytics);
-        if(ci.length)h+='<div style="padding:10px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">'+ci.join(' · ')+'</div>';
-        h+='</div>';}
-    // Free user teaser
-    if(!isPaid&&tech.technologies&&tech.technologies.length>0){h+='<div style="background:var(--bg-card);border:2px dashed var(--border-light);border-radius:14px;padding:24px;text-align:center;margin-bottom:16px;"><div style="font-size:24px;margin-bottom:8px">🔬</div><h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:4px">Full Site Intelligence</h3><p style="font-size:12px;color:var(--text-secondary);line-height:1.6;max-width:380px;margin:0 auto 12px">Upgrade to Pro to unlock domain age, WHOIS data, W3C validation, Mozilla Observatory score, Wayback history, and more.</p><a href="/#pricing" style="display:inline-block;padding:8px 20px;background:var(--accent-gold);color:var(--bg-deep);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none">Upgrade to Pro — £9/mo</a></div>';}
-    box.innerHTML=h;
-}
-</script>
-<script>
-function renderScoreCards(gridEl, scores, scanData, isPaid, scannedUrl) {
-    gridEl.innerHTML = '';
-
-    // ── Core 6 score categories ──────────────────────
-    var categories = [
-        {
-            key: 'seo', label: 'SEO', icon: '🔍',
-            getMini: function(issues) {
-                var seoIssues = issues.filter(function(i) { return i.category === 'seo'; });
-                var crits = seoIssues.filter(function(i) { return i.severity === 'critical'; }).length;
-                var warns = seoIssues.filter(function(i) { return i.severity === 'warning'; }).length;
-                var pass = seoIssues.filter(function(i) { return i.severity === 'pass'; }).length;
-                return [
-                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
-                    { label: 'Warnings', val: warns, cls: warns > 0 ? 'warn' : 'good' },
-                    { label: 'Passed', val: pass, cls: 'good' },
-                ];
-            }
-        },
-        {
-            key: 'performance', label: 'Performance', icon: '⚡',
-            getMini: function(issues) {
-                var perfIssues = issues.filter(function(i) { return i.category === 'performance'; });
-                var crits = perfIssues.filter(function(i) { return i.severity === 'critical'; }).length;
-                var warns = perfIssues.filter(function(i) { return i.severity === 'warning'; }).length;
-                return [
-                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
-                    { label: 'Warnings', val: warns, cls: warns > 0 ? 'warn' : 'good' },
-                ];
-            }
-        },
-        {
-            key: 'accessibility', label: 'Accessibility', icon: '♿',
-            getMini: function(issues) {
-                var a11y = issues.filter(function(i) { return i.category === 'accessibility'; });
-                var crits = a11y.filter(function(i) { return i.severity === 'critical'; }).length;
-                var pass = a11y.filter(function(i) { return i.severity === 'pass'; }).length;
-                return [
-                    { label: 'Issues', val: crits, cls: crits > 0 ? 'bad' : 'good' },
-                    { label: 'Passed', val: pass, cls: 'good' },
-                ];
-            }
-        },
-        {
-            key: 'security', label: 'Security', icon: '🔒',
-            getMini: function(issues, enrichment) {
-                var secIssues = issues.filter(function(i) { return i.category === 'security'; });
-                var crits = secIssues.filter(function(i) { return i.severity === 'critical'; }).length;
-                var ssl = (enrichment && enrichment.ssl_details) ? enrichment.ssl_details.ssl_grade : null;
-                var stats = [
-                    { label: 'Critical', val: crits, cls: crits > 0 ? 'bad' : 'good' },
-                ];
-                if (ssl) stats.push({ label: 'SSL Grade', val: ssl, cls: ssl === 'A+' || ssl === 'A' ? 'good' : 'warn' });
-                return stats;
-            }
-        },
-        {
-            key: 'mobile', label: 'Mobile', icon: '📱',
-            getMini: function(issues) {
-                var mob = issues.filter(function(i) { return i.category === 'mobile'; });
-                var crits = mob.filter(function(i) { return i.severity === 'critical'; }).length;
-                var pass = mob.filter(function(i) { return i.severity === 'pass'; }).length;
-                return [
-                    { label: 'Issues', val: crits, cls: crits > 0 ? 'bad' : 'good' },
-                    { label: 'Passed', val: pass, cls: 'good' },
-                ];
-            }
-        },
-        {
-            key: 'links', label: 'Links', icon: '🔗',
-            getMini: function(issues) {
-                var lnk = issues.filter(function(i) { return i.category === 'links'; });
-                var broken = lnk.filter(function(i) { return i.severity === 'critical'; }).length;
-                var pass = lnk.filter(function(i) { return i.severity === 'pass'; }).length;
-                return [
-                    { label: 'Broken', val: broken, cls: broken > 0 ? 'bad' : 'good' },
-                    { label: 'Healthy', val: pass, cls: 'good' },
-                ];
-            }
-        },
-    ];
-
-    var issues = scanData.issues || [];
-    var enrichment = scanData.enrichment || {};
-
-    // Render core cards
-    categories.forEach(function(cat) {
-        var score = scores[cat.key] || 0;
-        var level = score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'warning' : 'poor';
-        var levelText = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Warning' : 'Poor';
-        var miniStats = cat.getMini(issues, enrichment);
-
-        var card = document.createElement('div');
-        card.className = 's-card ' + level;
-        card.onclick = function() { toggleDetail(cat.key, score, level, cat.label, cat.icon, issues, enrichment, isPaid, scannedUrl); };
-
-        var miniHtml = '<div class="s-mini">';
-        miniStats.forEach(function(s) {
-            miniHtml += '<div class="s-mini-stat"><span>' + s.label + '</span><span class="val ' + s.cls + '">' + s.val + '</span></div>';
-        });
-        miniHtml += '</div>';
-
-        card.innerHTML =
-            '<div class="s-num">' + score + '</div>' +
-            '<div class="s-label">' + cat.label + '</div>' +
-            '<div class="s-tag">' + levelText + '</div>' +
-            miniHtml +
-            '<div class="s-tap">tap for details →</div>';
-
-        gridEl.appendChild(card);
-    });
-
-    // ── New feature cards ────────────────────────────
-    var featureCards = [
-        {
-            key: 'business_intel',
-            icon: '💼',
-            label: 'Business Intel',
-            free: false,
-            getData: function() {
-                var bi = scanData.business_intel || {};
-                var ctaCount = bi.ctas ? bi.ctas.total_ctas || 0 : 0;
-                var payments = bi.payment_methods ? bi.payment_methods.methods || [] : [];
-                var social = bi.social_media ? bi.social_media.count || 0 : 0;
-                return { count: ctaCount + payments.length + social, sub: 'CTAs, payments, social' };
-            }
-        },
-        {
-            key: 'consumer_intel',
-            icon: '🛍️',
-            label: 'Consumer Intel',
-            free: false,
-            getData: function() {
-                var ci = scanData.consumer_intel || {};
-                var trust = ci.trust_signals ? ci.trust_signals.count || 0 : 0;
-                var support = ci.customer_support ? ci.customer_support.score || 0 : 0;
-                return { count: trust, sub: 'Trust: ' + trust + ' · Support: ' + support + '/100' };
-            }
-        },
-        {
-            key: 'ux_patterns',
-            icon: '🎨',
-            label: 'UX Patterns',
-            free: false,
-            getData: function() {
-                var bench = scanData.benchmarks || {};
-                var ux = bench.ux_patterns || {};
-                return { count: ux.total_detected || 0, sub: (ux.ux_score || 0) + '/100 UX score' };
-            }
-        },
-        {
-            key: 'keywords',
-            icon: '🔍',
-            label: 'Keywords',
-            free: true,
-            getData: function() {
-                var bi = scanData.business_intel || {};
-                var kw = bi.keywords || {};
-                var top = kw.top_words || [];
-                return { count: top.length, sub: top.slice(0, 3).join(', ') || 'Run scan first' };
-            }
-        },
-        {
-            key: 'benchmarks',
-            icon: '📊',
-            label: 'Industry Rank',
-            free: false,
-            getData: function() {
-                var bench = scanData.benchmarks || {};
-                var ind = bench.industry || {};
-                return { count: ind.detected_industry ? 1 : 0, sub: ind.industry_label || 'Not detected' };
-            }
-        },
-    ];
-
-    featureCards.forEach(function(feat) {
-        var data = feat.getData();
-        var isLocked = !isPaid && !feat.free;
-
-        var card = document.createElement('div');
-        card.className = 's-card feature-card' + (isLocked ? ' locked' : '');
-
-        card.onclick = function() {
-            if (isLocked) {
-                toggleFeatureDetail(feat.key, feat.label, feat.icon, true);
-            } else {
-                toggleFeatureDetail(feat.key, feat.label, feat.icon, false, scanData);
-            }
-        };
-
-        card.innerHTML =
-            '<div class="s-icon">' + feat.icon + '</div>' +
-            '<div class="s-num" style="font-size:24px;">' + (data.count || '—') + '</div>' +
-            '<div class="s-label">' + feat.label + '</div>' +
-            (data.sub ? '<div class="s-mini" style="border-top:none;text-align:center;padding-top:4px;">' + escH(data.sub) + '</div>' : '') +
-            (isLocked ? '<div class="s-lock">🔒 Pro</div>' : '<div class="s-tap">tap for details →</div>');
-
-        gridEl.appendChild(card);
-    });
-}
-
-
-// ── Toggle detail panel for core categories ──────────
-function toggleDetail(key, score, level, label, icon, issues, enrichment, isPaid, url) {
-    var panelId = 'detail-' + key;
-    var existing = document.getElementById(panelId);
-
-    // Close if already open
-    if (existing) {
-        existing.remove();
-        return;
-    }
-
-    // Close any other open panels
-    document.querySelectorAll('.detail-panel').forEach(function(p) { p.remove(); });
-
-    // Get category issues
-    var catIssues = issues.filter(function(i) { return i.category === key; });
-    var crits = catIssues.filter(function(i) { return i.severity === 'critical'; });
-    var warns = catIssues.filter(function(i) { return i.severity === 'warning'; });
-    var passes = catIssues.filter(function(i) { return i.severity === 'pass'; });
-
-    // Build detail panel
-    var panel = document.createElement('div');
-    panel.className = 'detail-panel active';
-    panel.id = panelId;
-
-    var html = '';
-
-    // Header
-    html += '<div class="detail-header"><div class="detail-header-left">';
-    html += '<div class="detail-score-badge ' + level + '">' + score + '</div>';
-    html += '<div><div class="detail-title">' + icon + ' ' + label + '</div>';
-    html += '<div class="detail-subtitle">' + catIssues.length + ' checks · ' + crits.length + ' critical · ' + warns.length + ' warnings</div>';
-    html += '</div></div>';
-    html += '<button class="detail-close" onclick="document.getElementById(\'' + panelId + '\').remove()">Close ✕</button></div>';
-
-    // Body
-    html += '<div class="detail-body">';
-
-    // Critical issues
-    if (crits.length) {
-        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:8px;font-family:Space Mono,monospace;">CRITICAL (' + crits.length + ')</div>';
-        crits.forEach(function(issue, idx) {
-            if (!isPaid && idx >= 2) {
-                // Blur for free users
-                html += '<div class="detail-issue" style="filter:blur(4px);pointer-events:none;"><div class="detail-issue-icon crit">✗</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description) + '</div></div>';
-            } else {
-                html += '<div class="detail-issue"><div class="detail-issue-icon crit">✗</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description);
-                if (issue.fix) html += '<div class="detail-fix">Fix: ' + escH(issue.fix) + '</div>';
-                html += '</div></div>';
-            }
-        });
-        if (!isPaid && crits.length > 2) {
-            html += '<div style="text-align:center;padding:10px;font-size:11px;color:var(--text-muted);">🔒 ' + (crits.length - 2) + ' more hidden · <a href="/#pricing" style="color:var(--accent-gold);text-decoration:none;font-weight:700;">Upgrade to see all</a></div>';
-        }
-        html += '</div>';
-    }
-
-    // Warnings
-    if (warns.length) {
-        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--warning);margin-bottom:8px;font-family:Space Mono,monospace;">WARNINGS (' + warns.length + ')</div>';
-        warns.forEach(function(issue, idx) {
-            if (!isPaid && idx >= 2) {
-                html += '<div class="detail-issue" style="filter:blur(4px);pointer-events:none;"><div class="detail-issue-icon warn">⚠</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong></div></div>';
-            } else {
-                html += '<div class="detail-issue"><div class="detail-issue-icon warn">⚠</div><div class="detail-issue-text"><strong>' + escH(issue.title) + '</strong><br>' + escH(issue.description);
-                if (issue.fix) html += '<div class="detail-fix">Fix: ' + escH(issue.fix) + '</div>';
-                html += '</div></div>';
-            }
-        });
-        if (!isPaid && warns.length > 2) {
-            html += '<div style="text-align:center;padding:10px;font-size:11px;color:var(--text-muted);">🔒 ' + (warns.length - 2) + ' more hidden · <a href="/#pricing" style="color:var(--accent-gold);text-decoration:none;font-weight:700;">Upgrade</a></div>';
-        }
-        html += '</div>';
-    }
-
-    // Passed
-    if (passes.length) {
-        html += '<div class="detail-issues"><div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:8px;font-family:Space Mono,monospace;">PASSED (' + passes.length + ')</div>';
-        passes.slice(0, isPaid ? 50 : 3).forEach(function(issue) {
-            html += '<div class="detail-issue"><div class="detail-issue-icon pass">✓</div><div class="detail-issue-text">' + escH(issue.title) + '</div></div>';
-        });
-        if (!isPaid && passes.length > 3) {
-            html += '<div style="text-align:center;padding:6px;font-size:11px;color:var(--text-muted);">+ ' + (passes.length - 3) + ' more</div>';
-        }
-        html += '</div>';
-    }
-
-    // Category-specific enrichment data
-    if (key === 'security' && enrichment.ssl_details) {
-        var ssl = enrichment.ssl_details;
-        html += '<div style="margin-top:12px;padding:14px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);">';
-        html += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">SSL CERTIFICATE</div>';
-        if (ssl.ssl_grade) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Grade: <strong style="color:' + (ssl.ssl_grade === 'A+' || ssl.ssl_grade === 'A' ? 'var(--success)' : 'var(--warning)') + '">' + ssl.ssl_grade + '</strong></div>';
-        if (ssl.ssl_issuer) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Issuer: ' + escH(ssl.ssl_issuer) + '</div>';
-        if (ssl.ssl_days_remaining) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Expires in: ' + ssl.ssl_days_remaining + ' days</div>';
-        html += '</div>';
-    }
-
-    if (key === 'performance' && enrichment.server_location) {
-        var geo = enrichment.server_location;
-        html += '<div style="margin-top:12px;padding:14px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border);">';
-        html += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">SERVER</div>';
-        if (geo.server_country) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">Location: ' + (geo.server_city ? geo.server_city + ', ' : '') + geo.server_country + '</div>';
-        if (geo.server_isp) html += '<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;">ISP: ' + escH(geo.server_isp) + '</div>';
-        html += '</div>';
-    }
-
-    // Fix CTA
-    if (crits.length > 0 || warns.length > 0) {
-        html += '<div style="margin-top:16px;text-align:center;">';
-        html += '<a href="https://balancewises.io/#contact?issue=' + encodeURIComponent(label + ' issues') + '&url=' + encodeURIComponent(url) + '" target="_blank" style="display:inline-block;padding:10px 20px;background:var(--accent-gold);color:var(--bg-deep);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;">Get Balancewise to Fix ' + label + ' →</a>';
-        html += '</div>';
-    }
-
-    html += '</div>';
-    panel.innerHTML = html;
-
-    // Insert after the scores grid
-    var grid = document.getElementById('scores-grid');
-    grid.parentNode.insertBefore(panel, grid.nextSibling);
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-
-// ── Toggle detail for feature cards ──────────────────
-function toggleFeatureDetail(key, label, icon, isLocked, scanData) {
-    var panelId = 'detail-' + key;
-    var existing = document.getElementById(panelId);
-    if (existing) { existing.remove(); return; }
-    document.querySelectorAll('.detail-panel').forEach(function(p) { p.remove(); });
-
-    var panel = document.createElement('div');
-    panel.className = 'detail-panel active';
-    panel.id = panelId;
-
-    var html = '';
-
-    // Header
-    html += '<div class="detail-header"><div class="detail-header-left">';
-    html += '<div style="font-size:28px;">' + icon + '</div>';
-    html += '<div><div class="detail-title">' + label + '</div>';
-    html += '<div class="detail-subtitle">' + (isLocked ? 'Pro/Agency feature' : 'Included in your plan') + '</div>';
-    html += '</div></div>';
-    html += '<button class="detail-close" onclick="document.getElementById(\'' + panelId + '\').remove()">Close ✕</button></div>';
-
-    html += '<div class="detail-body">';
-
-    if (isLocked) {
-        // Show upgrade prompt
-        var featureDescriptions = {
-            'business_intel': {
-                title: 'Business Intelligence',
-                desc: 'See exactly how this website drives revenue: payment methods, CTAs, email capture, urgency tactics, social proof, live chat, and conversion tools.',
-                features: ['Payment Methods', 'CTA Detection', 'Email Capture', 'Urgency Tactics', 'Social Proof', 'Live Chat', 'Conversion Tools']
-            },
-            'consumer_intel': {
-                title: 'Consumer Intelligence',
-                desc: 'Understand the customer experience: reviews, support channels, trust signals, loyalty programs, delivery options, pricing psychology, and personalization.',
-                features: ['Reviews & Ratings', 'Customer Support Score', 'Trust Signals', 'Loyalty Programs', 'Pricing Psychology', 'Delivery Options', 'Personalization']
-            },
-            'ux_patterns': {
-                title: 'UX Pattern Detection',
-                desc: '30+ UX patterns detected across navigation, product pages, conversion, mobile, content, and trust categories.',
-                features: ['Navigation', 'Product Page', 'Conversion', 'Mobile UX', 'Content', 'Trust Elements']
-            },
-            'benchmarks': {
-                title: 'Industry Benchmarking',
-                desc: 'See how this site ranks against others in its industry. Percentile scores, industry averages, and specific recommendations.',
-                features: ['Industry Detection', 'Percentile Ranking', 'Score Comparison', 'Recommendations']
-            }
-        };
-
-        var info = featureDescriptions[key] || { title: label, desc: 'Detailed analysis available with upgrade.', features: [] };
-
-        html += '<div class="detail-upgrade">';
-        html += '<div style="font-size:32px;margin-bottom:10px;">' + icon + '</div>';
-        html += '<h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">' + info.title + '</h3>';
-        html += '<p>' + info.desc + '</p>';
-        if (info.features.length) {
-            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">';
-            info.features.forEach(function(f) {
-                html += '<span style="font-size:10px;padding:4px 10px;border-radius:100px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.15);color:#06b6d4;">' + f + '</span>';
-            });
-            html += '</div>';
-        }
-        html += '<a class="detail-upgrade-btn" href="/#pricing">Upgrade to Pro — £9/mo</a>';
-        html += '</div>';
-    } else {
-        // Show actual data
-        if (key === 'business_intel' && scanData) {
-            var bi = scanData.business_intel || {};
-            html += renderBusinessIntelDetail(bi);
-        } else if (key === 'consumer_intel' && scanData) {
-            var ci = scanData.consumer_intel || {};
-            html += renderConsumerIntelDetail(ci);
-        } else if (key === 'ux_patterns' && scanData) {
-            var bench = scanData.benchmarks || {};
-            html += renderUXDetail(bench.ux_patterns || {});
-        } else if (key === 'keywords' && scanData) {
-            var bi2 = scanData.business_intel || {};
-            html += renderKeywordsDetail(bi2.keywords || {});
-        } else if (key === 'benchmarks' && scanData) {
-            var bench2 = scanData.benchmarks || {};
-            html += renderBenchmarkDetail(bench2.industry || {});
-        } else {
-            html += '<div class="empty"><p>No data available for this scan.</p></div>';
-        }
-    }
-
-    html += '</div>';
-    panel.innerHTML = html;
-
-    var grid = document.getElementById('scores-grid');
-    grid.parentNode.insertBefore(panel, grid.nextSibling);
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-
-// ── Feature detail renderers ─────────────────────────
-
-function renderBusinessIntelDetail(bi) {
-    var h = '';
-    var sections = [
-        { key: 'ctas', icon: '🎯', title: 'CTAs', render: function(d) { return 'Total: ' + (d.total_ctas || 0) + ' · Purchase: ' + ((d.purchase_ctas || []).length) + ' · Signup: ' + ((d.signup_ctas || []).length); }},
-        { key: 'payment_methods', icon: '💳', title: 'Payment Methods', render: function(d) { return (d.methods || []).join(', ') || 'None detected'; }},
-        { key: 'social_proof', icon: '⭐', title: 'Social Proof', render: function(d) { return 'Score: ' + (d.score || 0) + ' · Signals: ' + ((d.signals || []).join(', ') || 'None'); }},
-        { key: 'email_capture', icon: '✉️', title: 'Email Capture', render: function(d) { return (d.methods || []).join(', ') || 'None detected'; }},
-        { key: 'urgency_tactics', icon: '⏰', title: 'Urgency Tactics', render: function(d) { return (d.tactics || []).join(', ') || 'None detected'; }},
-        { key: 'social_media', icon: '📱', title: 'Social Media', render: function(d) { var p = d.platforms || {}; return Object.keys(p).join(', ') || 'None linked'; }},
-        { key: 'live_chat', icon: '💬', title: 'Live Chat', render: function(d) { return d.has_live_chat ? (d.tools || []).join(', ') : 'Not detected'; }},
-        { key: 'pricing', icon: '💰', title: 'Pricing', render: function(d) { return d.prices_found ? d.prices_found + ' prices · ' + (d.currency || '') + ' ' + (d.price_range || '') : 'No prices found'; }},
-    ];
-
-    sections.forEach(function(s) {
-        var data = bi[s.key] || {};
-        h += '<div class="detail-issue"><div style="font-size:16px;width:28px;text-align:center;flex-shrink:0;">' + s.icon + '</div>';
-        h += '<div class="detail-issue-text"><strong>' + s.title + '</strong><br>' + s.render(data) + '</div></div>';
-    });
-    return h;
-}
-
-function renderConsumerIntelDetail(ci) {
-    var h = '';
-    var sections = [
-        { key: 'reviews_ratings', icon: '⭐', title: 'Reviews', render: function(d) { return d.has_reviews ? 'Found · Platforms: ' + (d.review_platforms || []).join(', ') + (d.star_rating ? ' · ' + d.star_rating + ' stars' : '') : 'No reviews detected'; }},
-        { key: 'customer_support', icon: '🎧', title: 'Support', render: function(d) { return 'Score: ' + (d.score || 0) + '/100 · Channels: ' + ((d.channels || []).join(', ') || 'None'); }},
-        { key: 'trust_signals', icon: '🛡️', title: 'Trust Signals', render: function(d) { return (d.count || 0) + ' found: ' + ((d.signals || []).slice(0, 4).join(', ') || 'None'); }},
-        { key: 'loyalty_program', icon: '🎁', title: 'Loyalty', render: function(d) { return d.has_loyalty_program ? (d.program_type || []).join(', ') : 'Not detected'; }},
-        { key: 'pricing_psychology', icon: '💰', title: 'Pricing Tactics', render: function(d) { return (d.count || 0) + ' tactics · ' + (d.sophistication || 'None') + ': ' + ((d.tactics || []).slice(0, 3).join(', ')); }},
-        { key: 'delivery_shipping', icon: '🚚', title: 'Delivery', render: function(d) { return (d.signals || []).join(', ') || 'No delivery info detected'; }},
-        { key: 'personalization', icon: '🎯', title: 'Personalization', render: function(d) { return (d.sophistication || 'None') + ': ' + ((d.features || []).join(', ') || 'None detected'); }},
-        { key: 'return_policy', icon: '↩️', title: 'Returns', render: function(d) { return d.has_return_policy ? (d.signals || []).join(', ') : 'No return policy found'; }},
-    ];
-
-    sections.forEach(function(s) {
-        var data = ci[s.key] || {};
-        h += '<div class="detail-issue"><div style="font-size:16px;width:28px;text-align:center;flex-shrink:0;">' + s.icon + '</div>';
-        h += '<div class="detail-issue-text"><strong>' + s.title + '</strong><br>' + s.render(data) + '</div></div>';
-    });
-    return h;
-}
-
-function renderUXDetail(ux) {
-    var h = '';
-    h += '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:32px;font-weight:800;color:var(--cyan);">' + (ux.ux_score || 0) + '<span style="font-size:16px;color:var(--text-muted)">/100</span></div><div style="font-size:12px;color:var(--text-muted);">UX Score · ' + (ux.total_detected || 0) + ' patterns detected</div></div>';
-    var patterns = ux.all_patterns || [];
-    if (patterns.length) {
-        h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
-        patterns.forEach(function(p) {
-            var name = typeof p === 'string' ? p : (p.name || p.pattern || 'Unknown');
-            h += '<span style="font-size:11px;padding:5px 12px;border-radius:100px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.15);color:var(--cyan);font-family:Space Mono,monospace;">' + escH(name) + '</span>';
-        });
-        h += '</div>';
-    }
-    return h;
-}
-
-function renderKeywordsDetail(kw) {
-    var h = '';
-    var topWords = kw.top_words || [];
-    var headings = kw.h1_headings || [];
-    if (headings.length) {
-        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;font-family:Space Mono,monospace;">H1 HEADINGS</div>';
-        headings.forEach(function(heading) { h += '<div style="font-size:13px;color:var(--text-primary);padding:4px 0;">"' + escH(heading) + '"</div>'; });
-        h += '<div style="height:12px;"></div>';
-    }
-    if (topWords.length) {
-        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">TOP KEYWORDS</div>';
-        h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
-        topWords.forEach(function(w) {
-            var word = typeof w === 'string' ? w : (w.word || w);
-            h += '<span style="font-size:11px;padding:5px 12px;border-radius:100px;background:var(--bg-primary);border:1px solid var(--border);color:var(--text-secondary);font-family:Space Mono,monospace;">' + escH(word) + '</span>';
-        });
-        h += '</div>';
-    }
-    h += '<div style="margin-top:16px;text-align:center;"><a href="/seo" style="display:inline-block;padding:10px 20px;background:var(--cyan);color:var(--bg);border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;">Full Keyword Research →</a></div>';
-    return h;
-}
-
-function renderBenchmarkDetail(ind) {
-    var h = '';
-    if (ind.industry_label) {
-        h += '<div style="text-align:center;margin-bottom:16px;"><div style="font-size:14px;color:var(--text-muted);margin-bottom:4px;">Detected Industry</div><div style="font-size:22px;font-weight:800;color:var(--gold);">' + escH(ind.industry_label) + '</div></div>';
-    }
-    if (ind.comparisons) {
-        var comp = ind.comparisons;
-        h += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;font-family:Space Mono,monospace;">VS INDUSTRY AVERAGE</div>';
-        Object.keys(comp).forEach(function(cat) {
-            var c = comp[cat] || {};
-            var yours = c.score || 0;
-            var avg = c.industry_avg || 0;
-            var diff = yours - avg;
-            var diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
-            h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">';
-            h += '<span style="color:var(--text-secondary);text-transform:capitalize;">' + cat + '</span>';
-            h += '<span><strong style="color:var(--text-primary);">' + yours + '</strong> <span style="color:var(--text-muted);">vs</span> ' + avg + ' <span style="color:' + diffColor + ';font-weight:700;">(' + (diff >= 0 ? '+' : '') + diff + ')</span></span>';
-            h += '</div>';
-        });
-    }
-    if (ind.summary) {
-        h += '<div style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.6;border-left:3px solid var(--gold);">' + escH(ind.summary) + '</div>';
-    }
-    return h;
-}
-
-function escH(t) { return (t || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }</script>
-<script>
-function showResults(url,d,checkResult){
-    const btn=document.getElementById('audit-btn');btn.classList.remove('scanning');btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> BSCAN It';document.getElementById('terminal-wrap').classList.remove('active');
-    const isPaid=checkResult&&(checkResult.plan==='pro'||checkResult.plan==='agency');const hasAccount=checkResult&&checkResult.has_account;const o=d.overall_score||0;
-    const sc={seo:d.seo_score||0,performance:d.performance_score||0,accessibility:d.accessibility_score||0,security:d.security_score||0,mobile:d.mobile_score||0,links:d.links_score||0};
-    document.getElementById('results-url').textContent=url;
-    const fg=document.getElementById('ring-fg'),ci=295.31,offset=ci-(o/100)*ci;const color=o>=80?'var(--success)':o>=60?'var(--info)':o>=40?'var(--warning)':'var(--danger)';
-    fg.style.stroke=color;fg.style.strokeDashoffset=ci;setTimeout(()=>{fg.style.strokeDashoffset=offset;},80);
-    const numEl=document.getElementById('ring-num');numEl.style.color=color;animateNum(numEl,0,o,1000);
-    const ti=document.getElementById('o-title'),de=document.getElementById('o-desc');
-    if(o>=80){ti.textContent='Excellent — well optimised';de.textContent='Only minor tweaks needed. Your site follows most best practices.';}
-    else if(o>=60){ti.textContent='Good — room for improvement';de.textContent='Solid foundation but several issues are affecting rankings and user experience.';}
-    else if(o>=40){ti.textContent='Needs work — multiple issues found';de.textContent='Fixing these could significantly boost your visibility and conversions.';}
-    else{ti.textContent='Critical — immediate action needed';de.textContent='Major issues across multiple categories. This is costing you traffic right now.';}
-    const sumBox=document.getElementById('summary-box');sumBox.innerHTML='';
-    if(d.summary)sumBox.innerHTML='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:var(--text-secondary);line-height:1.7;border-left:3px solid '+color+'">'+d.summary+'</div>';
-    const g=document.getElementById('scores-grid');g.innerHTML='';
-    renderScoreCards(g, sc, d, isPaid, url);
-    // Enrichment display
-    renderEnrichment(d.enrichment||{},isPaid);
-    // Issues
-    const issues=d.issues||[];const bx=document.getElementById('issues-box');bx.innerHTML='';
-    const groups=[{items:issues.filter(i=>i.severity==='critical'),type:'crit',title:'Critical Issues',icon:'✗'},{items:issues.filter(i=>i.severity==='warning'),type:'warn',title:'Warnings',icon:'⚠'},{items:issues.filter(i=>i.severity==='pass'),type:'pass',title:'Passed Checks',icon:'✓'}];
-    if(isPaid){groups.forEach(gr=>{if(!gr.items.length)return;const s=document.createElement('div');s.className='issues-group';s.innerHTML='<h3>'+gr.title+' <span class="count-badge '+gr.type+'">'+gr.items.length+'</span></h3>';gr.items.forEach(it=>{const div=document.createElement('div');div.className='issue';div.innerHTML=buildIssue(it,gr,url,true);s.appendChild(div);});bx.appendChild(s);});if(!localStorage.getItem('bscan_token')&&hasAccount){const lb=document.createElement('div');lb.style.cssText='background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:10px;flex-wrap:wrap;';lb.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span><a href="/account" style="color:#3b82f6;font-weight:700;text-decoration:none;">Log in</a> to save this scan to your dashboard and export PDFs.</span>';bx.prepend(lb);}}
-    else{const eb=document.createElement('div');eb.style.cssText='background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(59,130,246,.06));border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;';eb.innerHTML='<div style="width:40px;height:40px;border-radius:50%;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">✉</div><div style="flex:1;min-width:200px"><div style="font-weight:700;color:var(--success);font-size:14px;margin-bottom:2px">Report sent to your email!</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.5">We\'ve sent your basic audit report. Upgrade to Pro for Core Web Vitals and full analysis.</div></div>';bx.appendChild(eb);
-    groups.forEach(gr=>{if(!gr.items.length)return;const s=document.createElement('div');s.className='issues-group';s.innerHTML='<h3>'+gr.title+' <span class="count-badge '+gr.type+'">'+gr.items.length+'</span></h3>';gr.items.forEach((it,idx)=>{const div=document.createElement('div');div.className='issue';if(idx>=2){div.style.filter='blur(5px)';div.style.pointerEvents='none';div.style.userSelect='none';}div.innerHTML=buildIssue(it,gr,url,idx<2);s.appendChild(div);});if(gr.items.length>2){const lock=document.createElement('div');lock.style.cssText='text-align:center;padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-top:8px;';lock.innerHTML='<div style="font-size:14px;color:var(--text-muted);margin-bottom:10px">🔒 '+(gr.items.length-2)+' more issues hidden</div>'+(hasAccount?'<a href="/account" style="color:var(--accent-blue);font-weight:700;font-size:13px;text-decoration:none">Log in to your account →</a>':'<a href="/#pricing" style="color:var(--accent-gold);font-weight:700;font-size:13px;text-decoration:none">Upgrade to Pro to see all issues →</a>');s.appendChild(lock);}bx.appendChild(s);});
-    const cwv=document.createElement('div');cwv.style.cssText='background:var(--bg-card);border:2px dashed var(--border-light);border-radius:14px;padding:28px;text-align:center;margin-top:20px;margin-bottom:20px;';cwv.innerHTML='<div style="font-size:28px;margin-bottom:10px">⚡</div><h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px">Core Web Vitals Analysis</h3><p style="font-size:12px;color:var(--text-secondary);line-height:1.6;max-width:400px;margin:0 auto 16px">Unlock Google Lighthouse metrics: Largest Contentful Paint, Cumulative Layout Shift, Total Blocking Time, Speed Index, and more.</p><a href="/#pricing" style="display:inline-block;padding:10px 24px;background:var(--accent-gold);color:var(--bg-deep);border-radius:8px;font-weight:700;font-size:13px;text-decoration:none">Upgrade to Pro — £9/mo</a>';bx.appendChild(cwv);
-    if(hasAccount&&!localStorage.getItem('bscan_token')){const sp=document.createElement('div');sp.style.cssText='background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.15);border-radius:10px;padding:14px 18px;margin-top:16px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:10px;flex-wrap:wrap;';sp.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>You have a BSCAN account! <a href="/account" style="color:#f5a623;font-weight:700;text-decoration:none">Sign in</a> to access your dashboard.</span>';bx.appendChild(sp);}
-    else if(!hasAccount){const sp=document.createElement('div');sp.style.cssText='background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.12);border-radius:10px;padding:14px 18px;margin-top:16px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:10px;flex-wrap:wrap;';sp.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>New here? <a href="/account" style="color:#3b82f6;font-weight:700;text-decoration:none">Create a free account</a> to save scans and track improvements.</span>';bx.appendChild(sp);}}
-    // Badge & Share
-    const badgeBox=document.getElementById('badge-box');badgeBox.innerHTML='';
-    if(d.id){const badgeUrl=API+'/api/scan/'+d.id+'/badge';const embedCode='&lt;a href="https://bscan.balancewises.io" target="_blank" rel="noopener"&gt;&lt;img src="'+badgeUrl+'" alt="Website Score — BSCAN" width="200" height="80"&gt;&lt;/a&gt;';const mdCode='[![Website Score]('+badgeUrl+')](https://bscan.balancewises.io)';
-    badgeBox.innerHTML='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:24px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div style="font-size:20px">🏅</div><div><div style="font-weight:700;font-size:14px">Share Your Score</div><div style="font-size:12px;color:var(--text-muted)">Embed this badge on your website or README</div></div></div><div style="text-align:center;margin-bottom:16px;padding:20px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border)"><img src="'+badgeUrl+'" alt="Score Badge" width="200" height="80" style="max-width:100%"></div><div style="margin-bottom:10px"><div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-family:Space Mono,monospace">HTML Embed</div><div style="position:relative"><code id="embed-html" style="display:block;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--text-secondary);font-family:Space Mono,monospace;word-break:break-all;line-height:1.5">'+embedCode+'</code><button onclick="navigator.clipboard.writeText(document.getElementById(\'embed-html\').textContent);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)" style="position:absolute;top:6px;right:6px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Copy</button></div></div><div style="margin-bottom:14px"><div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-family:Space Mono,monospace">Markdown</div><div style="position:relative"><code id="embed-md" style="display:block;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--text-secondary);font-family:Space Mono,monospace;word-break:break-all">'+mdCode+'</code><button onclick="navigator.clipboard.writeText(document.getElementById(\'embed-md\').textContent);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)" style="position:absolute;top:6px;right:6px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Copy</button></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="https://twitter.com/intent/tweet?text=My website scored '+o+'/100 on BSCAN! Check yours: https://bscan.balancewises.io" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);color:var(--text-secondary);font-size:11px;font-weight:600;text-decoration:none">Share on X</a><a href="https://www.linkedin.com/sharing/share-offsite/?url=https://bscan.balancewises.io" target="_blank" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);color:var(--text-secondary);font-size:11px;font-weight:600;text-decoration:none">Share on LinkedIn</a><a href="/leaderboard" style="padding:6px 14px;border-radius:6px;border:1px solid rgba(245,166,35,.2);color:var(--accent-gold);font-size:11px;font-weight:600;text-decoration:none">🏆 View Leaderboard</a></div></div>';}
-    document.getElementById('results').classList.add('active');document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
-    window._lastScanId = d.id;
-    function animateNum(el,fr,to,dur){const st=performance.now();function tick(n){const p=Math.min((n-st)/dur,1);el.textContent=Math.round(fr+(to-fr)*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(tick);}requestAnimationFrame(tick);}
-
-// Achievements + Challenge (fetch async, don't block results)
-if (d.id) {
-    fetch(API + '/api/scan/' + d.id + '/challenge')
-        .then(function(r) { return r.json(); })
-        .then(function(ch) {
-            var achs = ch.achievements || [];
-            var challengeUrl = ch.challenge_url || '';
-
-            var achHtml = '';
-
-            // Achievement badges
-            if (achs.length > 0) {
-                achHtml += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:16px;margin-bottom:16px">';
-                achHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:20px">🏅</span><div><div style="font-weight:700;font-size:14px">Achievement Badges Earned</div><div style="font-size:12px;color:var(--text-muted)">' + achs.length + ' badge' + (achs.length > 1 ? 's' : '') + ' — embed these on your website for free</div></div></div>';
-
-                // Badge grid
-                achHtml += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">';
-                achs.forEach(function(a) {
-                    achHtml += '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:' + a.color + '10;border:1px solid ' + a.color + '25">'
-                        + '<span style="font-size:18px">' + a.icon + '</span>'
-                        + '<div><div style="font-size:12px;font-weight:700;color:' + a.color + '">' + a.title + '</div>'
-                        + '<div style="font-size:10px;color:var(--text-muted)">' + a.description + '</div></div></div>';
-                });
-                achHtml += '</div>';
-
-                // Embed codes for first achievement
-                var firstAch = achs[0];
-                var achSvgUrl = API + '/api/scan/' + d.id + '/achievement/' + firstAch.id;
-                var achEmbed = '<a href="https://bscan.balancewises.io" target="_blank"><img src="' + achSvgUrl + '" alt="' + firstAch.title + ' — BSCAN" width="220" height="80"></a>';
-                achHtml += '<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-family:Space Mono,monospace">Embed ' + firstAch.title + ' Badge</div>';
-                achHtml += '<div style="position:relative"><code style="display:block;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:10px;color:var(--text-secondary);font-family:Space Mono,monospace;word-break:break-all;line-height:1.4">' + achEmbed.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code>';
-                achHtml += '<button onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)" style="position:absolute;top:4px;right:4px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Copy</button></div></div>';
-
-                // Preview
-                achHtml += '<div style="text-align:center;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border)">';
-                achs.forEach(function(a) {
-                    achHtml += '<img src="' + API + '/api/scan/' + d.id + '/achievement/' + a.id + '" alt="' + a.title + '" width="220" height="80" style="margin:4px">';
-                });
-                achHtml += '</div>';
-
-                achHtml += '</div>';
-            }
-
-            // Challenge share section
-            achHtml += '<div style="background:linear-gradient(135deg,rgba(245,166,35,.08),rgba(59,130,246,.06));border:1px solid var(--border-light);border-radius:14px;padding:28px;text-align:center;margin-top:16px;margin-bottom:16px">';
-            achHtml += '<div style="font-size:28px;margin-bottom:8px">⚔️</div>';
-            achHtml += '<h3 style="font-size:18px;font-weight:800;font-style:italic;margin-bottom:6px">Challenge Your Competitors</h3>';
-            achHtml += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.5">Share your score and challenge others to beat it.<br>Every click brings them to BSCAN.</p>';
-
-            // Share buttons
-            achHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px">';
-
-            var shareUrls = ch.share_urls || {};
-            if (shareUrls.twitter) {
-                achHtml += '<a href="' + shareUrls.twitter + '" target="_blank" style="padding:10px 20px;border-radius:8px;background:#000;color:#fff;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px">𝕏 Share on X</a>';
-            }
-            if (shareUrls.linkedin) {
-                achHtml += '<a href="' + shareUrls.linkedin + '" target="_blank" style="padding:10px 20px;border-radius:8px;background:#0a66c2;color:#fff;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px">in Share on LinkedIn</a>';
-            }
-            if (shareUrls.whatsapp) {
-                achHtml += '<a href="' + shareUrls.whatsapp + '" target="_blank" style="padding:10px 20px;border-radius:8px;background:#25d366;color:#fff;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px">💬 WhatsApp</a>';
-            }
-            if (shareUrls.email) {
-                achHtml += '<a href="' + shareUrls.email + '" style="padding:10px 20px;border-radius:8px;background:var(--bg-card);color:var(--text-primary);font-size:12px;font-weight:700;text-decoration:none;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px">✉️ Email Challenge</a>';
-            }
-            achHtml += '</div>';
-
-            // Copy challenge link
-            achHtml += '<div style="display:flex;align-items:center;gap:8px;max-width:500px;margin:0 auto">';
-            achHtml += '<input id="challenge-url" readonly value="' + challengeUrl + '" style="flex:1;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;font-family:Space Mono,monospace;color:var(--text-secondary);outline:none;min-width:0">';
-            achHtml += '<button onclick="navigator.clipboard.writeText(document.getElementById(\'challenge-url\').value);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy Link\',2000)" style="padding:10px 16px;border-radius:8px;background:var(--accent-gold);color:var(--bg-deep);font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:inherit;white-space:nowrap">Copy Link</button>';
-            achHtml += '</div>';
-
-            achHtml += '</div>';
-
-            // Insert after badge-box
-            var badgeBox = document.getElementById('badge-box');
-            if (badgeBox) {
-                var achContainer = document.createElement('div');
-                achContainer.innerHTML = achHtml;
-                badgeBox.after(achContainer);
-            }
-        })
-        .catch(function() {}); // Don't break results if this fails
-      }
-}
-  // ── Challenge handler ────────────────────────────────
-  (function() {
-      var params = new URLSearchParams(location.search);
-      var challengeId = params.get('challenge');
-      if (!challengeId) return;
-
-      // Fetch challenge data
-      fetch(API + '/api/scan/' + challengeId + '/challenge')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-              if (!d.domain || !d.score) return;
-
-              // Build challenge banner
-              var banner = document.createElement('div');
-              banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:90;background:linear-gradient(135deg,#141d33,#1a2542);border-top:2px solid var(--accent-gold);padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;animation:fadeUp .4s ease-out;';
-
-              var scoreColor = d.score >= 80 ? 'var(--success)' : d.score >= 60 ? 'var(--info)' : d.score >= 40 ? 'var(--warning)' : 'var(--danger)';
-
-              banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px">'
-                  + '<div style="width:44px;height:44px;border-radius:10px;background:' + scoreColor + '20;border:2px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:' + scoreColor + '">' + d.score + '</div>'
-                  + '<div><div style="font-weight:700;font-size:14px;color:var(--text-primary)">' + d.domain + ' scored ' + d.score + '/100</div>'
-                  + '<div style="font-size:12px;color:var(--accent-gold)">Can your website beat it? Paste your URL above and find out!</div></div></div>'
-                  + '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px">✕</button>';
-
-              document.body.appendChild(banner);
-
-              // Also pre-fill a message in the hero
-              var heroSub = document.querySelector('.hero-sub');
-              if (heroSub) {
-                  heroSub.innerHTML = '<strong style="color:var(--accent-gold)">' + d.domain + '</strong> scored <strong style="color:' + scoreColor + '">' + d.score + '/100</strong>. Think your site is better? Paste your URL and find out.';
-              }
-
-              // Show achievements if any
-              if (d.achievements && d.achievements.length > 0) {
-                  var achDiv = document.createElement('div');
-                  achDiv.style.cssText = 'display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap;';
-                  d.achievements.forEach(function(a) {
-                      achDiv.innerHTML += '<span style="font-size:11px;padding:4px 12px;border-radius:100px;background:' + a.color + '15;color:' + a.color + ';border:1px solid ' + a.color + '30;font-family:Space Mono,monospace;font-weight:600">' + a.icon + ' ' + a.title + '</span>';
-                  });
-                  var auditBox = document.querySelector('.audit-box');
-                  if (auditBox) auditBox.appendChild(achDiv);
-              }
-          })
-          .catch(function() {}); // Silently fail if challenge not found
-  })();
-    </script>
-    <!-- ADD this JS (before </body> or in your existing <script>) -->
-<script>
-(function() {
-  var menuOpen = false;
- 
-  window.toggleMobileMenu = function() {
-    menuOpen = !menuOpen;
-    var menu = document.getElementById('mobile-menu');
-    var iconOpen = document.getElementById('menu-icon-open');
-    var iconClose = document.getElementById('menu-icon-close');
- 
-    if (menuOpen) {
-      menu.classList.add('open');
-      iconOpen.style.display = 'none';
-      iconClose.style.display = 'block';
-    } else {
-      menu.classList.remove('open');
-      iconOpen.style.display = 'block';
-      iconClose.style.display = 'none';
-    }
-  };
- 
-  window.closeMobileMenu = function() {
-    menuOpen = false;
-    var menu = document.getElementById('mobile-menu');
-    var iconOpen = document.getElementById('menu-icon-open');
-    var iconClose = document.getElementById('menu-icon-close');
-    if (menu) menu.classList.remove('open');
-    if (iconOpen) iconOpen.style.display = 'block';
-    if (iconClose) iconClose.style.display = 'none';
-  };
- 
-  // Close menu if window resizes above mobile
-  window.addEventListener('resize', function() {
-    if (window.innerWidth > 640) closeMobileMenu();
-  });
- 
-  // Close on escape
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeMobileMenu();
-  });
-})();
-</script>
+    <script src="/assets/js/scanner.js"></script>
   </body>
 </html>
