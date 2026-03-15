@@ -647,11 +647,11 @@ Replaces the static score grid with clickable cards that:
     <section id="pricing" style="padding:60px 0 40px;">
   <div style="text-align:center;margin-bottom:32px;">
     <div class="badge">Pricing</div>
-    <h2 style="font-size:clamp(24px,3.5vw,34px);font-weight:800;font-style:italic;letter-spacing:-1px;margin-bottom:8px;">Choose Your <span style="color:color:var(--accent-gold);">Plan</span></h2>
+    <h2 style="font-size:clamp(24px,3.5vw,34px);font-weight:800;font-style:italic;letter-spacing:-1px;margin-bottom:8px;">Choose Your <span style="color:var(--accent-gold);">Plan</span></h2>
     <p style="color:var(--text-secondary);font-size:14px;">Start free. Upgrade when you need more power.</p>
     <div style="margin-top:16px;display:inline-flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:3px;">
       <button id="tog-m" onclick="setBillingInterval('monthly')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:var(--accent-blue);color:#fff;">Monthly</button>
-      <button id="tog-a" onclick="setBillingInterval('annual')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:transparent;color:color:var(--text-secondary);">Annual <span style="color:var(--success);font-size:10px;">Save 20%</span></button>
+      <button id="tog-a" onclick="setBillingInterval('annual')" style="padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;border:none;font-family:inherit;background:transparent;color:var(--text-secondary);">Annual <span style="color:var(--success);font-size:10px;">Save 20%</span></button>
     </div>
   </div>
  
@@ -1090,7 +1090,22 @@ let capturedEmail=localStorage.getItem('bscan_email')||'',capturedName=localStor
 if(!localStorage.getItem('bscan_token')){capturedEmail='';capturedName='';}
 let lastCheckResult=null;
 
-function setBillingInterval(i){currentInterval=i;document.querySelectorAll('.billing-toggle-label').forEach(e=>e.classList.toggle('active',e.dataset.interval===i));const p=PRICING.pro[i];document.getElementById('pro-price').textContent=p;document.getElementById('pro-interval').textContent='/mo';document.getElementById('pro-annual-note').innerHTML=i==='annual'?'Billed as <strong>£'+(p*12)+'/year</strong> · <span class="save-text">Save 20%</span>':'&nbsp;';const a=PRICING.agency[i];document.getElementById('agency-price').textContent=a;document.getElementById('agency-interval').textContent='/mo';document.getElementById('agency-annual-note').innerHTML=i==='annual'?'Billed as <strong>£'+(a*12)+'/year</strong> · <span class="save-text">Save 20%</span>':'&nbsp;';}
+function setBillingInterval(i){
+    currentInterval=i;
+    // Toggle button styles
+    document.getElementById('tog-m').style.background=i==='monthly'?'var(--accent-blue)':'transparent';
+    document.getElementById('tog-m').style.color=i==='monthly'?'#fff':'var(--text-secondary)';
+    document.getElementById('tog-a').style.background=i==='annual'?'var(--accent-blue)':'transparent';
+    document.getElementById('tog-a').style.color=i==='annual'?'#fff':'var(--text-secondary)';
+    // Toggle price displays
+    document.querySelectorAll('.price-monthly').forEach(function(el){el.style.display=i==='monthly'?'inline':'none';});
+    document.querySelectorAll('.price-annual').forEach(function(el){el.style.display=i==='annual'?'inline':'none';});
+    // Update period text
+    document.querySelectorAll('.plan-period').forEach(function(el){
+        if(el.closest('.plan-free'))return;
+        el.textContent=i==='annual'?'per month (billed annually)':'per month';
+    });
+}
 function startStripeCheckout(plan){checkoutPlan=plan;const ia=currentInterval==='annual',pr=PRICING[plan]?PRICING[plan][currentInterval]:'?',pn=plan.charAt(0).toUpperCase()+plan.slice(1);document.getElementById('checkout-plan-name').textContent=pn;document.getElementById('checkout-plan-tag').textContent=pn+' · '+(ia?'Annual':'Monthly');document.getElementById('checkout-plan-tag').className='checkout-plan-tag '+plan;document.getElementById('checkout-sub').textContent='£'+pr+'/'+(ia?'mo (billed annually)':'mo')+' — enter your email to continue to secure checkout.';const b=document.getElementById('checkout-submit-btn');b.className=plan==='pro'?'checkout-submit gold':'checkout-submit blue';b.innerHTML='Continue to Checkout →';b.disabled=false;const ei=document.getElementById('checkout-email');ei.value=localStorage.getItem('bscan_email')||'';ei.classList.remove('error');document.getElementById('checkout-email-error').classList.remove('active');document.getElementById('checkout-overlay').classList.add('active');setTimeout(()=>ei.focus(),100);}
 function closeCheckoutModal(){document.getElementById('checkout-overlay').classList.remove('active');}
 document.getElementById('checkout-email').addEventListener('keydown',e=>{if(e.key==='Enter')submitCheckout();e.target.classList.remove('error');document.getElementById('checkout-email-error').classList.remove('active');});
