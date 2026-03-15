@@ -413,6 +413,9 @@ loadBoard('week');
   #chat-window{width:calc(100vw - 16px) !important;right:-12px !important;bottom:66px !important;border-radius:14px !important;}
   #chat-messages{height:300px !important;}
 }
+@media(max-width:768px){
+  #chat-window{width:calc(100vw - 32px) !important;}
+}
 </style>
 
 <script>
@@ -437,6 +440,7 @@ window.toggleChat = function() {
     document.getElementById('chat-window').style.display = chatOpen ? 'block' : 'none';
     document.getElementById('chat-btn-icon').textContent = chatOpen ? '✕' : '💬';
     document.getElementById('chat-unread').style.display = 'none';
+    if (window.innerWidth <= 768) document.body.style.overflow = chatOpen ? 'hidden' : '';
     if (chatOpen) {
         document.getElementById('chat-input').focus();
         currentScanId = getScanId();
