@@ -1,0 +1,349 @@
+/**
+ * BSCAN API Client
+ * Matches FastAPI backend at api-bscan.balancewises.io
+ */
+
+import type {
+	ScanResult,
+	ScanCheckResult,
+	User,
+	LeaderboardEntry,
+	LeaderboardPeriod,
+	TeamData,
+	ChallengeData,
+	BillingInterval
+} from '$lib/types';
+import { safeGetStorage } from '$lib/utils/security';
+import { PUBLIC_API_BASE } from '$env/static/public';
+
+const API_BASE = PUBLIC_API_BASE;
+
+class ApiError extends Error {
+	status: number;
+	detail: string;
+	constructor(status: number, detail: string) {
+		super(detail);
+		this.status = status;
+		this.detail = detail;
+	}
+}
+
+function getToken(): string | null {
+	return safeGetStorage('bscan_token');
+}
+
+function authHeaders(): Record<string, string> {
+	const token = getToken();
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	if (token) headers['Authorization'] = `Bearer ${token}`;
+	return headers;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+	const res = await fetch(`${API_BASE}${path}`, {
+		...options,
+		headers: { ...authHeaders(), ...(options.headers || {}) }
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		throw new ApiError(res.status, body.detail || `Request failed (${res.status})`);
+	}
+	return res.json();
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH — matches /api/auth/*
+// ══════════════════════════════════════════════════════════
+
+/** Backend returns { access_token, token_type, user: UserResponse } */
+interface AuthResponse {
+	access_token: string;
+	token_type: string;
+	user: User;
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+	return request('/api/auth/login', {
+		method: 'POST',
+		body: JSON.stringify({ email, password })
+	});
+}
+
+export async function register(email: string, password: string, name: string): Promise<AuthResponse> {
+	return request('/api/auth/register', {
+		method: 'POST',
+		body: JSON.stringify({ email, password, name })
+	});
+}
+
+export async function getMe(): Promise<User> {
+	return request('/api/auth/me');
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+	return request('/api/auth/change-password', {
+		method: 'POST',
+		body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+	});
+}
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+	return request('/api/auth/forgot-password', {
+		method: 'POST',
+		body: JSON.stringify({ email })
+	});
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+	return request('/api/auth/reset-password', {
+		method: 'POST',
+		body: JSON.stringify({ token, new_password: newPassword })
+	});
+}
+
+/** Redeem promo code — POST /api/auth/redeem */
+export async function redeemPromo(code: string): Promise<{ message: string; plan: string; expires: string }> {
+	return request('/api/auth/redeem', {
+		method: 'POST',
+		body: JSON.stringify({ code })
+	});
+}
+
+// ══════════════════════════════════════════════════════════
+// SCANNING — matches /api/scan/*
+// ══════════════════════════════════════════════════════════
+
+export async function checkScanAllowance(email: string): Promise<ScanCheckResult> {
+	return request('/api/scan/check', {
+		method: 'POST',
+		body: JSON.stringify({ email })
+	});
+}
+
+export async function runScan(url: string, email: string, businessName?: string): Promise<ScanResult> {
+	return request('/api/scan', {
+		method: 'POST',
+		body: JSON.stringify({ url, email, business_name: businessName || '' })
+	});
+}
+
+export async function getScan(scanId: string): Promise<ScanResult> {
+	return request(`/api/scan/${scanId}`);
+}
+
+/** Detailed scan view from history — GET /api/scan/{id}/detail */
+export async function getScanDetail(scanId: string): Promise<any> {
+	return request(`/api/scan/${scanId}/detail`);
+}
+
+export async function getScanChallenge(scanId: string): Promise<ChallengeData> {
+	return request(`/api/scan/${scanId}/challenge`);
+}
+
+export async function getScanAchievements(scanId: string): Promise<{ achievements: any[] }> {
+	return request(`/api/scan/${scanId}/achievements`);
+}
+
+export function getScanBadgeUrl(scanId: string): string {
+	return `${API_BASE}/api/scan/${scanId}/badge`;
+}
+
+export function getAchievementBadgeUrl(scanId: string, achievementId: string): string {
+	return `${API_BASE}/api/scan/${scanId}/achievement/${achievementId}`;
+}
+
+/** Compare — POST /api/scan/compare */
+export async function compareSites(urlA: string, urlB: string): Promise<any> {
+	return request('/api/scan/compare', {
+		method: 'POST',
+		body: JSON.stringify({ url_a: urlA, url_b: urlB })
+	});
+}
+
+// ══════════════════════════════════════════════════════════
+// CHAT — POST /api/scan/chat
+// ══════════════════════════════════════════════════════════
+
+export async function sendChatMessage(
+	message: string,
+	scanId: string | null,
+	history: Array<{ role: string; content: string }>
+): Promise<{ reply: string; scan_id?: string }> {
+	return request('/api/scan/chat', {
+		method: 'POST',
+		body: JSON.stringify({ message, scan_id: scanId, conversation_history: history.slice(-10) })
+	});
+}
+
+// ══════════════════════════════════════════════════════════
+// HISTORY — matches /api/scans/history & /api/history/*
+// ══════════════════════════════════════════════════════════
+
+/** Cursor-paginated scan history — GET /api/scans/history */
+export async function getScanHistory(cursor?: string, limit: number = 20): Promise<{
+	items: ScanResult[];
+	next_cursor: string | null;
+	has_more: boolean;
+}> {
+	const params = new URLSearchParams({ limit: String(limit) });
+	if (cursor) params.set('cursor', cursor);
+	return request(`/api/scans/history?${params}`);
+}
+
+/** Compare history — GET /api/history/compares */
+export async function getCompareHistory(): Promise<any> {
+	return request('/api/history/compares');
+}
+
+/** SEO history — GET /api/history/seo */
+export async function getSeoHistory(): Promise<any> {
+	return request('/api/history/seo');
+}
+
+// ══════════════════════════════════════════════════════════
+// LEADERBOARD — GET /api/scans/leaderboard
+// ══════════════════════════════════════════════════════════
+
+export async function getLeaderboard(
+	period: LeaderboardPeriod = 'week',
+	limit: number = 25
+): Promise<{ leaderboard: LeaderboardEntry[] }> {
+	return request(`/api/scans/leaderboard?period=${period}&limit=${limit}`);
+}
+
+// ══════════════════════════════════════════════════════════
+// PROFILE — matches /api/profile/*
+// ══════════════════════════════════════════════════════════
+
+export interface ProfileData {
+	username?: string;
+	display_name?: string;
+	phone?: string;
+	company?: string;
+	address_line1?: string;
+	address_line2?: string;
+	city?: string;
+	postcode?: string;
+	country?: string;
+	website?: string;
+	bio?: string;
+}
+
+export async function getPublicProfile(userId: string): Promise<any> {
+	return request(`/api/profile/${userId}`);
+}
+
+export async function updateProfile(email: string, data: ProfileData): Promise<{ message: string }> {
+	return request('/api/profile/update', {
+		method: 'PUT',
+		body: JSON.stringify({ ...data, email })
+	});
+}
+
+export async function checkUsername(username: string): Promise<{ available: boolean; reason?: string }> {
+	return request(`/api/profile/username/check/${encodeURIComponent(username)}`);
+}
+
+// ══════════════════════════════════════════════════════════
+// TEAM — matches /api/team/*
+// ══════════════════════════════════════════════════════════
+
+export async function getTeam(): Promise<{
+	team: any[];
+	is_owner: boolean;
+	count: number;
+	max_members: number;
+}> {
+	return request('/api/team');
+}
+
+export async function inviteTeamMember(email: string, role: string = 'member'): Promise<{ message: string; status: string }> {
+	return request('/api/team/invite', {
+		method: 'POST',
+		body: JSON.stringify({ email, role })
+	});
+}
+
+/** Accept invite — POST /api/team/accept (NOT /accept-invite) */
+export async function acceptInvite(token: string): Promise<{ message: string }> {
+	return request('/api/team/accept', {
+		method: 'POST',
+		body: JSON.stringify({ token })
+	});
+}
+
+export async function removeTeamMember(memberId: string): Promise<{ message: string }> {
+	return request(`/api/team/members/${memberId}`, { method: 'DELETE' });
+}
+
+// ══════════════════════════════════════════════════════════
+// BILLING — matches /api/billing/*
+// ══════════════════════════════════════════════════════════
+
+export async function createCheckout(
+	plan: 'pro' | 'agency',
+	email: string,
+	interval: BillingInterval
+): Promise<{ checkout_url: string }> {
+	return request(`/api/billing/checkout/${plan}`, {
+		method: 'POST',
+		body: JSON.stringify({ email, interval })
+	});
+}
+
+/** Stripe customer portal — POST /api/billing/portal */
+export async function createBillingPortal(): Promise<{ url: string }> {
+	return request('/api/billing/portal', { method: 'POST' });
+}
+
+// ══════════════════════════════════════════════════════════
+// API KEYS — matches /api/v1/keys/*
+// ══════════════════════════════════════════════════════════
+
+export async function createApiKey(name: string): Promise<any> {
+	return request('/api/v1/keys', {
+		method: 'POST',
+		body: JSON.stringify({ name })
+	});
+}
+
+export async function listApiKeys(): Promise<any[]> {
+	return request('/api/v1/keys');
+}
+
+export async function revokeApiKey(keyId: string): Promise<{ message: string }> {
+	return request(`/api/v1/keys/${keyId}`, { method: 'DELETE' });
+}
+
+// ══════════════════════════════════════════════════════════
+// SEO — matches /api/seo/*
+// ══════════════════════════════════════════════════════════
+
+export async function keywordResearch(keyword: string): Promise<any> {
+	return request('/api/seo/keywords', {
+		method: 'POST',
+		body: JSON.stringify({ keyword })
+	});
+}
+
+export async function getBacklinks(domain: string): Promise<any> {
+	return request('/api/seo/backlinks', {
+		method: 'POST',
+		body: JSON.stringify({ domain })
+	});
+}
+
+export async function getSeoAutocomplete(query: string): Promise<any> {
+	return request(`/api/seo/autocomplete?q=${encodeURIComponent(query)}`);
+}
+
+// ══════════════════════════════════════════════════════════
+// PDF — GET /api/scan/{id}/pdf (auth required)
+// ══════════════════════════════════════════════════════════
+
+export function getPdfDownloadUrl(scanId: string): string {
+	const token = getToken();
+	return `${API_BASE}/api/scan/${scanId}/pdf${token ? `?token=${token}` : ''}`;
+}
+
+export { ApiError, API_BASE };
