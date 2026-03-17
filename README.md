@@ -65,21 +65,6 @@ src/
 | Deployment  | Static adapter (GitHub Pages ready)   |
 | Fonts       | Instrument Sans + JetBrains Mono      |
 
-## Quick Start
-
-```bash
-# Install
-npm install
-
-# Dev server
-npm run dev
-
-# Build for production (static)
-npm run build
-
-# Preview production build
-npm run preview
-```
 
 ## What Changed vs. Old Codebase
 
@@ -99,32 +84,7 @@ npm run preview
 
 ## Environment
 
-The app connects to your existing API at `https://api-bscan.balancewises.io`. No backend changes needed — it's a drop-in frontend replacement.
-
-## Deployment (GitHub Pages)
-
-```bash
-npm run build
-# Commit contents of build/ to your gh-pages branch
-# Or use GitHub Actions to automate
-```
-
-Add a CNAME file to static/ with your domain:
-```
-bscan.balancewises.io
-```
-
-## Remaining TODO (from your backlog)
-
-- [ ] Stripe live key switchover
-- [ ] AI Fix Generator (Groq/Llama integration)
-- [ ] Scheduled monitoring
-- [ ] Annual pricing toggle persistence
-- [ ] Mobile responsiveness polish pass
-- [ ] Enrichment section component (tech stack, SSL, WHOIS, etc.)
-- [ ] Badge/Achievement rendering in results
-- [ ] Challenge sharing flow
-- [ ] PDF export integration
+The app connects to an existing API at `https://api-bscan.balancewises.io`. No backend changes needed — it's a drop-in frontend replacement.
 
 ## Plans
 
