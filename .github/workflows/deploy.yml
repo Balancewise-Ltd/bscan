@@ -36,8 +36,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          PUBLIC_API_BASE: https://bscan-api.balancewises.io
-
+          PUBLIC_API_BASE: https://api-bscan.balancewises.io
+          PUBLIC_SITE_URL: https://bscan.balancewises.io
+          PUBLIC_SITE_NAME: BSCAN
+          
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
