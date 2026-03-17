@@ -5,7 +5,7 @@
 The "big tech" version of BSCAN — rebuilt from the ground up with SvelteKit 5, TypeScript, reactive stores, proper component architecture, and real-time scan progress.
 
 ## Live
-
+-**Company:** [balancewises.io](https://balancewises.io)
 - **Scanner:** [bscan.balancewises.io](https://bscan.balancewises.io)
 - **Dashboard:** [bscan.balancewises.io/account](https://bscan.balancewises.io/account)
 - **API Docs:** [bscan.balancewises.io/api-docs](https://bscan.balancewises.io/api-docs)
