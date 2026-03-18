@@ -361,6 +361,9 @@
 		<!-- ── OVERVIEW TAB ─────────────────────── -->
 		{#if activeTab === 'overview'}
 			<div class="tab-content animate-fade-up">
+				<h2 class="dash-title">Dashboard</h2>
+
+				<!-- Stats Row -->
 				<div class="stats-grid">
 					<div class="stat-card">
 						<div class="stat-label">Plan</div>
@@ -382,27 +385,39 @@
 					</div>
 				</div>
 
-				<!-- Quick Actions -->
-				<div class="quick-actions">
-					<a href="/" class="action-card">
-						<span class="action-icon">🔍</span>
-						<span>New Scan</span>
+				<!-- Big Action Cards (2x2) -->
+				<div class="action-grid">
+					<a href="/" class="big-action-card action-scan">
+						<div class="big-action-icon">🔍</div>
+						<div class="big-action-text">
+							<h3>New Scan</h3>
+							<p>Get a complete website audit — scores, issues, and fixes.</p>
+						</div>
 					</a>
-					<a href="/compare" class="action-card">
-						<span class="action-icon">⚔️</span>
-						<span>Compare</span>
+					<a href="/compare" class="big-action-card action-compare">
+						<div class="big-action-icon">📊</div>
+						<div class="big-action-text">
+							<h3>Compare</h3>
+							<p>See how two sites stack up across all categories.</p>
+						</div>
 					</a>
-					<a href="/seo" class="action-card">
-						<span class="action-icon">📊</span>
-						<span>SEO Tools</span>
+					<a href="/seo" class="big-action-card action-seo">
+						<div class="big-action-icon">🎯</div>
+						<div class="big-action-text">
+							<h3>SEO Tools</h3>
+							<p>Keywords, backlinks, Search Console, and more.</p>
+						</div>
 					</a>
-					<a href="/team" class="action-card">
-						<span class="action-icon">👥</span>
-						<span>Team</span>
+					<a href="/team" class="big-action-card action-team">
+						<div class="big-action-icon">👥</div>
+						<div class="big-action-text">
+							<h3>Team</h3>
+							<p>Manage your team and share scan access.</p>
+						</div>
 					</a>
 				</div>
 
-				<!-- Recent Scans Preview -->
+				<!-- Recent Scans Table -->
 				{#if historyItems.length > 0}
 					<div class="card" style="margin-top: 20px;">
 						<div class="card-header">
@@ -411,12 +426,33 @@
 							<button class="btn btn-ghost btn-sm" style="margin-left: auto;" onclick={() => activeTab = 'history'}>View All →</button>
 						</div>
 						<div class="card-body" style="padding: 0;">
+							<!-- Table Header -->
+							<div class="scan-table-header">
+								<span class="th-website">Website</span>
+								<span class="th-score">Score</span>
+								<span class="th-date">Date</span>
+								<span class="th-trend"></span>
+							</div>
 							{#each historyItems.slice(0, 5) as s}
-								<div class="history-row">
-									<img class="favicon" src={safeFaviconUrl(getDomain(s.url))} alt="" />
-									<div class="history-url font-mono">{s.url?.replace('https://', '').replace('http://', '').split('/')[0] || '—'}</div>
-									<div class="history-score font-mono" style="color: {scoreColor(s.overall_score || 0)};">{s.overall_score}</div>
-									<div class="history-date text-muted">{s.created_at ? formatDate(s.created_at) : ''}</div>
+								<div class="scan-table-row">
+									<div class="st-website">
+										<img class="favicon" src={safeFaviconUrl(getDomain(s.url))} alt="" />
+										<span class="font-mono">{s.url?.replace('https://', '').replace('http://', '').split('/')[0] || '—'}</span>
+									</div>
+									<div class="st-score font-mono" style="color: {scoreColor(s.overall_score || 0)};">
+										{s.overall_score || '—'}
+										<svg class="trend-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+											<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+											<polyline points="17 6 23 6 23 12"></polyline>
+										</svg>
+									</div>
+									<div class="st-date text-muted">{s.created_at ? formatDate(s.created_at) : ''}</div>
+									<div class="st-trend">
+										<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--clr-text-muted)" stroke-width="2" style="opacity: 0.4;">
+											<polyline points="7 17 12 12 17 17"></polyline>
+											<polyline points="7 7 12 12 17 7"></polyline>
+										</svg>
+									</div>
 								</div>
 							{/each}
 						</div>
@@ -739,8 +775,14 @@
 			<div class="rp-section">
 				<div class="rp-title">💬 Team Space</div>
 				{#if isAgency}
-					<p class="rp-desc">Share notes and discuss with your team members.</p>
-					<a href="/team" class="btn btn-outline btn-sm" style="width: 100%; text-align: center;">Open Team →</a>
+					<p class="rp-desc">Share ideas and discuss with your team members.</p>
+					<div class="team-avatars">
+						<div class="team-avatar-sm">👤</div>
+						<div class="team-avatar-sm">👤</div>
+						<div class="team-avatar-sm">👤</div>
+						<div class="team-avatar-sm plus">+</div>
+					</div>
+					<a href="/team" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; margin-top: 10px;">Open Team →</a>
 				{:else}
 					<p class="rp-desc">Upgrade to Agency to unlock team collaboration, shared notes, and group discussions.</p>
 					<button class="btn btn-blue btn-sm" style="width: 100%;" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
@@ -751,7 +793,10 @@
 				<div class="rp-title">📊 Quick Stats</div>
 				<div class="rp-stat">
 					<span class="text-muted">Scans</span>
-					<span style="font-weight: 700;">{user.scans_this_month}</span>
+					<div style="display: flex; align-items: center; gap: 6px;">
+						<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--clr-success)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+						<span style="font-weight: 700;">{user.scans_this_month}</span>
+					</div>
 				</div>
 				<div class="rp-stat">
 					<span class="text-muted">Plan</span>
@@ -765,11 +810,26 @@
 
 			<div class="rp-section">
 				<div class="rp-title">🔗 Quick Links</div>
-				<a href="/" class="rp-link">🔍 New Scan</a>
-				<a href="/compare" class="rp-link">⚔️ Compare</a>
-				<a href="/seo" class="rp-link">📊 SEO Tools</a>
-				<a href="/leaderboard" class="rp-link">🏆 Leaderboard</a>
-				<a href="/api-docs" class="rp-link">🔌 API Docs</a>
+				<a href="/" class="rp-link-card">
+					<span>🔍 New Scan</span>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+				</a>
+				<a href="/compare" class="rp-link-card">
+					<span>📊 Compare</span>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+				</a>
+				<a href="/seo" class="rp-link-card">
+					<span>🎯 SEO Tools</span>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+				</a>
+				<a href="/leaderboard" class="rp-link-card">
+					<span>🏆 Leaderboard</span>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+				</a>
+				<a href="/api-docs" class="rp-link-card">
+					<span>🔌 API Docs</span>
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+				</a>
 			</div>
 		</aside>
 
@@ -836,6 +896,9 @@
 	.plan-badge.pro { background: var(--clr-gold-dim); color: var(--clr-gold); }
 	.plan-badge.agency { background: var(--clr-blue-dim); color: var(--clr-blue); }
 
+	/* ── Dashboard Title ───────────────────── */
+	.dash-title { font-size: 22px; font-weight: 700; margin-bottom: var(--space-md); }
+
 	/* ── Stats ─────────────────────────────── */
 	.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: var(--space-lg); }
 	.stat-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: var(--space-md); }
@@ -843,11 +906,30 @@
 	.stat-value { font-size: 22px; font-weight: 700; }
 	.stat-sub { font-size: 11px; margin-top: 2px; }
 
-	/* ── Quick Actions ─────────────────────── */
-	.quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-	.action-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); text-decoration: none; color: var(--clr-text-secondary); font-size: 13px; font-weight: 500; transition: all var(--duration-fast); }
-	.action-card:hover { border-color: var(--clr-border-light); transform: translateY(-2px); color: var(--clr-text-primary); }
-	.action-icon { font-size: 22px; }
+	/* ── Big Action Cards (2x2 grid) ──────── */
+	.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--space-md); }
+	.big-action-card { display: flex; align-items: center; gap: 16px; padding: 24px; border-radius: var(--radius-lg); text-decoration: none; color: white; transition: all var(--duration-fast); border: 1px solid transparent; position: relative; overflow: hidden; }
+	.big-action-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+	.big-action-card::before { content: ''; position: absolute; inset: 0; opacity: 0.12; background: radial-gradient(circle at 30% 50%, white, transparent 70%); }
+	.big-action-icon { font-size: 40px; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+	.big-action-text h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+	.big-action-text p { font-size: 12px; opacity: 0.8; line-height: 1.4; }
+	.action-scan { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+	.action-compare { background: linear-gradient(135deg, #065f46, #10b981); }
+	.action-seo { background: linear-gradient(135deg, #92400e, #f59e0b); }
+	.action-team { background: linear-gradient(135deg, #581c87, #a855f7); }
+
+	/* ── Scan Table ────────────────────────── */
+	.scan-table-header { display: grid; grid-template-columns: 1fr 100px 120px 40px; gap: 8px; padding: 10px 20px; font-size: 11px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid var(--clr-border); }
+	.scan-table-row { display: grid; grid-template-columns: 1fr 100px 120px 40px; gap: 8px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--clr-border); text-decoration: none; color: inherit; transition: background var(--duration-fast); }
+	.scan-table-row:hover { background: rgba(255,255,255,0.02); }
+	.scan-table-row:last-child { border-bottom: none; }
+	.st-website { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+	.st-website span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--clr-text-secondary); }
+	.st-score { display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: 800; }
+	.trend-icon { flex-shrink: 0; opacity: 0.6; }
+	.st-date { font-size: 11px; }
+	.st-trend { display: flex; justify-content: center; }
 
 	/* ── History ───────────────────────────── */
 	.history-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--clr-border); }
@@ -882,6 +964,13 @@
 	.key-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--clr-border); }
 	.key-row:last-child { border-bottom: none; }
 
+	.rp-link-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-size: 12px; color: var(--clr-text-secondary); text-decoration: none; border: 1px solid var(--clr-border); border-radius: var(--radius-md); margin-bottom: 6px; transition: all var(--duration-fast); }
+	.rp-link-card:hover { border-color: var(--clr-gold); color: var(--clr-gold); background: rgba(240,165,0,0.04); transform: translateX(2px); }
+	.team-avatars { display: flex; gap: -4px; margin: 8px 0; }
+	.team-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--clr-bg-card); border: 2px solid var(--clr-border); display: flex; align-items: center; justify-content: center; font-size: 14px; margin-left: -6px; }
+	.team-avatar-sm:first-child { margin-left: 0; }
+	.team-avatar-sm.plus { background: var(--clr-gold-dim); color: var(--clr-gold); font-weight: 700; font-size: 12px; cursor: pointer; }
+
 	textarea.input { font-family: inherit; }
 
 	/* ── Responsive ────────────────────────── */
@@ -905,5 +994,9 @@
 		.form-grid { grid-template-columns: 1fr; }
 		.plan-compare { grid-template-columns: 1fr; }
 		.sidebar-icon { font-size: 14px; }
+		.action-grid { grid-template-columns: 1fr; }
+		.scan-table-header { display: none; }
+		.scan-table-row { grid-template-columns: 1fr 60px 80px; }
+		.st-trend { display: none; }
 	}
 </style>
