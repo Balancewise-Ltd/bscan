@@ -241,6 +241,24 @@ export async function getProfile(): Promise<any> {
 	return request('/api/profile');
 }
 
+/** Upload avatar image — POST /api/profile/avatar */
+export async function uploadAvatar(file: File): Promise<{ message: string; avatar_url: string }> {
+	const token = getToken();
+	if (!token) throw new ApiError(401, 'Sign in to upload avatar');
+	const formData = new FormData();
+	formData.append('file', file);
+	const res = await fetch(`${API_BASE}/api/profile/avatar`, {
+		method: 'POST',
+		headers: { 'Authorization': `Bearer ${token}` },
+		body: formData,
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({}));
+		throw new ApiError(res.status, body.detail || 'Upload failed');
+	}
+	return res.json();
+}
+
 export async function updateProfile(email: string, data: ProfileData): Promise<{ message: string }> {
 	return request('/api/profile/update', {
 		method: 'PUT',

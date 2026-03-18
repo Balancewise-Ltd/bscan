@@ -59,6 +59,9 @@
 	let brandSaving = $state(false);
 	let brandMsg = $state('');
 
+	// Avatar state (for instant update after upload)
+	let avatarUrl = $state('');
+
 	async function saveBranding() {
 		if (!user) return;
 		brandSaving = true;
@@ -112,7 +115,8 @@
 				profileData.brand_name = profile.brand_name || '';
 				profileData.brand_color = profile.brand_color || '';
 				profileData.brand_logo_url = profile.brand_logo_url || '';
-				// Also set branding state
+				// Set avatar + branding state
+				avatarUrl = profile.avatar_url || '';
 				brandName = profile.brand_name || '';
 				brandColor = profile.brand_color || '#f0a500';
 				brandLogoUrl = profile.brand_logo_url || '';
@@ -184,13 +188,19 @@
 		promoLoading = false;
 	}
 
+	let billingError = $state('');
+
 	async function openBillingPortal() {
 		portalLoading = true;
+		billingError = '';
 		try {
 			const res = await api.createBillingPortal();
 			const safe = safeRedirect(res.url);
 			if (safe) window.location.href = safe;
-		} catch { }
+			else billingError = 'Could not open billing portal.';
+		} catch (err) {
+			billingError = 'Billing portal unavailable. If you subscribed recently, contact support@balancewises.io to manage your subscription.';
+		}
 		portalLoading = false;
 	}
 
@@ -343,18 +353,28 @@
 			<!-- Avatar / Upload -->
 			<div class="sidebar-avatar-wrap">
 				<div class="sidebar-avatar" role="button" tabindex="0" aria-label="Change avatar" onclick={() => document.getElementById('avatar-upload')?.click()}>
-					{#if user.avatar_url}
-						<img src={user.avatar_url} alt="Avatar" class="avatar-img" />
+					{#if avatarUrl || user.avatar_url}
+						<img src={avatarUrl || user.avatar_url} alt="Avatar" class="avatar-img" />
 					{:else}
 						<span class="avatar-letter">{(user.name || user.email)[0].toUpperCase()}</span>
 					{/if}
 					<div class="avatar-overlay">📷</div>
 				</div>
-				<input type="file" id="avatar-upload" accept="image/*" style="display: none;" onchange={async (e) => {
+				<input type="file" id="avatar-upload" accept="image/png,image/jpeg,image/webp" style="display: none;" onchange={async (e) => {
 					const file = (e.target as HTMLInputElement).files?.[0];
 					if (!file) return;
-					// For now, show filename — real upload needs backend endpoint
-					profileMsg = `Selected: ${file.name} (upload coming soon)`;
+					if (file.size > 2 * 1024 * 1024) {
+						profileMsg = 'Image must be under 2MB';
+						return;
+					}
+					try {
+						const res = await api.uploadAvatar(file);
+						avatarUrl = res.avatar_url;
+						profileMsg = 'Avatar uploaded!';
+						auth.refresh();
+					} catch (err) {
+						profileMsg = err instanceof Error ? err.message : 'Upload failed';
+					}
 				}} />
 				<div class="sidebar-name">{user.name || 'User'}</div>
 				<div class="sidebar-email text-muted">{user.email}</div>
@@ -608,45 +628,66 @@
 										{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
 									</button>
 								{:else}
+									<!-- Agency — highest plan -->
 									<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
 										{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
 									</button>
 								{/if}
 							</div>
 						</div>
+						{#if billingError}
+							<div class="msg-error" style="margin-top: 12px;">{billingError}</div>
+						{/if}
+						{#if isPaid}
+							<div style="margin-top: 12px; font-size: 12px; color: var(--clr-text-muted);">
+								To downgrade or cancel, click Manage Subscription above. If unavailable, email <a href="mailto:support@balancewises.io" style="color: var(--clr-blue);">support@balancewises.io</a>.
+							</div>
+						{/if}
 					</div>
 				</div>
 
-				<!-- Plan Comparison -->
-				{#if !isPaid}
-					<div class="plan-compare">
-						<div class="compare-col">
-							<div class="compare-header free">Free</div>
-							<div class="compare-feat">3 scans/month</div>
-							<div class="compare-feat">Basic audit</div>
-							<div class="compare-feat dim">No PDF export</div>
-							<div class="compare-feat dim">No history</div>
-						</div>
-						<div class="compare-col featured">
-							<div class="compare-header pro">Pro · £9/mo</div>
-							<div class="compare-feat">30 scans/month</div>
-							<div class="compare-feat">Core Web Vitals</div>
-							<div class="compare-feat">PDF reports</div>
-							<div class="compare-feat">Scan history</div>
-							<div class="compare-feat">Compare tool</div>
-							<button class="btn btn-gold btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('pro')}>Upgrade</button>
-						</div>
-						<div class="compare-col">
-							<div class="compare-header agency">Agency · £29/mo</div>
-							<div class="compare-feat">Unlimited scans</div>
-							<div class="compare-feat">5 team members</div>
-							<div class="compare-feat">API access</div>
-							<div class="compare-feat">White-label PDFs</div>
-							<div class="compare-feat">AI SEO strategy</div>
-							<button class="btn btn-blue btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('agency')}>Upgrade</button>
-						</div>
+				<!-- Plan Comparison — visible to all -->
+				<div class="plan-compare">
+					<div class="compare-col" class:active-plan={!isPaid}>
+						<div class="compare-header free">Free</div>
+						<div class="compare-feat">3 scans/month</div>
+						<div class="compare-feat">Basic audit</div>
+						<div class="compare-feat dim">No PDF export</div>
+						<div class="compare-feat dim">No scan history</div>
+						<div class="compare-feat dim">No compare tool</div>
+						{#if isPaid}
+							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-text-muted);">Current features exceed this plan</div>
+						{/if}
 					</div>
-				{/if}
+					<div class="compare-col" class:featured={!isPaid || plan === 'pro'} class:active-plan={plan === 'pro'}>
+						<div class="compare-header pro">Pro · £9/mo</div>
+						<div class="compare-feat">30 scans/month</div>
+						<div class="compare-feat">Core Web Vitals</div>
+						<div class="compare-feat">PDF reports</div>
+						<div class="compare-feat">Scan history</div>
+						<div class="compare-feat">Compare tool</div>
+						<div class="compare-feat">SEO tools</div>
+						{#if !isPaid}
+							<button class="btn btn-gold btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('pro')}>Upgrade</button>
+						{:else if plan === 'pro'}
+							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-gold); font-weight: 700;">✓ Your current plan</div>
+						{/if}
+					</div>
+					<div class="compare-col" class:featured={plan === 'agency'} class:active-plan={plan === 'agency'}>
+						<div class="compare-header agency">Agency · £29/mo</div>
+						<div class="compare-feat">Unlimited scans</div>
+						<div class="compare-feat">5 team members</div>
+						<div class="compare-feat">API access</div>
+						<div class="compare-feat">White-label PDFs</div>
+						<div class="compare-feat">AI SEO strategy</div>
+						<div class="compare-feat">Priority support</div>
+						{#if plan !== 'agency'}
+							<button class="btn btn-blue btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('agency')}>Upgrade</button>
+						{:else}
+							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-blue); font-weight: 700;">✓ Your current plan</div>
+						{/if}
+					</div>
+				</div>
 
 				<!-- Promo Code -->
 				<div class="card" style="margin-top: 20px;">
@@ -1060,6 +1101,7 @@
 	.compare-header.agency { color: var(--clr-blue); }
 	.compare-feat { font-size: 12px; color: var(--clr-text-secondary); padding: 3px 0; }
 	.compare-feat.dim { color: var(--clr-text-muted); opacity: 0.5; }
+	.active-plan { border-color: var(--clr-success); box-shadow: 0 0 0 1px var(--clr-success); }
 
 	/* ── API Keys ─────────────────────────── */
 	.key-reveal { margin-top: 12px; padding: 12px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); border-radius: var(--radius-md); }
