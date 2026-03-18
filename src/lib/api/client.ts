@@ -259,6 +259,14 @@ export async function uploadAvatar(file: File): Promise<{ message: string; avata
 	return res.json();
 }
 
+/** Request a name change (goes to admin for approval) */
+export async function requestNameChange(name: string): Promise<{ message: string }> {
+	return request('/api/profile/request-name-change', {
+		method: 'POST',
+		body: JSON.stringify({ requested_name: name }),
+	});
+}
+
 export async function updateProfile(email: string, data: ProfileData): Promise<{ message: string }> {
 	return request('/api/profile/update', {
 		method: 'PUT',

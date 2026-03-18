@@ -91,15 +91,15 @@
 		if (user) loadDashboard();
 	});
 
-	// Watch for auth changes
+	// Watch for auth changes — load profile for ALL tabs
 	$effect(() => {
-		if (user && activeTab === 'overview') loadDashboard();
+		if (user && activeTab === 'overview') { loadHistory(); if (isPaid) loadApiKeys(); }
+		if (user && !profileLoaded) loadProfileData();
 	});
 
-	async function loadDashboard() {
-		loadHistory();
-		if (isPaid) loadApiKeys();
-		// Load profile data including branding
+	let profileLoaded = $state(false);
+
+	async function loadProfileData() {
 		try {
 			const profile = await api.getProfile();
 			if (profile) {
@@ -115,13 +115,18 @@
 				profileData.brand_name = profile.brand_name || '';
 				profileData.brand_color = profile.brand_color || '';
 				profileData.brand_logo_url = profile.brand_logo_url || '';
-				// Set avatar + branding state
 				avatarUrl = profile.avatar_url || '';
 				brandName = profile.brand_name || '';
 				brandColor = profile.brand_color || '#f0a500';
 				brandLogoUrl = profile.brand_logo_url || '';
+				profileLoaded = true;
 			}
 		} catch {}
+	}
+
+	async function loadDashboard() {
+		loadHistory();
+		if (isPaid) loadApiKeys();
 	}
 
 	// ── Auth ─────────────────────────────────────────────
@@ -161,6 +166,45 @@
 			profileMsg = err instanceof Error ? err.message : 'Failed.';
 		}
 		profileSaving = false;
+	}
+
+	// ── Name Change Request ──────────────────────────────
+	let nameChangeInput = $state('');
+	let nameChangeMsg = $state('');
+	let nameChangeSending = $state(false);
+	let showNameChange = $state(false);
+
+	async function requestNameChange() {
+		if (!nameChangeInput.trim() || nameChangeInput.trim().length > 100) {
+			nameChangeMsg = 'Name must be 1-100 characters.';
+			return;
+		}
+		nameChangeSending = true;
+		nameChangeMsg = '';
+		try {
+			const res = await api.requestNameChange(nameChangeInput.trim());
+			nameChangeMsg = res.message || 'Request sent! Admin will review within 24 hours.';
+			showNameChange = false;
+		} catch (err) {
+			nameChangeMsg = err instanceof Error ? err.message : 'Failed to send request.';
+		}
+		nameChangeSending = false;
+	}
+
+	// ── Postcode Lookup ──────────────────────────────────
+	async function lookupPostcode() {
+		const pc = profileData.postcode?.trim().replace(/\s/g, '');
+		if (!pc || pc.length < 3) return;
+		try {
+			const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
+			const data = await res.json();
+			if (data.status === 200 && data.result) {
+				const r = data.result;
+				profileData.city = r.admin_district || r.parish || '';
+				profileData.country = r.country || 'United Kingdom';
+				profileMsg = `Location detected: ${profileData.city}, ${profileData.country}`;
+			}
+		} catch { }
 	}
 
 	async function handleUsernameCheck() {
@@ -523,83 +567,123 @@
 		<!-- ── PROFILE TAB ──────────────────────── -->
 		{#if activeTab === 'profile'}
 			<div class="tab-content animate-fade-up">
-				<h3 style="margin-bottom: 20px;">Edit Profile</h3>
-				<div class="form-grid">
-					<div class="field">
-						<label class="label" for="p-username">Username</label>
-						<input class="input" type="text" id="p-username" placeholder="e.g. chisom_bw" bind:value={profileData.username} oninput={handleUsernameCheck} />
-						{#if usernameCheck}
-							<span class="field-hint" class:hint-ok={usernameCheck.startsWith('✓')} class:hint-err={usernameCheck.startsWith('✗')}>{usernameCheck}</span>
-						{/if}
-					</div>
-					<div class="field">
-						<label class="label" for="p-display">Display Name</label>
-						<input class="input" type="text" id="p-display" placeholder="How you appear to others" bind:value={profileData.display_name} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-company">Company</label>
-						<input class="input" type="text" id="p-company" placeholder="e.g. Balancewise Technologies" bind:value={profileData.company} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-website">Website</label>
-						<input class="input" type="url" id="p-website" placeholder="https://yoursite.com" bind:value={profileData.website} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-phone">Phone</label>
-						<input class="input" type="tel" id="p-phone" placeholder="+44..." bind:value={profileData.phone} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-city">City</label>
-						<input class="input" type="text" id="p-city" bind:value={profileData.city} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-postcode">Postcode</label>
-						<input class="input" type="text" id="p-postcode" bind:value={profileData.postcode} />
-					</div>
-					<div class="field">
-						<label class="label" for="p-country">Country</label>
-						<input class="input" type="text" id="p-country" bind:value={profileData.country} />
-					</div>
-				</div>
-				<div class="field" style="margin-top: 12px;">
-					<label class="label" for="p-bio">Bio</label>
-					<textarea class="input" id="p-bio" rows="3" placeholder="Tell us about yourself..." bind:value={profileData.bio} style="resize: vertical;"></textarea>
-				</div>
+				<h3 style="margin-bottom: 20px;">My Profile</h3>
 
-				{#if isAgency}
-					<div class="card" style="margin-top: 24px; border-color: rgba(240,165,0,0.2);">
-						<div class="card-header">
-							<span>🏷️</span>
-							<span style="font-weight: 700;">White-Label Branding</span>
-							<span class="badge badge-blue" style="margin-left: auto;">Agency</span>
+				<!-- Name & Identity -->
+				<div class="card" style="margin-bottom: 16px;">
+					<div class="card-header">
+						<span>👤</span>
+						<span style="font-weight: 700; font-size: 14px;">Name & Identity</span>
+					</div>
+					<div class="card-body">
+						<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+							<div>
+								<div class="text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-mono);">Account Name</div>
+								<div style="font-size: 20px; font-weight: 700;">{user.name || '—'}</div>
+								<div class="text-muted" style="font-size: 12px;">{user.email}</div>
+							</div>
+							<button class="btn btn-outline btn-sm" style="margin-left: auto;" onclick={() => showNameChange = !showNameChange}>
+								{showNameChange ? 'Cancel' : 'Request Name Change'}
+							</button>
 						</div>
-						<div class="card-body">
-							<p class="text-secondary" style="font-size: 12px; margin-bottom: 16px;">Customise your PDF reports with your company branding. Clients will see your brand, not BSCAN.</p>
-							<div class="form-grid">
-								<div class="field">
-									<label class="label" for="p-brand-name">Brand Name (on PDF)</label>
-									<input class="input" type="text" id="p-brand-name" placeholder="Your Agency Name" bind:value={profileData.brand_name} />
+						{#if showNameChange}
+							<div style="margin-top: 12px; padding: 12px; background: var(--clr-bg-deep); border-radius: var(--radius-md); border: 1px solid var(--clr-border);">
+								<label class="label" style="margin-bottom: 6px;">New Name</label>
+								<div style="display: flex; gap: 8px;">
+									<input class="input" type="text" placeholder="Your requested name" bind:value={nameChangeInput} style="flex: 1;" />
+									<button class="btn btn-gold btn-sm" disabled={nameChangeSending} onclick={requestNameChange}>
+										{#if nameChangeSending}<span class="spinner spinner-sm"></span>{/if} Submit
+									</button>
 								</div>
-								<div class="field">
-									<label class="label" for="p-brand-color">Brand Colour</label>
-									<div style="display: flex; gap: 8px; align-items: center;">
-										<input type="color" id="p-brand-color" bind:value={profileData.brand_color} style="width: 44px; height: 36px; border: none; background: none; cursor: pointer;" />
-										<input class="input" type="text" placeholder="#3b82f6" bind:value={profileData.brand_color} style="flex: 1; font-family: var(--font-mono);" />
-									</div>
-								</div>
-								<div class="field" style="grid-column: 1 / -1;">
-									<label class="label" for="p-brand-logo">Logo URL</label>
-									<input class="input" type="url" id="p-brand-logo" placeholder="https://yoursite.com/logo.png" bind:value={profileData.brand_logo_url} />
-									<span class="field-hint" style="font-size: 11px; color: var(--clr-text-muted); margin-top: 4px; display: block;">PNG or SVG recommended. This appears on your white-label PDF reports.</span>
-								</div>
+								<p class="text-muted" style="font-size: 11px; margin-top: 6px;">Name changes require admin approval and are usually reviewed within 24 hours.</p>
+							</div>
+						{/if}
+						{#if nameChangeMsg}<div class="msg-success" style="margin-top: 8px;">{nameChangeMsg}</div>{/if}
+
+						<div class="form-grid" style="margin-top: 16px;">
+							<div class="field">
+								<label class="label" for="p-username">Username</label>
+								<input class="input" type="text" id="p-username" placeholder="e.g. chisom_bw" bind:value={profileData.username} oninput={handleUsernameCheck} />
+								{#if usernameCheck}
+									<span class="field-hint" class:hint-ok={usernameCheck.startsWith('✓')} class:hint-err={usernameCheck.startsWith('✗')}>{usernameCheck}</span>
+								{/if}
+							</div>
+							<div class="field">
+								<label class="label" for="p-display">Display Name</label>
+								<input class="input" type="text" id="p-display" placeholder="How you appear to others" bind:value={profileData.display_name} />
 							</div>
 						</div>
 					</div>
-				{/if}
+				</div>
 
-				{#if profileMsg}<div class="msg-success">{profileMsg}</div>{/if}
+				<!-- Contact & Company -->
+				<div class="card" style="margin-bottom: 16px;">
+					<div class="card-header">
+						<span>💼</span>
+						<span style="font-weight: 700; font-size: 14px;">Contact & Company</span>
+					</div>
+					<div class="card-body">
+						<div class="form-grid">
+							<div class="field">
+								<label class="label" for="p-company">Company</label>
+								<input class="input" type="text" id="p-company" placeholder="e.g. Balancewise Technologies" bind:value={profileData.company} />
+							</div>
+							<div class="field">
+								<label class="label" for="p-website">Website</label>
+								<input class="input" type="url" id="p-website" placeholder="https://yoursite.com" bind:value={profileData.website} />
+							</div>
+							<div class="field">
+								<label class="label" for="p-phone">Phone</label>
+								<input class="input" type="tel" id="p-phone" placeholder="+44..." bind:value={profileData.phone} />
+							</div>
+						</div>
+					</div>
+				</div>
 
-				<button class="btn btn-gold" style="margin-top: 16px;" disabled={profileSaving} onclick={saveProfile}>
+				<!-- Address -->
+				<div class="card" style="margin-bottom: 16px;">
+					<div class="card-header">
+						<span>📍</span>
+						<span style="font-weight: 700; font-size: 14px;">Address</span>
+					</div>
+					<div class="card-body">
+						<div class="form-grid">
+							<div class="field">
+								<label class="label" for="p-postcode">Postcode</label>
+								<div style="display: flex; gap: 8px;">
+									<input class="input" type="text" id="p-postcode" placeholder="e.g. LE1 1AA" bind:value={profileData.postcode} style="flex: 1;" />
+									<button class="btn btn-outline btn-sm" onclick={lookupPostcode} title="Auto-detect city from postcode">📍 Detect</button>
+								</div>
+							</div>
+							<div class="field">
+								<label class="label" for="p-city">City</label>
+								<input class="input" type="text" id="p-city" bind:value={profileData.city} />
+							</div>
+							<div class="field">
+								<label class="label" for="p-country">Country</label>
+								<input class="input" type="text" id="p-country" bind:value={profileData.country} />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Bio -->
+				<div class="card" style="margin-bottom: 16px;">
+					<div class="card-header">
+						<span>📝</span>
+						<span style="font-weight: 700; font-size: 14px;">About</span>
+					</div>
+					<div class="card-body">
+						<div class="field">
+							<label class="label" for="p-bio">Bio</label>
+							<textarea class="input" id="p-bio" rows="3" placeholder="Tell us about yourself..." bind:value={profileData.bio} style="resize: vertical;"></textarea>
+						</div>
+					</div>
+				</div>
+
+				{#if profileMsg}<div class="msg-success" style="margin-top: 4px; margin-bottom: 8px;">{profileMsg}</div>{/if}
+
+				<button class="btn btn-gold" disabled={profileSaving} onclick={saveProfile}>
 					{#if profileSaving}<span class="spinner spinner-sm"></span>{/if} Save Profile
 				</button>
 			</div>
