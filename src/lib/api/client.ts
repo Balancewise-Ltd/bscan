@@ -236,6 +236,11 @@ export async function getPublicProfile(userId: string): Promise<any> {
 	return request(`/api/profile/${userId}`);
 }
 
+/** Get own full profile (includes branding fields) — GET /api/profile */
+export async function getProfile(): Promise<any> {
+	return request('/api/profile');
+}
+
 export async function updateProfile(email: string, data: ProfileData): Promise<{ message: string }> {
 	return request('/api/profile/update', {
 		method: 'PUT',

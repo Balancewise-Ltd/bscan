@@ -59,6 +59,23 @@
 	let brandSaving = $state(false);
 	let brandMsg = $state('');
 
+	async function saveBranding() {
+		if (!user) return;
+		brandSaving = true;
+		brandMsg = '';
+		try {
+			await api.updateProfile(user.email, {
+				brand_name: brandName,
+				brand_color: brandColor,
+				brand_logo_url: brandLogoUrl,
+			});
+			brandMsg = 'Branding saved! Your next PDF will use these settings.';
+		} catch (err) {
+			brandMsg = err instanceof Error ? err.message : 'Failed to save.';
+		}
+		brandSaving = false;
+	}
+
 	const user = $derived($auth.user);
 	const plan = $derived(user?.plan || 'free');
 	const planLabel = $derived(plan.charAt(0).toUpperCase() + plan.slice(1));
@@ -79,6 +96,28 @@
 	async function loadDashboard() {
 		loadHistory();
 		if (isPaid) loadApiKeys();
+		// Load profile data including branding
+		try {
+			const profile = await api.getProfile();
+			if (profile) {
+				profileData.username = profile.username || '';
+				profileData.display_name = profile.display_name || '';
+				profileData.company = profile.company || '';
+				profileData.website = profile.website || '';
+				profileData.phone = profile.phone || '';
+				profileData.city = profile.city || '';
+				profileData.postcode = profile.postcode || '';
+				profileData.country = profile.country || '';
+				profileData.bio = profile.bio || '';
+				profileData.brand_name = profile.brand_name || '';
+				profileData.brand_color = profile.brand_color || '';
+				profileData.brand_logo_url = profile.brand_logo_url || '';
+				// Also set branding state
+				brandName = profile.brand_name || '';
+				brandColor = profile.brand_color || '#f0a500';
+				brandLogoUrl = profile.brand_logo_url || '';
+			}
+		} catch {}
 	}
 
 	// ── Auth ─────────────────────────────────────────────
@@ -735,6 +774,70 @@
 						{/if}
 					</div>
 				</div>
+			</div>
+		{/if}
+
+		<!-- ── SECURITY TAB ─────────────────────── -->
+		{#if activeTab === 'branding'}
+			<div class="tab-content animate-fade-up">
+				<h3 style="margin-bottom: 20px;">White-Label Branding</h3>
+				{#if !isAgency}
+					<div class="card">
+						<div class="card-body" style="text-align: center; padding: 40px;">
+							<div style="font-size: 48px; margin-bottom: 12px;">🎨</div>
+							<h3 style="margin-bottom: 8px;">Agency Feature</h3>
+							<p class="text-muted" style="max-width: 400px; margin: 0 auto 16px;">White-label your PDF reports with your own brand name, colours, and logo. Clients see your brand, not BSCAN.</p>
+							<button class="btn btn-gold" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency →</button>
+						</div>
+					</div>
+				{:else}
+					<div class="card" style="margin-bottom: 20px;">
+						<div class="card-header">
+							<span>🏷️</span>
+							<span style="font-weight: 700;">Brand Settings</span>
+							<span class="plan-badge agency" style="margin-left: auto;">Agency</span>
+						</div>
+						<div class="card-body">
+							<p class="text-muted" style="font-size: 12px; margin-bottom: 16px;">These settings apply to all PDF reports you download. Your clients will see your brand instead of BSCAN.</p>
+							<div class="form-grid">
+								<div class="field">
+									<label class="label" for="b-name">Brand Name</label>
+									<input class="input" type="text" id="b-name" placeholder="Your Agency Name" bind:value={brandName} />
+								</div>
+								<div class="field">
+									<label class="label" for="b-color">Brand Colour</label>
+									<div style="display: flex; gap: 8px; align-items: center;">
+										<input type="color" id="b-color" bind:value={brandColor} style="width: 44px; height: 36px; border: none; background: none; cursor: pointer;" />
+										<input class="input" type="text" placeholder="#f0a500" bind:value={brandColor} style="flex: 1; font-family: var(--font-mono);" />
+									</div>
+								</div>
+								<div class="field" style="grid-column: 1 / -1;">
+									<label class="label" for="b-logo">Logo URL</label>
+									<input class="input" type="url" id="b-logo" placeholder="https://yoursite.com/logo.png" bind:value={brandLogoUrl} />
+									<span class="field-hint" style="color: var(--clr-text-muted);">PNG or SVG recommended. Appears on your white-label PDF reports.</span>
+								</div>
+							</div>
+							{#if brandMsg}<div class="msg-success" style="margin-top: 12px;">{brandMsg}</div>{/if}
+							<button class="btn btn-gold" style="margin-top: 16px;" disabled={brandSaving} onclick={saveBranding}>
+								{#if brandSaving}<span class="spinner spinner-sm"></span>{/if} Save Branding
+							</button>
+						</div>
+					</div>
+
+					<div class="card">
+						<div class="card-header">
+							<span>👁️</span>
+							<span style="font-weight: 700;">Preview</span>
+						</div>
+						<div class="card-body">
+							<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">This is how your PDF report footer will look:</p>
+							<div style="background: var(--clr-bg-deep); border-radius: 8px; padding: 20px; text-align: center; border: 1px solid var(--clr-border);">
+								<div style="font-size: 14px; font-weight: 700; color: {brandColor || '#f0a500'};">{brandName || 'Your Brand Name'}</div>
+								<div style="font-size: 11px; color: var(--clr-text-muted); margin-top: 4px;">Generated by {brandName || 'Your Brand Name'}</div>
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 

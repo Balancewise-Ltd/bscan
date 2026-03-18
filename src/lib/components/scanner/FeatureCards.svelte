@@ -199,11 +199,12 @@
 					<div class="bench-title">VS INDUSTRY AVERAGE</div>
 					{#each Object.entries(industry.comparisons) as [cat, data]}
 						{@const d = data as any}
-						{@const diff = (d?.score || 0) - (d?.industry_avg || 0)}
+						{@const score = d?.your_score ?? d?.score ?? 0}
+						{@const diff = score - (d?.industry_avg || 0)}
 						<div class="bench-row">
 							<span class="text-secondary" style="text-transform: capitalize;">{cat}</span>
 							<span>
-								<strong>{d?.score || 0}</strong>
+								<strong>{score}</strong>
 								<span class="text-muted">vs</span> {d?.industry_avg || 0}
 								<span style="color: {diff >= 0 ? 'var(--clr-success)' : 'var(--clr-danger)'}; font-weight: 700;">
 									({diff >= 0 ? '+' : ''}{diff})
