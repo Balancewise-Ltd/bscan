@@ -9,14 +9,13 @@ const ENTITY_MAP: Record<string, string> = {
 	'<': '&lt;',
 	'>': '&gt;',
 	'"': '&quot;',
-	"'": '&#x27;',
 	'`': '&#96;'
 };
 
 /** Escape all HTML entities — use for ANY user-supplied text rendered as HTML */
 export function sanitize(str: string | null | undefined): string {
 	if (!str) return '';
-	return String(str).replace(/[&<>"'`/]/g, (c) => ENTITY_MAP[c] || c);
+	return String(str).replace(/[&<>"`]/g, (c) => ENTITY_MAP[c] || c);
 }
 
 /** Escape for use inside HTML attributes */

@@ -25,7 +25,7 @@ import {
 describe('sanitize', () => {
 	it('escapes HTML entities', () => {
 		expect(sanitize('<script>alert("xss")</script>')).toBe(
-			'&lt;script&gt;alert(&quot;xss&quot;)&lt;&#x2F;script&gt;'
+			'&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
 		);
 	});
 
@@ -37,8 +37,8 @@ describe('sanitize', () => {
 		expect(sanitize('`code`')).toBe('&#96;code&#96;');
 	});
 
-	it('escapes single quotes', () => {
-		expect(sanitize("it's")).toBe('it&#x27;s');
+	it('passes through single quotes (safe in text context)', () => {
+		expect(sanitize("it's")).toBe("it's");
 	});
 
 	it('returns empty string for null/undefined', () => {

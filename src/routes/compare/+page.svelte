@@ -27,7 +27,26 @@
 		error = '';
 		loading = true;
 		try {
-			results = await api.compareSites(normalizeUrl(url1), normalizeUrl(url2));
+			const raw = await api.compareSites(normalizeUrl(url1), normalizeUrl(url2));
+			// Backend returns scores nested: site_a.scores.overall
+			// Frontend expects flat: site_a.overall_score
+			function flattenSite(site: any) {
+				if (!site) return site;
+				const scores = site.scores || {};
+				return {
+					...site,
+					overall_score: scores.overall ?? site.overall_score ?? 0,
+					seo_score: scores.seo ?? site.seo_score ?? 0,
+					performance_score: scores.performance ?? site.performance_score ?? 0,
+					accessibility_score: scores.accessibility ?? site.accessibility_score ?? 0,
+					security_score: scores.security ?? site.security_score ?? 0,
+					mobile_score: scores.mobile ?? site.mobile_score ?? 0,
+					links_score: scores.links ?? site.links_score ?? 0,
+				};
+			}
+			if (raw.site_a) raw.site_a = flattenSite(raw.site_a);
+			if (raw.site_b) raw.site_b = flattenSite(raw.site_b);
+			results = raw;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Comparison failed.';
 			results = null;
@@ -85,13 +104,13 @@
 		<div class="compare-tool animate-fade-up">
 			<div class="compare-inputs">
 				<div class="compare-field">
-					<label class="label">Website A</label>
-					<input class="input" type="url" placeholder="https://yoursite.com" bind:value={url1} onkeydown={(e) => e.key === 'Enter' && compare()} />
+					<label class="label" for="cmp-url-a">Website A</label>
+					<input class="input" id="cmp-url-a" type="url" placeholder="https://yoursite.com" bind:value={url1} onkeydown={(e) => e.key === 'Enter' && compare()} />
 				</div>
 				<div class="vs-badge">VS</div>
 				<div class="compare-field">
-					<label class="label">Website B</label>
-					<input class="input" type="url" placeholder="https://competitor.com" bind:value={url2} onkeydown={(e) => e.key === 'Enter' && compare()} />
+					<label class="label" for="cmp-url-b">Website B</label>
+					<input class="input" id="cmp-url-b" type="url" placeholder="https://competitor.com" bind:value={url2} onkeydown={(e) => e.key === 'Enter' && compare()} />
 				</div>
 			</div>
 
