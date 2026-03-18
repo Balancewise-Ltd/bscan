@@ -10,7 +10,6 @@ const ENTITY_MAP: Record<string, string> = {
 	'>': '&gt;',
 	'"': '&quot;',
 	"'": '&#x27;',
-	'/': '&#x2F;',
 	'`': '&#96;'
 };
 
