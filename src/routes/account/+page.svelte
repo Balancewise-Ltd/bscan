@@ -112,6 +112,8 @@
 				profileData.postcode = profile.postcode || '';
 				profileData.country = profile.country || '';
 				profileData.bio = profile.bio || '';
+				profileData.address_line1 = profile.address_line1 || '';
+				profileData.address_line2 = profile.address_line2 || '';
 				profileData.brand_name = profile.brand_name || '';
 				profileData.brand_color = profile.brand_color || '';
 				profileData.brand_logo_url = profile.brand_logo_url || '';
@@ -195,16 +197,38 @@
 	async function lookupPostcode() {
 		const pc = profileData.postcode?.trim().replace(/\s/g, '');
 		if (!pc || pc.length < 3) return;
+		profileMsg = 'Looking up address...';
 		try {
+			// 1. Get city + country from postcodes.io
 			const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
 			const data = await res.json();
 			if (data.status === 200 && data.result) {
 				const r = data.result;
 				profileData.city = r.admin_district || r.parish || '';
 				profileData.country = r.country || 'United Kingdom';
-				profileMsg = `Location detected: ${profileData.city}, ${profileData.country}`;
 			}
-		} catch { }
+
+			// 2. Get street from OpenStreetMap Nominatim (free, no key)
+			const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(pc)}&country=gb&format=json&addressdetails=1&limit=1`, {
+				headers: { 'User-Agent': 'BSCAN/1.0 (bscan.balancewises.io)' }
+			});
+			const nomData = await nomRes.json();
+			if (nomData.length > 0 && nomData[0].address) {
+				const addr = nomData[0].address;
+				const street = addr.road || addr.pedestrian || addr.footway || '';
+				if (street && !profileData.address_line1) {
+					profileData.address_line1 = street;
+				}
+				// Fill city from Nominatim if postcodes.io missed it
+				if (!profileData.city) {
+					profileData.city = addr.city || addr.town || addr.village || '';
+				}
+			}
+
+			profileMsg = `Detected: ${profileData.address_line1 ? profileData.address_line1 + ', ' : ''}${profileData.city}, ${profileData.country}. Add your house number.`;
+		} catch {
+			profileMsg = 'Could not detect address. Enter manually.';
+		}
 	}
 
 	async function handleUsernameCheck() {
@@ -651,9 +675,17 @@
 							<div class="field">
 								<label class="label" for="p-postcode">Postcode</label>
 								<div style="display: flex; gap: 8px;">
-									<input class="input" type="text" id="p-postcode" placeholder="e.g. LE1 1AA" bind:value={profileData.postcode} style="flex: 1;" />
+									<input class="input" type="text" id="p-postcode" placeholder="e.g. NE1 8ST" bind:value={profileData.postcode} style="flex: 1;" />
 									<button class="btn btn-outline btn-sm" onclick={lookupPostcode} title="Auto-detect city from postcode">📍 Detect</button>
 								</div>
+							</div>
+							<div class="field">
+								<label class="label" for="p-addr1">Address Line 1</label>
+								<input class="input" type="text" id="p-addr1" placeholder="e.g. 12 Oak Street" bind:value={profileData.address_line1} />
+							</div>
+							<div class="field">
+								<label class="label" for="p-addr2">Address Line 2 <span class="text-muted" style="font-weight: 400;">(optional)</span></label>
+								<input class="input" type="text" id="p-addr2" placeholder="Flat, building, etc." bind:value={profileData.address_line2} />
 							</div>
 							<div class="field">
 								<label class="label" for="p-city">City</label>
