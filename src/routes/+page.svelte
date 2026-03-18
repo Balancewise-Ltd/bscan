@@ -37,6 +37,22 @@
 	// Detail panel
 	let openDetail = $state<string | null>(null);
 
+	// PDF download
+	let pdfDownloading = $state(false);
+	let pdfError = $state('');
+	async function handlePdfDownload() {
+		if (!r?.id || pdfDownloading) return;
+		pdfDownloading = true;
+		pdfError = '';
+		try {
+			const domain = $scan.currentUrl?.replace('https://', '').replace('http://', '').split('/')[0] || 'site';
+			await api.downloadPdf(r.id, `bscan-${domain}.pdf`);
+		} catch (err) {
+			pdfError = err instanceof Error ? err.message : 'Download failed';
+		}
+		pdfDownloading = false;
+	}
+
 	// Challenge landing (?challenge=xxx)
 	let challengeBanner = $state<{ domain: string; score: number; achievements: any[] } | null>(null);
 
@@ -293,10 +309,17 @@
 			<div class="results-bar">
 				<span class="results-url font-mono">{$scan.currentUrl}</span>
 				<div class="results-actions">
-					<button class="btn btn-outline btn-sm" onclick={() => window.print()}>Export</button>
+					{#if $auth.user && ($auth.isPaid)}
+						<button class="btn btn-gold btn-sm" disabled={pdfDownloading} onclick={handlePdfDownload}>
+							{#if pdfDownloading}<span class="spinner spinner-sm"></span>{:else}📄 Download PDF{/if}
+						</button>
+					{:else}
+						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download a professional audit report as PDF. Upgrade to Pro to unlock.')}>📄 PDF Report</button>
+					{/if}
 					<button class="btn btn-outline btn-sm" onclick={() => { scan.reset(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>New Scan</button>
 				</div>
 			</div>
+			{#if pdfError}<div class="msg-error" style="margin: 8px 0;">{pdfError}</div>{/if}
 
 			<!-- Overall Score -->
 			<div class="overall-row">

@@ -18,7 +18,7 @@
 	let authLoading = $state(false);
 
 	// ── Dashboard tabs ───────────────────────────────────
-	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security';
+	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding';
 	let activeTab = $state<Tab>('overview');
 
 	// ── Profile state ────────────────────────────────────
@@ -51,6 +51,13 @@
 	let pwConfirm = $state('');
 	let pwError = $state('');
 	let pwSuccess = $state('');
+
+	// ── Branding state (Agency white-label) ────────────────
+	let brandName = $state('');
+	let brandColor = $state('#f0a500');
+	let brandLogoUrl = $state('');
+	let brandSaving = $state(false);
+	let brandMsg = $state('');
 
 	const user = $derived($auth.user);
 	const plan = $derived(user?.plan || 'free');
@@ -215,6 +222,7 @@
 		{ key: 'billing', label: 'Billing', icon: '💳' },
 		{ key: 'history', label: 'History', icon: '📋' },
 		{ key: 'api-keys', label: 'API Keys', icon: '🔑', show: () => isPaid },
+		{ key: 'branding', label: 'Branding', icon: '🎨', show: () => isAgency },
 		{ key: 'security', label: 'Security', icon: '🔒' },
 	];
 </script>
@@ -288,33 +296,67 @@
 	</div>
 
 {:else if user}
-	<!-- ══════ DASHBOARD ══════ -->
-	<div class="dashboard animate-fade-up">
+	<!-- ══════ DASHBOARD — SIDEBAR LAYOUT ══════ -->
+	<div class="dash-layout animate-fade-up">
 
-		<!-- Header -->
-		<div class="dash-header">
-			<div class="dash-avatar">{(user.name || user.email)[0].toUpperCase()}</div>
-			<div class="dash-info">
-				<h2>{user.name || 'User'}</h2>
-				<p class="text-muted">{user.email}</p>
+		<!-- ── LEFT SIDEBAR ──────────────────────── -->
+		<aside class="sidebar">
+			<!-- Avatar / Upload -->
+			<div class="sidebar-avatar-wrap">
+				<div class="sidebar-avatar" role="button" tabindex="0" aria-label="Change avatar" onclick={() => document.getElementById('avatar-upload')?.click()}>
+					{#if user.avatar_url}
+						<img src={user.avatar_url} alt="Avatar" class="avatar-img" />
+					{:else}
+						<span class="avatar-letter">{(user.name || user.email)[0].toUpperCase()}</span>
+					{/if}
+					<div class="avatar-overlay">📷</div>
+				</div>
+				<input type="file" id="avatar-upload" accept="image/*" style="display: none;" onchange={async (e) => {
+					const file = (e.target as HTMLInputElement).files?.[0];
+					if (!file) return;
+					// For now, show filename — real upload needs backend endpoint
+					profileMsg = `Selected: ${file.name} (upload coming soon)`;
+				}} />
+				<div class="sidebar-name">{user.name || 'User'}</div>
+				<div class="sidebar-email text-muted">{user.email}</div>
+				<span class="plan-badge {plan}" style="margin-top: 6px;">{planLabel}</span>
 			</div>
-			<div class="dash-actions">
-				<span class="plan-badge {plan}">{planLabel}</span>
-				<button class="btn btn-outline btn-sm" onclick={() => auth.logout()}>Sign Out</button>
-			</div>
-		</div>
 
-		<!-- Tab Navigation -->
-		<div class="tabs-row">
-			{#each tabs as tab}
-				{#if !tab.show || tab.show()}
-					<button class="dash-tab" class:active={activeTab === tab.key} onclick={() => activeTab = tab.key}>
-						<span class="tab-icon">{tab.icon}</span>
-						<span class="tab-label">{tab.label}</span>
-					</button>
-				{/if}
-			{/each}
-		</div>
+			<!-- Navigation -->
+			<nav class="sidebar-nav">
+				{#each tabs as tab}
+					{#if !tab.show || tab.show()}
+						{#if tab.key === 'security'}
+							<!-- Security goes in settings section below -->
+						{:else}
+							<button
+								class="sidebar-item"
+								class:active={activeTab === tab.key}
+								onclick={() => activeTab = tab.key}
+							>
+								<span class="sidebar-icon">{tab.icon}</span>
+								<span class="sidebar-label">{tab.label}</span>
+							</button>
+						{/if}
+					{/if}
+				{/each}
+			</nav>
+
+			<!-- Settings (bottom) -->
+			<div class="sidebar-footer">
+				<button class="sidebar-item" class:active={activeTab === 'security'} onclick={() => activeTab = 'security'}>
+					<span class="sidebar-icon">⚙️</span>
+					<span class="sidebar-label">Settings</span>
+				</button>
+				<button class="sidebar-item signout" onclick={() => auth.logout()}>
+					<span class="sidebar-icon">🚪</span>
+					<span class="sidebar-label">Sign Out</span>
+				</button>
+			</div>
+		</aside>
+
+		<!-- ── MAIN CONTENT ──────────────────────── -->
+		<main class="dash-main">
 
 		<!-- ── OVERVIEW TAB ─────────────────────── -->
 		{#if activeTab === 'overview'}
@@ -428,6 +470,37 @@
 					<label class="label" for="p-bio">Bio</label>
 					<textarea class="input" id="p-bio" rows="3" placeholder="Tell us about yourself..." bind:value={profileData.bio} style="resize: vertical;"></textarea>
 				</div>
+
+				{#if isAgency}
+					<div class="card" style="margin-top: 24px; border-color: rgba(240,165,0,0.2);">
+						<div class="card-header">
+							<span>🏷️</span>
+							<span style="font-weight: 700;">White-Label Branding</span>
+							<span class="badge badge-blue" style="margin-left: auto;">Agency</span>
+						</div>
+						<div class="card-body">
+							<p class="text-secondary" style="font-size: 12px; margin-bottom: 16px;">Customise your PDF reports with your company branding. Clients will see your brand, not BSCAN.</p>
+							<div class="form-grid">
+								<div class="field">
+									<label class="label" for="p-brand-name">Brand Name (on PDF)</label>
+									<input class="input" type="text" id="p-brand-name" placeholder="Your Agency Name" bind:value={profileData.brand_name} />
+								</div>
+								<div class="field">
+									<label class="label" for="p-brand-color">Brand Colour</label>
+									<div style="display: flex; gap: 8px; align-items: center;">
+										<input type="color" id="p-brand-color" bind:value={profileData.brand_color} style="width: 44px; height: 36px; border: none; background: none; cursor: pointer;" />
+										<input class="input" type="text" placeholder="#3b82f6" bind:value={profileData.brand_color} style="flex: 1; font-family: var(--font-mono);" />
+									</div>
+								</div>
+								<div class="field" style="grid-column: 1 / -1;">
+									<label class="label" for="p-brand-logo">Logo URL</label>
+									<input class="input" type="url" id="p-brand-logo" placeholder="https://yoursite.com/logo.png" bind:value={profileData.brand_logo_url} />
+									<span class="field-hint" style="font-size: 11px; color: var(--clr-text-muted); margin-top: 4px; display: block;">PNG or SVG recommended. This appears on your white-label PDF reports.</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
 
 				{#if profileMsg}<div class="msg-success">{profileMsg}</div>{/if}
 
@@ -556,8 +629,14 @@
 									<div class="history-url font-mono">{s.url?.replace('https://', '').replace('http://', '').split('/')[0] || '—'}</div>
 									<div class="history-score font-mono" style="color: {scoreColor(s.overall_score || 0)};">{s.overall_score}</div>
 									<div class="history-date text-muted">{s.created_at ? formatDate(s.created_at) : ''}</div>
-									{#if isPaid && s.id}
-										<a href={api.getPdfDownloadUrl(s.id)} target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">PDF</a>
+									{#if s.id}
+										{#if isPaid}
+											<button class="btn btn-ghost btn-sm" onclick={async () => {
+												try { await api.downloadPdf(s.id, `bscan-${getDomain(s.url)}.pdf`); } catch {}
+											}}>📄 PDF</button>
+										{:else}
+											<button class="btn btn-ghost btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download professional audit reports. Upgrade to Pro to unlock.')}>🔒 PDF</button>
+										{/if}
 									{/if}
 								</div>
 							{/each}
@@ -653,6 +732,47 @@
 			</div>
 		{/if}
 
+		</main>
+
+		<!-- ── RIGHT PANEL ───────────────────────── -->
+		<aside class="right-panel">
+			<div class="rp-section">
+				<div class="rp-title">💬 Team Space</div>
+				{#if isAgency}
+					<p class="rp-desc">Share notes and discuss with your team members.</p>
+					<a href="/team" class="btn btn-outline btn-sm" style="width: 100%; text-align: center;">Open Team →</a>
+				{:else}
+					<p class="rp-desc">Upgrade to Agency to unlock team collaboration, shared notes, and group discussions.</p>
+					<button class="btn btn-blue btn-sm" style="width: 100%;" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
+				{/if}
+			</div>
+
+			<div class="rp-section">
+				<div class="rp-title">📊 Quick Stats</div>
+				<div class="rp-stat">
+					<span class="text-muted">Scans</span>
+					<span style="font-weight: 700;">{user.scans_this_month}</span>
+				</div>
+				<div class="rp-stat">
+					<span class="text-muted">Plan</span>
+					<span class="plan-badge {plan}" style="font-size: 10px;">{planLabel}</span>
+				</div>
+				<div class="rp-stat">
+					<span class="text-muted">Joined</span>
+					<span style="font-size: 12px;">{formatDate(user.created_at)}</span>
+				</div>
+			</div>
+
+			<div class="rp-section">
+				<div class="rp-title">🔗 Quick Links</div>
+				<a href="/" class="rp-link">🔍 New Scan</a>
+				<a href="/compare" class="rp-link">⚔️ Compare</a>
+				<a href="/seo" class="rp-link">📊 SEO Tools</a>
+				<a href="/leaderboard" class="rp-link">🏆 Leaderboard</a>
+				<a href="/api-docs" class="rp-link">🔌 API Docs</a>
+			</div>
+		</aside>
+
 	</div>
 {/if}
 
@@ -669,27 +789,52 @@
 	.msg-error { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-danger-dim); color: var(--clr-danger); font-size: 12px; border: 1px solid rgba(239,68,68,0.2); }
 	.msg-success { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-success-dim); color: var(--clr-success); font-size: 12px; }
 
-	/* ── Dashboard ─────────────────────────── */
-	.dashboard { margin-top: var(--space-md); }
+	/* ── Dashboard Layout (3-column) ─────── */
+	.dash-layout { display: grid; grid-template-columns: 220px 1fr 240px; gap: 0; margin-top: var(--space-sm); min-height: calc(100vh - 120px); }
 
-	.dash-header { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg); flex-wrap: wrap; }
-	.dash-avatar { width: 52px; height: 52px; border-radius: var(--radius-lg); background: var(--clr-gold-dim); border: 2px solid rgba(240,165,0,0.3); color: var(--clr-gold); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0; }
-	.dash-info { flex: 1; min-width: 0; }
-	.dash-info h2 { font-size: 20px; }
-	.dash-actions { display: flex; align-items: center; gap: 8px; }
+	/* ── Left Sidebar ─────────────────────── */
+	.sidebar { background: var(--clr-bg-card); border-right: 1px solid var(--clr-border); border-radius: var(--radius-lg) 0 0 var(--radius-lg); display: flex; flex-direction: column; padding: var(--space-md) 0; }
 
+	.sidebar-avatar-wrap { display: flex; flex-direction: column; align-items: center; padding: var(--space-md); padding-bottom: var(--space-lg); border-bottom: 1px solid var(--clr-border); margin-bottom: var(--space-sm); }
+	.sidebar-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--clr-gold-dim); border: 3px solid rgba(240,165,0,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: all var(--duration-fast); }
+	.sidebar-avatar:hover { border-color: var(--clr-gold); }
+	.sidebar-avatar:hover .avatar-overlay { opacity: 1; }
+	.avatar-letter { font-size: 28px; font-weight: 800; color: var(--clr-gold); }
+	.avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+	.avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: 0; transition: opacity var(--duration-fast); border-radius: 50%; }
+	.sidebar-name { font-size: 14px; font-weight: 700; margin-top: 10px; text-align: center; }
+	.sidebar-email { font-size: 11px; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+
+	.sidebar-nav { flex: 1; padding: var(--space-xs) 0; }
+	.sidebar-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 20px; border: none; background: transparent; color: var(--clr-text-muted); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all var(--duration-fast); text-align: left; }
+	.sidebar-item:hover { color: var(--clr-text-primary); background: rgba(255,255,255,0.04); }
+	.sidebar-item.active { color: var(--clr-text-primary); background: rgba(59,130,246,0.1); border-left: 3px solid var(--clr-blue); padding-left: 17px; }
+	.sidebar-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+	.sidebar-label { white-space: nowrap; }
+
+	.sidebar-footer { border-top: 1px solid var(--clr-border); padding-top: var(--space-sm); margin-top: auto; }
+	.sidebar-item.signout { color: var(--clr-danger); }
+	.sidebar-item.signout:hover { background: rgba(239,68,68,0.08); }
+
+	/* ── Main Content ─────────────────────── */
+	.dash-main { padding: var(--space-lg) var(--space-xl); overflow-y: auto; border-left: none; border-right: none; }
+	.tab-content { min-height: 200px; }
+
+	/* ── Right Panel ──────────────────────── */
+	.right-panel { background: var(--clr-bg-card); border-left: 1px solid var(--clr-border); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; padding: var(--space-md); overflow-y: auto; }
+	.rp-section { margin-bottom: var(--space-lg); }
+	.rp-title { font-size: 12px; font-weight: 700; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; font-family: var(--font-mono); }
+	.rp-desc { font-size: 12px; color: var(--clr-text-muted); line-height: 1.5; margin-bottom: 10px; }
+	.rp-stat { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--clr-border); }
+	.rp-stat:last-child { border-bottom: none; }
+	.rp-link { display: block; padding: 7px 0; font-size: 12px; color: var(--clr-text-secondary); text-decoration: none; transition: color var(--duration-fast); }
+	.rp-link:hover { color: var(--clr-gold); }
+
+	/* ── Plan Badge ────────────────────────── */
 	.plan-badge { display: inline-block; padding: 3px 12px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; font-family: var(--font-mono); text-transform: uppercase; }
 	.plan-badge.free, .plan-badge.guest { background: var(--clr-border); color: var(--clr-text-secondary); }
 	.plan-badge.pro { background: var(--clr-gold-dim); color: var(--clr-gold); }
 	.plan-badge.agency { background: var(--clr-blue-dim); color: var(--clr-blue); }
-
-	/* ── Tabs ──────────────────────────────── */
-	.tabs-row { display: flex; gap: 2px; margin-bottom: var(--space-lg); background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 4px; overflow-x: auto; }
-	.dash-tab { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; background: transparent; color: var(--clr-text-muted); transition: all var(--duration-fast); white-space: nowrap; }
-	.dash-tab.active { background: var(--clr-blue); color: white; }
-	.dash-tab:hover:not(.active) { color: var(--clr-text-primary); background: rgba(255,255,255,0.04); }
-	.tab-icon { font-size: 14px; }
-	.tab-content { min-height: 200px; }
 
 	/* ── Stats ─────────────────────────────── */
 	.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: var(--space-lg); }
@@ -739,13 +884,26 @@
 
 	textarea.input { font-family: inherit; }
 
+	/* ── Responsive ────────────────────────── */
+	@media (max-width: 900px) {
+		.dash-layout { grid-template-columns: 1fr; }
+		.sidebar { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--clr-border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: var(--space-sm); }
+		.sidebar-avatar-wrap { flex-direction: row; gap: 12px; border-bottom: none; margin-bottom: 0; padding: var(--space-xs) var(--space-sm); width: 100%; }
+		.sidebar-avatar { width: 44px; height: 44px; }
+		.avatar-letter { font-size: 18px; }
+		.sidebar-name { margin-top: 0; font-size: 13px; }
+		.sidebar-nav { display: flex; gap: 2px; overflow-x: auto; padding: var(--space-xs); width: 100%; }
+		.sidebar-item { padding: 8px 12px; border-radius: var(--radius-md); white-space: nowrap; }
+		.sidebar-item.active { border-left: none; padding-left: 12px; border-radius: var(--radius-md); }
+		.sidebar-label { font-size: 11px; }
+		.sidebar-footer { display: flex; gap: 2px; border-top: none; padding-top: 0; margin-top: 0; padding: 0 var(--space-xs) var(--space-xs); }
+		.sidebar-footer .sidebar-item { padding: 8px 12px; border-radius: var(--radius-md); }
+		.right-panel { border-left: none; border-top: 1px solid var(--clr-border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md); }
+		.dash-main { padding: var(--space-md); }
+	}
 	@media (max-width: 640px) {
 		.form-grid { grid-template-columns: 1fr; }
 		.plan-compare { grid-template-columns: 1fr; }
-		.dash-header { gap: var(--space-sm); }
-		.dash-actions { width: 100%; justify-content: flex-end; }
-		.tabs-row { gap: 0; }
-		.tab-label { display: none; }
-		.dash-tab { padding: 10px 12px; }
+		.sidebar-icon { font-size: 14px; }
 	}
 </style>

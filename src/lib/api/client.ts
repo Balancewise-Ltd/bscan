@@ -227,6 +227,9 @@ export interface ProfileData {
 	country?: string;
 	website?: string;
 	bio?: string;
+	brand_name?: string;
+	brand_color?: string;
+	brand_logo_url?: string;
 }
 
 export async function getPublicProfile(userId: string): Promise<any> {
@@ -344,6 +347,28 @@ export async function getSeoAutocomplete(query: string): Promise<any> {
 export function getPdfDownloadUrl(scanId: string): string {
 	const token = getToken();
 	return `${API_BASE}/api/scan/${scanId}/pdf${token ? `?token=${token}` : ''}`;
+}
+
+/** Download PDF with proper auth — triggers browser download */
+export async function downloadPdf(scanId: string, filename?: string): Promise<void> {
+	const token = getToken();
+	if (!token) throw new ApiError(401, 'Sign in to download PDFs');
+	const res = await fetch(`${API_BASE}/api/scan/${scanId}/pdf`, {
+		headers: { 'Authorization': `Bearer ${token}` }
+	});
+	if (!res.ok) {
+		const err = await res.json().catch(() => ({ detail: 'PDF download failed' }));
+		throw new ApiError(res.status, err.detail || 'PDF download failed');
+	}
+	const blob = await res.blob();
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename || `bscan-report-${scanId.slice(0, 8)}.pdf`;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	URL.revokeObjectURL(url);
 }
 
 export { ApiError, API_BASE };
