@@ -393,6 +393,24 @@ export async function getAiFixesForScan(scanId: string): Promise<{
 }
 
 // ══════════════════════════════════════════════════════════
+// DEEP CRAWL & BULK SCAN — matches /api/crawl/*
+// ══════════════════════════════════════════════════════════
+
+export async function deepCrawl(url: string, maxPages: number = 10): Promise<any> {
+	return request('/api/crawl/deep', {
+		method: 'POST',
+		body: JSON.stringify({ url, max_pages: maxPages }),
+	});
+}
+
+export async function bulkScan(urls: string[]): Promise<any> {
+	return request('/api/crawl/bulk', {
+		method: 'POST',
+		body: JSON.stringify({ urls }),
+	});
+}
+
+// ══════════════════════════════════════════════════════════
 // BILLING — matches /api/billing/*
 // ══════════════════════════════════════════════════════════
 
