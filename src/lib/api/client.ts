@@ -365,6 +365,34 @@ export async function triggerMonitoringScan(siteId: string): Promise<{ message: 
 }
 
 // ══════════════════════════════════════════════════════════
+// AI FIX GENERATOR — matches /api/fix/*
+// ══════════════════════════════════════════════════════════
+
+export async function getAiFix(issue: {
+	issue_title: string;
+	issue_description: string;
+	issue_category: string;
+	issue_severity: string;
+	url: string;
+	current_value?: string;
+}): Promise<any> {
+	return request('/api/fix', {
+		method: 'POST',
+		body: JSON.stringify(issue),
+	});
+}
+
+export async function getAiFixesForScan(scanId: string): Promise<{
+	scan_id: string;
+	url: string;
+	total_issues: number;
+	fixes_generated: number;
+	fixes: any[];
+}> {
+	return request(`/api/fix/scan/${scanId}`, { method: 'POST' });
+}
+
+// ══════════════════════════════════════════════════════════
 // BILLING — matches /api/billing/*
 // ══════════════════════════════════════════════════════════
 
