@@ -331,6 +331,40 @@ export async function getTeamActivity(): Promise<{ activity: any[] }> {
 }
 
 // ══════════════════════════════════════════════════════════
+// MONITORING — matches /api/monitoring/*
+// ══════════════════════════════════════════════════════════
+
+export async function getMonitoredSites(): Promise<{ sites: any[]; count: number; max_sites: number; plan: string }> {
+	return request('/api/monitoring');
+}
+
+export async function addMonitoredSite(url: string, frequency: string = 'weekly', alert_threshold: number = 5): Promise<{ message: string; site: any }> {
+	return request('/api/monitoring', {
+		method: 'POST',
+		body: JSON.stringify({ url, frequency, alert_threshold }),
+	});
+}
+
+export async function updateMonitoredSite(siteId: string, data: { frequency?: string; alert_threshold?: number; is_active?: boolean }): Promise<{ message: string }> {
+	return request(`/api/monitoring/${siteId}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data),
+	});
+}
+
+export async function removeMonitoredSite(siteId: string): Promise<{ message: string }> {
+	return request(`/api/monitoring/${siteId}`, { method: 'DELETE' });
+}
+
+export async function getMonitoringTrend(siteId: string): Promise<{ url: string; trend: any[]; total_scans: number }> {
+	return request(`/api/monitoring/${siteId}/trend`);
+}
+
+export async function triggerMonitoringScan(siteId: string): Promise<{ message: string }> {
+	return request(`/api/monitoring/${siteId}/scan`, { method: 'POST' });
+}
+
+// ══════════════════════════════════════════════════════════
 // BILLING — matches /api/billing/*
 // ══════════════════════════════════════════════════════════
 

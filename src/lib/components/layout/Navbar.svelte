@@ -7,11 +7,13 @@
 		{ href: '/', label: '🔍 Scanner', key: '/' },
 		{ href: '/leaderboard', label: '🏆 Leaderboard', key: '/leaderboard' },
 		{ href: '/seo', label: '📊 SEO', key: '/seo' },
-		{ href: '/compare', label: '⚔️ Compare', key: '/compare' }
+		{ href: '/compare', label: '⚔️ Compare', key: '/compare' },
+		{ href: '/monitoring', label: '📡 Monitor', key: '/monitoring' }
 	];
 
 	const mobileLinks = [
 		{ href: '/account', label: 'Login / Account', icon: '👤' },
+		{ href: '/monitoring', label: 'Monitoring', icon: '📡' },
 		{ href: '/seo', label: 'SEO Dashboard', icon: '📊' },
 		{ href: '/compare', label: 'Compare', icon: '⚔️' },
 		{ href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
