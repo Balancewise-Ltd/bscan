@@ -281,6 +281,11 @@
 						BSCAN It
 					{/if}
 				</button>
+				{#if isPaid}
+					<a href="/deep-crawl" class="btn btn-outline audit-btn-crawl" title="Multi-page crawl + bulk scan">
+						🕷️ Deep Crawl
+					</a>
+				{/if}
 			</div>
 
 			<div class="quick-urls">
@@ -640,6 +645,24 @@
 		padding: 14px 24px;
 		font-size: 14px;
 		flex-shrink: 0;
+	}
+
+	.audit-btn-crawl {
+		padding: 14px 18px;
+		font-size: 13px;
+		flex-shrink: 0;
+		border-color: rgba(6, 182, 212, 0.3);
+		color: #06b6d4;
+		text-decoration: none;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border-radius: var(--radius-md);
+		transition: all 0.15s;
+	}
+	.audit-btn-crawl:hover {
+		background: rgba(6, 182, 212, 0.1);
+		border-color: #06b6d4;
 	}
 
 	.quick-urls {

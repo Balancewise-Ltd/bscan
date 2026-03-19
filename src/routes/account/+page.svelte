@@ -158,8 +158,25 @@
 	// ── Profile ──────────────────────────────────────────
 	async function saveProfile() {
 		if (!user) return;
-		profileSaving = true;
 		profileMsg = '';
+
+		// Required field validation
+		const required: { field: string; label: string }[] = [
+			{ field: 'display_name', label: 'Display Name' },
+			{ field: 'company', label: 'Company' },
+			{ field: 'phone', label: 'Phone' },
+			{ field: 'postcode', label: 'Postcode' },
+			{ field: 'address_line1', label: 'Address Line 1' },
+			{ field: 'city', label: 'City' },
+			{ field: 'country', label: 'Country' },
+		];
+		const missing = required.filter(r => !(profileData as any)[r.field]?.trim());
+		if (missing.length > 0) {
+			profileMsg = `Required: ${missing.map(m => m.label).join(', ')}`;
+			return;
+		}
+
+		profileSaving = true;
 		try {
 			await api.updateProfile(user.email, profileData);
 			profileMsg = 'Profile updated!';
@@ -633,7 +650,7 @@
 								{/if}
 							</div>
 							<div class="field">
-								<label class="label" for="p-display">Display Name</label>
+								<label class="label" for="p-display">Display Name <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="text" id="p-display" placeholder="How you appear to others" bind:value={profileData.display_name} />
 							</div>
 						</div>
@@ -649,7 +666,7 @@
 					<div class="card-body">
 						<div class="form-grid">
 							<div class="field">
-								<label class="label" for="p-company">Company</label>
+								<label class="label" for="p-company">Company <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="text" id="p-company" placeholder="e.g. Balancewise Technologies" bind:value={profileData.company} />
 							</div>
 							<div class="field">
@@ -657,7 +674,7 @@
 								<input class="input" type="url" id="p-website" placeholder="https://yoursite.com" bind:value={profileData.website} />
 							</div>
 							<div class="field">
-								<label class="label" for="p-phone">Phone</label>
+								<label class="label" for="p-phone">Phone <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="tel" id="p-phone" placeholder="+44..." bind:value={profileData.phone} />
 							</div>
 						</div>
@@ -673,14 +690,14 @@
 					<div class="card-body">
 						<div class="form-grid">
 							<div class="field">
-								<label class="label" for="p-postcode">Postcode</label>
+								<label class="label" for="p-postcode">Postcode <span style="color:var(--clr-danger);">*</span></label>
 								<div style="display: flex; gap: 8px;">
 									<input class="input" type="text" id="p-postcode" placeholder="e.g. NE1 8ST" bind:value={profileData.postcode} style="flex: 1;" />
 									<button class="btn btn-outline btn-sm" onclick={lookupPostcode} title="Auto-detect city from postcode">📍 Detect</button>
 								</div>
 							</div>
 							<div class="field">
-								<label class="label" for="p-addr1">Address Line 1</label>
+								<label class="label" for="p-addr1">Address Line 1 <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="text" id="p-addr1" placeholder="e.g. 12 Oak Street" bind:value={profileData.address_line1} />
 							</div>
 							<div class="field">
@@ -688,11 +705,11 @@
 								<input class="input" type="text" id="p-addr2" placeholder="Flat, building, etc." bind:value={profileData.address_line2} />
 							</div>
 							<div class="field">
-								<label class="label" for="p-city">City</label>
+								<label class="label" for="p-city">City <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="text" id="p-city" bind:value={profileData.city} />
 							</div>
 							<div class="field">
-								<label class="label" for="p-country">Country</label>
+								<label class="label" for="p-country">Country <span style="color:var(--clr-danger);">*</span></label>
 								<input class="input" type="text" id="p-country" bind:value={profileData.country} />
 							</div>
 						</div>
@@ -713,7 +730,11 @@
 					</div>
 				</div>
 
-				{#if profileMsg}<div class="msg-success" style="margin-top: 4px; margin-bottom: 8px;">{profileMsg}</div>{/if}
+				{#if profileMsg}
+					<div style="margin-top: 4px; margin-bottom: 8px; padding: 10px 14px; border-radius: 8px; font-size: 13px; background: {profileMsg.startsWith('Required:') || profileMsg.startsWith('Failed') ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)'}; color: {profileMsg.startsWith('Required:') || profileMsg.startsWith('Failed') ? 'var(--clr-danger)' : 'var(--clr-success)'};">
+						{profileMsg}
+					</div>
+				{/if}
 
 				<button class="btn btn-gold" disabled={profileSaving} onclick={saveProfile}>
 					{#if profileSaving}<span class="spinner spinner-sm"></span>{/if} Save Profile
@@ -1178,6 +1199,8 @@
 	.action-compare { background: linear-gradient(135deg, #065f46, #10b981); }
 	.action-seo { background: linear-gradient(135deg, #92400e, #f59e0b); }
 	.action-team { background: linear-gradient(135deg, #581c87, #a855f7); }
+	.action-crawl { background: linear-gradient(135deg, #164e63, #06b6d4); }
+	.action-monitor { background: linear-gradient(135deg, #7f1d1d, #ef4444); }
 
 	/* ── Scan Table ────────────────────────── */
 	.scan-table-header { display: grid; grid-template-columns: 2fr 80px 100px 30px; gap: 8px; padding: 10px 16px; font-size: 11px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid var(--clr-border); }
