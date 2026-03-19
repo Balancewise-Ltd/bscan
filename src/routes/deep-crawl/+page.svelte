@@ -25,6 +25,29 @@
 	const maxPages = $derived(isAgency ? 50 : 10);
 	const maxBulk = $derived(isAgency ? 25 : 5);
 
+	// AI Fix Generator
+	let aiFixes = $state<Record<string, any>>({});
+	let aiFixLoading = $state<Record<string, boolean>>({});
+
+	async function getAiFixForIssue(issue: any) {
+		const key = issue.title;
+		if (aiFixes[key] || aiFixLoading[key]) return;
+		aiFixLoading = { ...aiFixLoading, [key]: true };
+		try {
+			const fix = await api.getAiFix({
+				issue_title: issue.title,
+				issue_description: issue.description || '',
+				issue_category: issue.category || 'general',
+				issue_severity: issue.severity || 'warning',
+				url: deepResult?.url || deepUrl || '',
+			});
+			aiFixes = { ...aiFixes, [key]: fix };
+		} catch {
+			aiFixes = { ...aiFixes, [key]: { error: 'Failed to generate fix.' } };
+		}
+		aiFixLoading = { ...aiFixLoading, [key]: false };
+	}
+
 	async function startDeepCrawl() {
 		if (!deepUrl.trim()) { deepError = 'Enter a URL.'; return; }
 		deepError = '';
@@ -196,6 +219,33 @@
 											<span class="pages-badge">Found on {issue.affected_pages} pages</span>
 										{/if}
 										<div class="text-muted" style="font-size: 11px; margin-top: 2px;">{issue.description}</div>
+										{#if issue.fix}
+											<div class="issue-fix">Fix: {issue.fix}</div>
+										{/if}
+										<button class="btn-ai-fix" onclick={() => getAiFixForIssue(issue)} disabled={!!aiFixLoading[issue.title]}>
+											{#if aiFixLoading[issue.title]}⏳ Generating...{:else if aiFixes[issue.title]}✅ View Code{:else}🤖 AI Fix{/if}
+										</button>
+										{#if aiFixes[issue.title] && !aiFixes[issue.title].error}
+											{@const fix = aiFixes[issue.title]}
+											<div class="ai-fix-panel">
+												<div class="ai-fix-summary">{fix.fix_summary}</div>
+												<div class="ai-fix-meta"><span class="ai-badge">{fix.priority || 'medium'}</span><span class="ai-badge">{fix.effort || '—'}</span></div>
+												{#each (fix.code_snippets || []) as snippet}
+													<div class="ai-code-block">
+														<div class="ai-code-header">
+															<span class="ai-code-lang">{snippet.language}</span>
+															<span class="ai-code-file">{snippet.filename}</span>
+															<button class="ai-copy-btn" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
+														</div>
+														<pre class="ai-code">{snippet.code}</pre>
+														<p class="ai-code-explain">{snippet.explanation}</p>
+													</div>
+												{/each}
+												{#if fix.additional_notes}<p class="ai-notes">{fix.additional_notes}</p>{/if}
+											</div>
+										{:else if aiFixes[issue.title]?.error}
+											<div class="ai-fix-error">{aiFixes[issue.title].error}</div>
+										{/if}
 									</div>
 								</div>
 							{/each}
@@ -300,6 +350,26 @@ https://site3.com" bind:value={bulkUrls} style="font-family: var(--font-mono); f
 	.issue-icon.warn { background: rgba(245,158,11,0.15); color: var(--clr-warning); }
 	.issue-text { font-size: 13px; }
 	.pages-badge { font-size: 10px; padding: 1px 6px; background: rgba(59,130,246,0.1); color: var(--clr-blue); border-radius: 4px; margin-left: 6px; }
+	.issue-fix { color: var(--clr-blue); font-size: 11px; font-style: italic; margin-top: 3px; }
+
+	/* AI Fix Generator */
+	.btn-ai-fix { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 5px 12px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #1e40af, #7c3aed); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+	.btn-ai-fix:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+	.btn-ai-fix:disabled { opacity: 0.6; cursor: wait; }
+	.ai-fix-panel { margin-top: 10px; padding: 14px; background: var(--clr-bg-deep); border: 1px solid rgba(124,58,237,0.2); border-radius: 8px; }
+	.ai-fix-summary { font-size: 13px; font-weight: 600; color: var(--clr-text-primary); margin-bottom: 8px; }
+	.ai-fix-meta { display: flex; gap: 6px; margin-bottom: 10px; }
+	.ai-badge { padding: 2px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--clr-text-muted); font-family: var(--font-mono); }
+	.ai-fix-error { font-size: 12px; color: var(--clr-danger); padding: 8px; background: rgba(239,68,68,0.08); border-radius: 6px; margin-top: 8px; }
+	.ai-code-block { margin-top: 8px; border: 1px solid var(--clr-border); border-radius: 6px; overflow: hidden; }
+	.ai-code-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--clr-border); font-size: 10px; }
+	.ai-code-lang { font-weight: 700; color: var(--clr-blue); text-transform: uppercase; font-family: var(--font-mono); }
+	.ai-code-file { color: var(--clr-text-muted); font-family: var(--font-mono); }
+	.ai-copy-btn { margin-left: auto; padding: 2px 8px; font-size: 10px; background: rgba(59,130,246,0.1); color: var(--clr-blue); border: 1px solid rgba(59,130,246,0.2); border-radius: 4px; cursor: pointer; font-family: inherit; }
+	.ai-copy-btn:hover { background: rgba(59,130,246,0.2); }
+	.ai-code { margin: 0; padding: 12px; font-size: 12px; font-family: var(--font-mono); color: var(--clr-text-secondary); line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-word; background: transparent; }
+	.ai-code-explain { font-size: 11px; color: var(--clr-text-muted); padding: 8px 10px; border-top: 1px solid var(--clr-border); margin: 0; }
+	.ai-notes { font-size: 11px; color: var(--clr-text-muted); margin-top: 8px; font-style: italic; }
 
 	.msg-error { padding: 8px 12px; border-radius: 6px; font-size: 12px; background: rgba(239,68,68,0.1); color: var(--clr-danger); }
 
