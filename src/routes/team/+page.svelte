@@ -22,9 +22,14 @@
 	let inviteSuccess = $state('');
 	let inviteLoading = $state(false);
 
-	// Team notes (client-side for now — needs backend endpoint)
-	let notes = $state<Array<{ author: string; text: string; time: number }>>([]);
+	// Team notes (API-backed, shared with team)
+	let notes = $state<Array<{ id: string; author_name: string; author_email: string; content: string; created_at: string }>>([]);
 	let newNote = $state('');
+	let notesLoading = $state(false);
+
+	// Team activity
+	let activity = $state<Array<{ id: string; type: string; url?: string; score?: number; content?: string; author: string; created_at: string }>>([]);
+	let activityLoading = $state(false);
 
 	const isAgency = $derived($auth.user?.plan === 'agency');
 
@@ -46,9 +51,11 @@
 		if ($auth.user && isAgency) await loadTeam();
 		loading = false;
 
-		// Load notes from localStorage
-		const savedNotes = safeGetStorage('bscan_team_notes');
-		if (savedNotes) notes = safeJsonParse(savedNotes, []);
+		// Load notes + activity from API
+		if (isAgency) {
+			loadNotes();
+			loadActivity();
+		}
 	});
 
 	async function loadTeam() {
@@ -80,22 +87,44 @@
 		try { await api.removeTeamMember(id); loadTeam(); } catch {}
 	}
 
-	function addNote() {
-		if (!newNote.trim() || !$auth.user) return;
-		const note = {
-			author: $auth.user.name || $auth.user.email,
-			text: newNote.trim(),
-			time: Date.now()
-		};
-		notes = [note, ...notes];
-		newNote = '';
-		safeSetStorage('bscan_team_notes', JSON.stringify(notes.slice(0, 100)));
+	async function loadNotes() {
+		notesLoading = true;
+		try {
+			const res = await api.getTeamNotes();
+			notes = res.notes || [];
+		} catch { notes = []; }
+		notesLoading = false;
 	}
 
-	function formatNoteTime(ts: number): string {
+	async function addNote() {
+		if (!newNote.trim() || !$auth.user) return;
+		try {
+			const res = await api.createTeamNote(newNote.trim());
+			if (res.note) notes = [res.note, ...notes];
+			newNote = '';
+		} catch { }
+	}
+
+	async function deleteNote(id: string) {
+		try {
+			await api.deleteTeamNote(id);
+			notes = notes.filter(n => n.id !== id);
+		} catch { }
+	}
+
+	async function loadActivity() {
+		activityLoading = true;
+		try {
+			const res = await api.getTeamActivity();
+			activity = res.activity || [];
+		} catch { activity = []; }
+		activityLoading = false;
+	}
+
+	function formatNoteTime(ts: string | number): string {
 		const d = new Date(ts);
 		const now = Date.now();
-		const diff = now - ts;
+		const diff = now - d.getTime();
 		if (diff < 60000) return 'Just now';
 		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
 		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -157,7 +186,7 @@
 		{#if activeTab === 'members'}
 			<div class="animate-fade-up">
 				<!-- Invite -->
-				{#if isOwner}
+				{#if isOwner || (isAgency && team.length === 0)}
 					<div class="card" style="margin-bottom: 20px;">
 						<div class="card-header">
 							<span>✉️</span>
@@ -227,7 +256,7 @@
 					<div class="card-header">
 						<span>💬</span>
 						<span style="font-weight: 700;">Team Notes</span>
-						<span class="text-muted" style="margin-left: auto; font-size: 11px;">Shared workspace for your team</span>
+						<span class="text-muted" style="margin-left: auto; font-size: 11px;">{notes.length} note{notes.length !== 1 ? 's' : ''}</span>
 					</div>
 					<div class="card-body">
 						<!-- New Note -->
@@ -238,28 +267,27 @@
 
 						<!-- Notes Feed -->
 						<div class="notes-feed">
-							{#if notes.length === 0}
+							{#if notesLoading}
+								<div class="empty-notes"><p class="text-muted">Loading notes...</p></div>
+							{:else if notes.length === 0}
 								<div class="empty-notes">
 									<p class="text-muted">No notes yet. Share something with your team!</p>
 								</div>
 							{:else}
 								{#each notes as note}
 									<div class="note-item">
-										<div class="note-avatar">{note.author[0].toUpperCase()}</div>
+										<div class="note-avatar">{(note.author_name || note.author_email || '?')[0].toUpperCase()}</div>
 										<div class="note-content">
 											<div class="note-meta">
-												<span class="note-author">{note.author}</span>
-												<span class="note-time text-muted">{formatNoteTime(note.time)}</span>
+												<span class="note-author">{note.author_name || note.author_email}</span>
+												<span class="note-time text-muted">{formatNoteTime(note.created_at)}</span>
+												<button class="note-delete" title="Delete note" onclick={() => deleteNote(note.id)}>×</button>
 											</div>
-											<div class="note-text">{note.text}</div>
+											<div class="note-text">{note.content}</div>
 										</div>
 									</div>
 								{/each}
 							{/if}
-						</div>
-
-						<div class="notes-disclaimer">
-							<span class="text-muted" style="font-size: 10px;">Notes are stored locally. A synced team chat is coming soon.</span>
 						</div>
 					</div>
 				</div>
@@ -273,12 +301,37 @@
 					<div class="card-header">
 						<span>📋</span>
 						<span style="font-weight: 700;">Team Activity</span>
+						<button class="btn btn-ghost btn-sm" style="margin-left: auto;" onclick={loadActivity}>Refresh</button>
 					</div>
-					<div class="card-body">
-						<div class="empty-notes">
-							<div style="font-size: 28px; margin-bottom: 8px;">📋</div>
-							<p class="text-muted">Team activity feed shows recent scans, compares, and exports by all team members. Coming in the next update.</p>
-						</div>
+					<div class="card-body" style="padding: 0;">
+						{#if activityLoading}
+							<div class="empty-notes" style="padding: 32px;"><p class="text-muted">Loading activity...</p></div>
+						{:else if activity.length === 0}
+							<div class="empty-notes" style="padding: 32px;">
+								<div style="font-size: 28px; margin-bottom: 8px;">📋</div>
+								<p class="text-muted">No team activity yet. Start scanning to see your team's work here.</p>
+							</div>
+						{:else}
+							{#each activity as item}
+								<div class="activity-row">
+									<div class="activity-icon">{item.type === 'scan' ? '🔍' : '💬'}</div>
+									<div class="activity-body">
+										<span class="activity-author">{item.author}</span>
+										{#if item.type === 'scan'}
+											<span class="text-muted">scanned</span>
+											<span class="activity-url">{item.url?.replace('https://', '').replace('http://', '').split('/')[0]}</span>
+											{#if item.score}
+												<span class="activity-score" style="color: {item.score >= 80 ? 'var(--clr-success)' : item.score >= 60 ? 'var(--clr-warning)' : 'var(--clr-danger)'};">{item.score}</span>
+											{/if}
+										{:else}
+											<span class="text-muted">noted:</span>
+											<span class="activity-note">{item.content}</span>
+										{/if}
+									</div>
+									<div class="activity-time text-muted">{formatNoteTime(item.created_at)}</div>
+								</div>
+							{/each}
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -330,11 +383,29 @@
 	.note-text { font-size: 13px; color: var(--clr-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 
 	.empty-notes { text-align: center; padding: var(--space-xl); }
-	.notes-disclaimer { margin-top: var(--space-md); padding-top: var(--space-sm); border-top: 1px solid var(--clr-border); text-align: center; }
+
+	/* Note delete button */
+	.note-delete { background: none; border: none; color: var(--clr-text-muted); cursor: pointer; font-size: 16px; padding: 0 4px; margin-left: auto; opacity: 0; transition: opacity 0.15s, color 0.15s; }
+	.note-item:hover .note-delete { opacity: 1; }
+	.note-delete:hover { color: var(--clr-danger); }
+
+	/* Activity feed */
+	.activity-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--clr-border); transition: background 0.15s; }
+	.activity-row:last-child { border-bottom: none; }
+	.activity-row:hover { background: rgba(255,255,255,0.02); }
+	.activity-icon { font-size: 16px; flex-shrink: 0; }
+	.activity-body { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; font-size: 13px; min-width: 0; }
+	.activity-author { font-weight: 600; color: var(--clr-text-primary); }
+	.activity-url { font-family: var(--font-mono); color: var(--clr-blue); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+	.activity-score { font-weight: 800; font-size: 15px; }
+	.activity-note { color: var(--clr-text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
+	.activity-time { font-size: 10px; flex-shrink: 0; white-space: nowrap; }
 
 	@media (max-width: 640px) {
 		.invite-row { flex-direction: column; }
 		.invite-row select { width: 100% !important; }
 		.member-row { flex-wrap: wrap; gap: 8px; }
+		.activity-body { font-size: 12px; }
+		.activity-url, .activity-note { max-width: 140px; }
 	}
 </style>

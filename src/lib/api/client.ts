@@ -310,6 +310,26 @@ export async function removeTeamMember(memberId: string): Promise<{ message: str
 	return request(`/api/team/members/${memberId}`, { method: 'DELETE' });
 }
 
+/** Get team notes — GET /api/team/notes */
+export async function getTeamNotes(): Promise<{ notes: any[] }> {
+	return request('/api/team/notes');
+}
+
+/** Create a team note — POST /api/team/notes */
+export async function createTeamNote(content: string): Promise<{ message: string; note: any }> {
+	return request('/api/team/notes', { method: 'POST', body: JSON.stringify({ content }) });
+}
+
+/** Delete a team note — DELETE /api/team/notes/:id */
+export async function deleteTeamNote(id: string): Promise<{ message: string }> {
+	return request(`/api/team/notes/${id}`, { method: 'DELETE' });
+}
+
+/** Get team activity feed — GET /api/team/activity */
+export async function getTeamActivity(): Promise<{ activity: any[] }> {
+	return request('/api/team/activity');
+}
+
 // ══════════════════════════════════════════════════════════
 // BILLING — matches /api/billing/*
 // ══════════════════════════════════════════════════════════
