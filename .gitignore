@@ -1,4 +1,6 @@
 node_modules
+#new
+src/utils/push.ts
 
 # Output
 .output
