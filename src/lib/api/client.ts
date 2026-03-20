@@ -411,6 +411,28 @@ export async function bulkScan(urls: string[]): Promise<any> {
 }
 
 // ══════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS — matches /api/push/*
+// ══════════════════════════════════════════════════════════
+
+export async function registerPushToken(token: string): Promise<{ message: string }> {
+	return request('/api/push/register', {
+		method: 'POST',
+		body: JSON.stringify({ token }),
+	});
+}
+
+export async function unregisterPushToken(token: string): Promise<{ message: string }> {
+	return request('/api/push/unregister', {
+		method: 'POST',
+		body: JSON.stringify({ token }),
+	});
+}
+
+export async function testPush(): Promise<{ message: string }> {
+	return request('/api/push/test', { method: 'POST' });
+}
+
+// ══════════════════════════════════════════════════════════
 // BILLING — matches /api/billing/*
 // ══════════════════════════════════════════════════════════
 

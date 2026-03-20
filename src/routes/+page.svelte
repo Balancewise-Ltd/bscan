@@ -285,6 +285,10 @@
 					<a href="/deep-crawl" class="btn btn-outline audit-btn-crawl" title="Multi-page crawl + bulk scan">
 						🕷️ Deep Crawl
 					</a>
+				{:else}
+					<a href="#pricing" class="btn btn-outline audit-btn-crawl" title="Upgrade to unlock Deep Crawl" style="opacity: 0.6;">
+						🔒 Deep Crawl
+					</a>
 				{/if}
 			</div>
 
