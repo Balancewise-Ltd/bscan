@@ -281,12 +281,16 @@
 						BSCAN It
 					{/if}
 				</button>
-				{#if isPaid}
-					<a href="/deep-crawl" class="btn btn-outline audit-btn-crawl" title="Multi-page crawl + bulk scan">
+				{#if $auth.user?.plan === 'agency'}
+					<a href="/deep-crawl" class="btn btn-outline audit-btn-crawl">
 						🕷️ Deep Crawl
 					</a>
+				{:else if $auth.user}
+					<button class="btn btn-outline audit-btn-crawl" style="opacity: 0.6;" onclick={() => { alert('Deep Crawl is available on the Agency plan. Upgrade in your Account dashboard.'); }}>
+						🔒 Deep Crawl
+					</button>
 				{:else}
-					<a href="#pricing" class="btn btn-outline audit-btn-crawl" title="Upgrade to unlock Deep Crawl" style="opacity: 0.6;">
+					<a href="/account" class="btn btn-outline audit-btn-crawl" style="opacity: 0.6;">
 						🔒 Deep Crawl
 					</a>
 				{/if}

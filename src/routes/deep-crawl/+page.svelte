@@ -22,8 +22,8 @@
 
 	const isPaid = $derived($auth.user?.plan === 'pro' || $auth.user?.plan === 'agency');
 	const isAgency = $derived($auth.user?.plan === 'agency');
-	const maxPages = $derived(isAgency ? 50 : 10);
-	const maxBulk = $derived(isAgency ? 25 : 5);
+	const maxPages = 50;
+	const maxBulk = 25;
 
 	// AI Fix Generator
 	let aiFixes = $state<Record<string, any>>({});
@@ -95,15 +95,27 @@
 		<p class="text-secondary">Multi-page site audits and batch URL scanning.</p>
 	</div>
 
-	{#if !$auth.user || !isPaid}
+	{#if !$auth.user}
+		<!-- Not logged in -->
+		<div class="card animate-fade-up">
+			<div class="card-body" style="text-align: center; padding: 40px;">
+				<div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
+				<h3>Sign in to access Deep Crawl</h3>
+				<p class="text-muted" style="margin: 8px 0 20px;">Deep Crawl & Bulk Scan is an exclusive Agency feature. Sign in or create an account to get started.</p>
+				<a href="/account" class="btn btn-gold">Sign In / Create Account →</a>
+			</div>
+		</div>
+	{:else if !isAgency}
+		<!-- Logged in but not Agency -->
 		<div class="card animate-fade-up">
 			<div class="card-body" style="text-align: center; padding: 40px;">
 				<div style="font-size: 48px; margin-bottom: 12px;">🕷️</div>
-				<h3>Upgrade for Deep Crawl</h3>
-				<p class="text-muted" style="margin: 8px 0 20px;">Crawl entire sites and scan URLs in bulk.</p>
-				<div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-					<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Pro — 10 pages · £9/mo</button>
-					<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Agency — 50 pages · £29/mo</button>
+				<h3>Agency Plan Required</h3>
+				<p class="text-muted" style="margin: 8px 0 8px;">Deep Crawl & Bulk Scan is available exclusively on the Agency plan.</p>
+				<p class="text-muted" style="margin: 0 0 20px; font-size: 13px;">Crawl up to 50 internal pages, scan 25 URLs in parallel, and get AI-powered fix suggestions for every issue found.</p>
+				<div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+					<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency — £29/mo</button>
+					<span class="text-muted" style="font-size: 11px;">Includes unlimited scans, team management, white-label PDFs, monitoring, and API access.</span>
 				</div>
 			</div>
 		</div>
@@ -129,10 +141,8 @@
 						<select class="input" bind:value={deepMaxPages} style="width: 100px;">
 							<option value={5}>5 pages</option>
 							<option value={10}>10 pages</option>
-							{#if isAgency}
-								<option value={25}>25 pages</option>
-								<option value={50}>50 pages</option>
-							{/if}
+							<option value={25}>25 pages</option>
+							<option value={50}>50 pages</option>
 						</select>
 						<button class="btn btn-gold" disabled={deepLoading} onclick={startDeepCrawl}>
 							{#if deepLoading}⏳ Crawling...{:else}Start Crawl{/if}
