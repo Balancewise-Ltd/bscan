@@ -13,6 +13,7 @@
 	let deepLoading = $state(false);
 	let deepResult = $state<any>(null);
 	let deepError = $state('');
+	let pdfLoading = $state(false);
 
 	// Bulk scan
 	let bulkUrls = $state('');
@@ -59,6 +60,16 @@
 			deepError = err instanceof Error ? err.message : 'Crawl failed.';
 		}
 		deepLoading = false;
+	}
+
+	async function downloadPdf() {
+		if (!deepResult) return;
+		pdfLoading = true;
+		try {
+			const blob = await api.downloadDeepCrawlPdf({ url: deepResult.url || deepUrl, pages: deepResult.pages || [], summary: deepResult.summary || {}, issues: deepResult.issues || [] });
+			const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "bscan-crawl-report.pdf"; a.click(); URL.revokeObjectURL(a.href);
+		} catch { deepError = "PDF generation failed."; }
+		pdfLoading = false;
 	}
 
 	async function startBulkScan() {
@@ -159,6 +170,7 @@
 					<div class="card-header">
 						<span>📊</span>
 						<span style="font-weight: 700;">Crawl Summary</span>
+						<button class="btn btn-gold btn-sm" style="margin-left: auto;" disabled={pdfLoading} onclick={downloadPdf}>{#if pdfLoading}⏳ PDF...{:else}📄 Download PDF{/if}</button>
 					</div>
 					<div class="card-body">
 						<div class="summary-grid">

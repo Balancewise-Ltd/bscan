@@ -403,6 +403,17 @@ export async function deepCrawl(url: string, maxPages: number = 10): Promise<any
 	});
 }
 
+export async function downloadDeepCrawlPdf(data: { url: string; pages: any[]; summary: any; issues: any[] }): Promise<Blob> {
+	const token = getToken();
+	const res = await fetch(`${API_BASE}/api/crawl/deep/pdf`, {
+		method: 'POST',
+		headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+		body: JSON.stringify(data),
+	});
+	if (!res.ok) throw new ApiError(res.status, 'PDF generation failed');
+	return res.blob();
+}
+
 export async function bulkScan(urls: string[]): Promise<any> {
 	return request('/api/crawl/bulk', {
 		method: 'POST',
