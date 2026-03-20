@@ -404,6 +404,7 @@
 				<div class="detail-panel animate-fade-up">
 					<div class="detail-header">
 						<div class="detail-header-left">
+							<button class="btn-back" onclick={() => openDetail = null}>← Back</button>
 							<div class="detail-badge {scoreLevel(catScore)}">{catScore}</div>
 							<div>
 								<div class="detail-title">{catInfo?.icon} {catInfo?.label}</div>
@@ -446,6 +447,10 @@
 												{:else if aiFixes[issue.title]?.error}
 													<div class="ai-fix-error">{aiFixes[issue.title].error}</div>
 												{/if}
+											{:else}
+												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { alert('AI Fix Generator requires a Pro or Agency plan. Upgrade in your Account dashboard.'); } }}>
+													🔒 AI Fix
+												</button>
 											{/if}
 										</div>
 									</div>
@@ -488,6 +493,10 @@
 												{:else if aiFixes[issue.title]?.error}
 													<div class="ai-fix-error">{aiFixes[issue.title].error}</div>
 												{/if}
+											{:else}
+												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { alert('AI Fix Generator requires a Pro or Agency plan. Upgrade in your Account dashboard.'); } }}>
+													🔒 AI Fix
+												</button>
 											{/if}
 										</div>
 									</div>
@@ -932,6 +941,11 @@
 	.btn-ai-fix { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 5px 12px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #1e40af, #7c3aed); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
 	.btn-ai-fix:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
 	.btn-ai-fix:disabled { opacity: 0.6; cursor: wait; }
+	.btn-ai-fix-locked { background: linear-gradient(135deg, #374151, #4b5563); opacity: 0.7; }
+	.btn-ai-fix-locked:hover { opacity: 1; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+	.btn-back { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--clr-text-secondary); background: rgba(255,255,255,0.04); border: 1px solid var(--clr-border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+	.btn-back:hover { color: var(--clr-text-primary); background: rgba(255,255,255,0.08); }
 	.ai-fix-panel { margin-top: 10px; padding: 14px; background: var(--clr-bg-deep); border: 1px solid rgba(124,58,237,0.2); border-radius: 8px; }
 	.ai-fix-summary { font-size: 13px; font-weight: 600; color: var(--clr-text-primary); margin-bottom: 8px; }
 	.ai-fix-meta { display: flex; gap: 6px; margin-bottom: 10px; }

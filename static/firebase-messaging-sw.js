@@ -10,7 +10,7 @@ firebase.initializeApp({
   projectId: "bscan-cefcb",
   storageBucket: "bscan-cefcb.firebasestorage.app",
   messagingSenderId: "204862555986",
-  appId: "1:204862555986:web:c0f3d1bc85b6dc57661c8b",
+  appId: "1:204862555986:web:43518eaf150598fe661c8b",
 });
 
 const messaging = firebase.messaging();
