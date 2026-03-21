@@ -148,6 +148,9 @@
 	$effect(() => {
 		if (user && activeTab === 'overview') { loadHistory(); if (isPaid) loadApiKeys(); }
 		if (user && !profileLoaded) loadProfileData();
+		if (user && referralLoading) {
+			api.referralStats().then(d => { referralData = d; referralLoading = false; }).catch(() => { referralLoading = false; });
+		}
 	});
 
 	let profileLoaded = $state(false);
