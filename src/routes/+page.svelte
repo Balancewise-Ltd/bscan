@@ -15,6 +15,7 @@
 	import ScoreRing from '$lib/components/scanner/ScoreRing.svelte';
 	import ScoreCard from '$lib/components/scanner/ScoreCard.svelte';
 	import Pricing from '$lib/components/scanner/Pricing.svelte';
+	import Faq from '$lib/components/scanner/Faq.svelte';
 	import Enrichment from '$lib/components/scanner/Enrichment.svelte';
 	import Badges from '$lib/components/scanner/Badges.svelte';
 	import FeatureCards from '$lib/components/scanner/FeatureCards.svelte';
@@ -554,6 +555,9 @@
 
 	<!-- ── Pricing ──────────────────────────────────── -->
 	<Pricing />
+
+	<!-- ── FAQ ──────────────────────────────────── -->
+	<Faq />
 
 	<!-- ── Paywall ──────────────────────────────────── -->
 	{#if $ui.paywallOpen}
