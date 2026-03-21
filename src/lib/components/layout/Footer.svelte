@@ -16,6 +16,7 @@
 			<div class="footer-col">
 				<div class="footer-heading">Platform</div>
 				<a href="/leaderboard">Leaderboard</a>
+			<a href="/account" style="color: var(--clr-gold);">Refer Friends</a>
 				<a href="/api-docs">API Documentation</a>
 				<a href="/account">My Account</a>
 				<a href="/team">Team Management</a>

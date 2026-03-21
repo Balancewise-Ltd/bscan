@@ -36,6 +36,12 @@
 	let verifyError = $state('');
 	let resendLoading = $state(false);
 
+	// ── Referral System ─────────────────────────────────
+	let referralData = $state<any>(null);
+	let referralLoading = $state(true);
+	let claimLoading = $state(false);
+	let claimMsg = $state('');
+
 	// ── Dashboard tabs ───────────────────────────────────
 	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding';
 	let activeTab = $state<Tab>('overview');
@@ -535,6 +541,20 @@
 		pushTestLoading = false;
 	}
 
+	async function handleClaimReward() {
+		claimLoading = true;
+		claimMsg = '';
+		try {
+			const res = await api.claimReferralReward();
+			claimMsg = res.message || 'Reward claimed!';
+			referralData = await api.referralStats();
+			auth.refresh();
+		} catch (err) {
+			claimMsg = err instanceof Error ? err.message : 'Failed to claim.';
+		}
+		claimLoading = false;
+	}
+
 	const tabs: Array<{ key: Tab; label: string; icon: string; show?: () => boolean }> = [
 		{ key: 'overview', label: 'Overview', icon: '📊' },
 		{ key: 'profile', label: 'Profile', icon: '👤' },
@@ -792,6 +812,38 @@
 				</div>
 
 				<!-- Recent Scans Table -->
+				<!-- Referral Card -->
+				{#if referralData && !referralLoading}
+					<div class="referral-card">
+						<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+							<span style="font-size: 22px;">🎁</span>
+							<div>
+								<h3 style="margin: 0; font-size: 14px;">Invite Friends, Get Pro Free</h3>
+								<p class="text-muted" style="font-size: 11px; margin: 2px 0 0;">Refer 3 verified users to earn 1 month Pro</p>
+							</div>
+						</div>
+						<div style="background: var(--clr-bg-deep); border-radius: 6px; height: 6px; margin-bottom: 10px; overflow: hidden;">
+							<div style="height: 100%; background: linear-gradient(90deg, var(--clr-gold), #f59e0b); border-radius: 6px; width: {Math.min(100, (referralData.verified / referralData.goal) * 100)}%;"></div>
+						</div>
+						<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--clr-text-muted); margin-bottom: 12px;">
+							<span>{referralData.verified}/{referralData.goal} verified</span>
+							{#if referralData.pending > 0}<span>{referralData.pending} pending</span>{/if}
+						</div>
+						<div style="display: flex; gap: 8px;">
+							<input type="text" readonly value={referralData.referral_url} class="input" style="flex: 1; font-size: 10px; font-family: var(--font-mono); background: var(--clr-bg-deep); padding: 8px 10px;" />
+							<button class="btn btn-gold btn-sm" onclick={() => navigator.clipboard.writeText(referralData.referral_url)}>Copy</button>
+						</div>
+						{#if referralData.reward_available}
+							<button class="btn btn-sm" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, var(--clr-gold), #f59e0b); color: var(--clr-bg-deep); border: none; font-weight: 700;" disabled={claimLoading} onclick={handleClaimReward}>
+								{#if claimLoading}Claiming...{:else}Claim 1 Month Pro{/if}
+							</button>
+						{:else if referralData.reward_claimed}
+							<div style="text-align: center; font-size: 11px; color: var(--clr-success); font-weight: 600; margin-top: 10px;">Reward claimed!</div>
+						{/if}
+						{#if claimMsg}<div style="text-align: center; font-size: 11px; color: var(--clr-success); margin-top: 6px;">{claimMsg}</div>{/if}
+					</div>
+				{/if}
+
 				{#if historyItems.length > 0}
 					<div class="card" style="margin-top: 20px;">
 						<div class="card-header">
@@ -1576,6 +1628,8 @@
 	textarea.input { font-family: inherit; }
 
 	/* ── Responsive ────────────────────────── */
+	.referral-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: var(--space-md); }
+
 	@media (max-width: 1100px) {
 		.dash-layout { grid-template-columns: 180px 1fr; width: 100%; }
 		.right-panel { display: none; }

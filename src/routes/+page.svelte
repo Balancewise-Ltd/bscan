@@ -15,7 +15,6 @@
 	import ScoreRing from '$lib/components/scanner/ScoreRing.svelte';
 	import ScoreCard from '$lib/components/scanner/ScoreCard.svelte';
 	import Pricing from '$lib/components/scanner/Pricing.svelte';
-	import Faq from '$lib/components/scanner/Faq.svelte';
 	import Enrichment from '$lib/components/scanner/Enrichment.svelte';
 	import Badges from '$lib/components/scanner/Badges.svelte';
 	import FeatureCards from '$lib/components/scanner/FeatureCards.svelte';
@@ -79,6 +78,7 @@
 	}
 
 	// Challenge landing (?challenge=xxx)
+	let refCode = $state('');
 	let challengeBanner = $state<{ domain: string; score: number; achievements: any[] } | null>(null);
 
 	onMount(async () => {
@@ -86,6 +86,15 @@
 		if (saved) gateEmail = saved;
 		const savedName = safeGetStorage('bscan_name');
 		if (savedName) gateName = savedName;
+
+		// Read referral code from URL
+		const refParam = params.get('ref');
+		if (refParam) {
+			refCode = refParam;
+			try { sessionStorage.setItem('bscan_ref', refParam); } catch {}
+		} else {
+			try { refCode = sessionStorage.getItem('bscan_ref') || ''; } catch {}
+		}
 
 		// Handle challenge URL
 		const params = new URLSearchParams(window.location.search);
@@ -553,11 +562,28 @@
 		</section>
 	{/if}
 
+	<!-- ── Referral CTA (after scan) ───────────────── -->
+	{#if $scan.status === 'done'}
+		<section class="referral-cta">
+			<div class="referral-cta-inner">
+				<span style="font-size: 24px;">🎁</span>
+				<div style="flex: 1;">
+					<h3 style="font-size: 15px; font-weight: 700; margin: 0 0 4px;">Know someone who needs this?</h3>
+					<p style="font-size: 12px; color: var(--clr-text-secondary); margin: 0;">Refer 3 friends and get 1 month of Pro free — 30 scans, PDF reports, monitoring, and more.</p>
+				</div>
+				{#if $auth.user}
+					<a href="/account" class="btn btn-gold btn-sm" style="white-space: nowrap;">Share Link</a>
+				{:else}
+					<a href="/account" class="btn btn-gold btn-sm" style="white-space: nowrap;">Sign Up Free</a>
+				{/if}
+			</div>
+		</section>
+	{/if}
+
 	<!-- ── Pricing ──────────────────────────────────── -->
 	<Pricing />
 
 	<!-- ── FAQ ──────────────────────────────────── -->
-	<Faq />
 
 	<!-- ── Paywall ──────────────────────────────────── -->
 	{#if $ui.paywallOpen}
@@ -1093,4 +1119,7 @@
 		.clb-badges { display: none; }
 		.challenge-landing-banner { padding: 12px 16px; }
 	}
+	.referral-cta { max-width: var(--max-width); margin: 0 auto var(--space-xl); padding: 0 var(--space-lg); }
+	.referral-cta-inner { display: flex; align-items: center; gap: 16px; padding: 20px; background: linear-gradient(135deg, rgba(240,165,0,0.06), rgba(59,130,246,0.06)); border: 1px solid rgba(240,165,0,0.15); border-radius: var(--radius-lg); }
+	@media (max-width: 640px) { .referral-cta-inner { flex-direction: column; text-align: center; } }
 </style>

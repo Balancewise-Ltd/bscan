@@ -69,10 +69,10 @@ export async function login(email: string, password: string): Promise<AuthRespon
 	});
 }
 
-export async function register(email: string, password: string, name: string): Promise<AuthResponse> {
+export async function register(email: string, password: string, name: string, referral_code: string = ''): Promise<AuthResponse> {
 	return request('/api/auth/register', {
 		method: 'POST',
-		body: JSON.stringify({ email, password, name })
+		body: JSON.stringify({ email, password, name, referral_code })
 	});
 }
 
@@ -588,6 +588,17 @@ export async function verifyEmail(token: string): Promise<{ message: string; ver
 
 export async function resendVerification(): Promise<{ message: string }> {
 	return request('/api/auth/resend-verification', { method: 'POST' });
+}
+
+
+
+// REFERRAL SYSTEM
+export async function referralStats(): Promise<any> {
+	return request('/api/auth/referral/stats');
+}
+
+export async function claimReferralReward(): Promise<any> {
+	return request('/api/auth/referral/claim', { method: 'POST' });
 }
 
 export { ApiError, API_BASE };

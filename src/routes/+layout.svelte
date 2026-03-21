@@ -4,6 +4,7 @@
 	import { auth } from '$lib/stores/auth';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
+	import Faq from '$lib/components/scanner/Faq.svelte';
 	import ChatWidget from '$lib/components/layout/ChatWidget.svelte';
 	import CheckoutModal from '$lib/components/ui/CheckoutModal.svelte';
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
@@ -33,6 +34,7 @@
 	</main>
 </ErrorBoundary>
 
+<Faq />
 <Footer />
 <ChatWidget />
 <CheckoutModal />
