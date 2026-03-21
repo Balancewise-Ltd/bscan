@@ -30,6 +30,12 @@
 	let resetMsg = $state('');
 	let resetError = $state('');
 
+	// ── Email Verification ───────────────────────────────
+	let verifyLoading = $state(false);
+	let verifyMsg = $state('');
+	let verifyError = $state('');
+	let resendLoading = $state(false);
+
 	// ── Dashboard tabs ───────────────────────────────────
 	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding';
 	let activeTab = $state<Tab>('overview');
@@ -118,6 +124,13 @@
 		const rt = params.get('reset_token');
 		if (rt) {
 			resetToken = rt;
+			window.history.replaceState({}, '', '/account');
+		}
+
+		// Handle email verification link
+		const vt = params.get('verify');
+		if (vt) {
+			handleEmailVerify(vt);
 			window.history.replaceState({}, '', '/account');
 		}
 
@@ -414,6 +427,33 @@
 			resetError = err instanceof Error ? err.message : 'Reset failed. Link may have expired.';
 		}
 		resetLoading = false;
+	}
+
+	async function handleEmailVerify(token: string) {
+		verifyLoading = true;
+		verifyError = '';
+		verifyMsg = '';
+		try {
+			const res = await api.verifyEmail(token);
+			verifyMsg = res.message || 'Email verified successfully!';
+			auth.refresh();
+		} catch (err) {
+			verifyError = err instanceof Error ? err.message : 'Verification failed. Link may be invalid or expired.';
+		}
+		verifyLoading = false;
+	}
+
+	async function handleResendVerification() {
+		resendLoading = true;
+		verifyError = '';
+		verifyMsg = '';
+		try {
+			const res = await api.resendVerification();
+			verifyMsg = res.message || 'Verification email sent!';
+		} catch (err) {
+			verifyError = err instanceof Error ? err.message : 'Failed to resend.';
+		}
+		resendLoading = false;
 	}
 
 	// ── Push Notification handlers ──────────────────────
@@ -1303,6 +1343,24 @@
 
 		</main>
 
+		<!-- ── EMAIL VERIFICATION BANNER ──────────── -->
+		{#if user && user.email_verified === false}
+			<div class="verify-banner">
+				<div class="verify-banner-inner">
+					<span style="font-size: 20px;">📧</span>
+					<div style="flex: 1;">
+						<strong>Verify your email</strong>
+						<p class="text-muted" style="font-size: 12px; margin-top: 2px;">Check your inbox for a verification link. Some features are limited until you verify.</p>
+					</div>
+					<button class="btn btn-sm" style="background: var(--clr-success); color: white; border: none; flex-shrink: 0;" disabled={resendLoading} onclick={handleResendVerification}>
+						{#if resendLoading}Sending...{:else}Resend Email{/if}
+					</button>
+				</div>
+				{#if verifyMsg}<div style="padding: 8px 16px; font-size: 12px; color: var(--clr-success);">{verifyMsg}</div>{/if}
+				{#if verifyError}<div style="padding: 8px 16px; font-size: 12px; color: var(--clr-danger);">{verifyError}</div>{/if}
+			</div>
+		{/if}
+
 		<!-- ── RIGHT PANEL ───────────────────────── -->
 		<aside class="right-panel">
 			<div class="rp-section">
@@ -1559,4 +1617,7 @@
 		.form-grid { grid-template-columns: 1fr; }
 		.plan-compare { grid-template-columns: 1fr; }
 	}
+	/* Email verification banner */
+	.verify-banner { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
+	.verify-banner-inner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
 </style>

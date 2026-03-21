@@ -28,6 +28,7 @@ export interface User {
 	scans_this_month: number;
 	created_at: string;
 	team_id?: string;
+	email_verified?: boolean;
 	avatar_url?: string;
 }
 

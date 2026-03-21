@@ -577,4 +577,17 @@ export async function gscDisconnect(): Promise<any> {
 	return request('/api/seo/gsc/disconnect', { method: 'DELETE' });
 }
 
+
+// ══════════════════════════════════════════════════════════
+// EMAIL VERIFICATION — matches /api/auth/verify & /resend-verification
+// ══════════════════════════════════════════════════════════
+
+export async function verifyEmail(token: string): Promise<{ message: string; verified: boolean }> {
+	return request(`/api/auth/verify?token=${encodeURIComponent(token)}`);
+}
+
+export async function resendVerification(): Promise<{ message: string }> {
+	return request('/api/auth/resend-verification', { method: 'POST' });
+}
+
 export { ApiError, API_BASE };
