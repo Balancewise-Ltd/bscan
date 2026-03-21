@@ -534,5 +534,47 @@ export async function downloadPdf(scanId: string, filename?: string): Promise<vo
 	document.body.removeChild(a);
 	URL.revokeObjectURL(url);
 }
+// ══════════════════════════════════════════════════════════
+// GOOGLE SEARCH CONSOLE — matches /api/seo/gsc/*
+// ══════════════════════════════════════════════════════════
+
+/** Check if user has GSC connected */
+export async function gscStatus(): Promise<{ connected: boolean; connected_at?: string }> {
+	return request('/api/seo/gsc/status');
+}
+
+/** Get list of GSC sites */
+export async function gscSites(): Promise<{ sites: any[] }> {
+	return request('/api/seo/gsc/sites');
+}
+
+/** Get full ranking overview for a site */
+export async function gscOverview(site_url: string, days: number = 28): Promise<any> {
+	return request('/api/seo/gsc/overview', {
+		method: 'POST',
+		body: JSON.stringify({ site_url, days }),
+	});
+}
+
+/** Get keyword rankings from GSC */
+export async function gscKeywords(site_url: string, days: number = 28, limit: number = 50): Promise<any> {
+	return request('/api/seo/gsc/keywords', {
+		method: 'POST',
+		body: JSON.stringify({ site_url, days, limit }),
+	});
+}
+
+/** Get top pages from GSC */
+export async function gscPages(site_url: string, days: number = 28): Promise<any> {
+	return request('/api/seo/gsc/pages', {
+		method: 'POST',
+		body: JSON.stringify({ site_url, days }),
+	});
+}
+
+/** Disconnect GSC */
+export async function gscDisconnect(): Promise<any> {
+	return request('/api/seo/gsc/disconnect', { method: 'DELETE' });
+}
 
 export { ApiError, API_BASE };

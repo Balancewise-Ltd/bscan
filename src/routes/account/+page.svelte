@@ -17,6 +17,19 @@
 	let authError = $state('');
 	let authLoading = $state(false);
 
+	// ── Forgot / Reset Password ─────────────────────────
+	let showForgot = $state(false);
+	let forgotEmail = $state('');
+	let forgotLoading = $state(false);
+	let forgotMsg = $state('');
+	let forgotError = $state('');
+	let resetToken = $state('');
+	let resetNewPw = $state('');
+	let resetConfirm = $state('');
+	let resetLoading = $state(false);
+	let resetMsg = $state('');
+	let resetError = $state('');
+
 	// ── Dashboard tabs ───────────────────────────────────
 	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding';
 	let activeTab = $state<Tab>('overview');
@@ -62,6 +75,16 @@
 	// Avatar state (for instant update after upload)
 	let avatarUrl = $state('');
 
+	// ── Push Notification state ─────────────────────────
+	let pushSupported = $state(false);
+	let pushPermission = $state<string>('default');
+	let pushEnabled = $state(false);
+	let pushLoading = $state(false);
+	let pushToken = $state<string | null>(null);
+	let pushMsg = $state('');
+	let pushError = $state('');
+	let pushTestLoading = $state(false);
+
 	async function saveBranding() {
 		if (!user) return;
 		brandSaving = true;
@@ -89,6 +112,17 @@
 		const saved = safeGetStorage('bscan_email');
 		if (saved) authEmail = saved;
 		if (user) loadDashboard();
+
+		// Handle password reset link
+		const params = new URLSearchParams(window.location.search);
+		const rt = params.get('reset_token');
+		if (rt) {
+			resetToken = rt;
+			window.history.replaceState({}, '', '/account');
+		}
+
+		// Init push notification state
+		initPushState();
 	});
 
 	// Watch for auth changes — load profile for ALL tabs
@@ -350,6 +384,117 @@
 
 	function kd(e: KeyboardEvent) { if (e.key === 'Enter') handleAuth(); }
 
+	async function handleForgotPassword() {
+		if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+			forgotError = 'Enter a valid email address.';
+			return;
+		}
+		forgotLoading = true;
+		forgotError = '';
+		forgotMsg = '';
+		try {
+			await api.forgotPassword(forgotEmail.trim());
+			forgotMsg = 'If that email exists, a reset link has been sent. Check your inbox.';
+		} catch (err) {
+			forgotError = err instanceof Error ? err.message : 'Something went wrong.';
+		}
+		forgotLoading = false;
+	}
+
+	async function handleResetPassword() {
+		resetError = '';
+		if (resetNewPw.length < 8) { resetError = 'Password must be at least 8 characters.'; return; }
+		if (resetNewPw !== resetConfirm) { resetError = 'Passwords do not match.'; return; }
+		resetLoading = true;
+		try {
+			const res = await api.resetPassword(resetToken, resetNewPw);
+			resetMsg = res.message || 'Password reset successfully! You can now sign in.';
+			resetToken = '';
+		} catch (err) {
+			resetError = err instanceof Error ? err.message : 'Reset failed. Link may have expired.';
+		}
+		resetLoading = false;
+	}
+
+	// ── Push Notification handlers ──────────────────────
+	async function initPushState() {
+		try {
+			const { isPushSupported, getPushPermission } = await import('$lib/utils/push');
+			pushSupported = isPushSupported();
+			pushPermission = getPushPermission() as string;
+			// Check if we have a saved token — means they opted in before
+			const savedToken = safeGetStorage('bscan_push_token');
+			if (savedToken && pushPermission === 'granted') {
+				pushEnabled = true;
+				pushToken = savedToken;
+			}
+		} catch {
+			pushSupported = false;
+		}
+	}
+
+	async function togglePush() {
+		if (pushEnabled) {
+			await disablePush();
+		} else {
+			await enablePush();
+		}
+	}
+
+	async function enablePush() {
+		pushLoading = true;
+		pushError = '';
+		pushMsg = '';
+		try {
+			const { requestPushPermission, VAPID_KEY } = await import('$lib/utils/push');
+			const token = await requestPushPermission(VAPID_KEY);
+			if (!token) {
+				pushError = 'Permission denied or not supported. Check your browser notification settings.';
+				pushLoading = false;
+				return;
+			}
+			await api.registerPushToken(token);
+			pushToken = token;
+			pushEnabled = true;
+			safeSetStorage('bscan_push_token', token);
+			pushMsg = 'Push notifications enabled! You\'ll receive alerts when your site scores change.';
+		} catch (err) {
+			pushError = err instanceof Error ? err.message : 'Failed to enable push notifications.';
+		}
+		pushLoading = false;
+	}
+
+	async function disablePush() {
+		pushLoading = true;
+		pushError = '';
+		pushMsg = '';
+		try {
+			if (pushToken) {
+				await api.unregisterPushToken(pushToken);
+			}
+			pushEnabled = false;
+			pushToken = null;
+			safeRemoveStorage('bscan_push_token');
+			pushMsg = 'Push notifications disabled.';
+		} catch (err) {
+			pushError = err instanceof Error ? err.message : 'Failed to disable.';
+		}
+		pushLoading = false;
+	}
+
+	async function sendTestPush() {
+		pushTestLoading = true;
+		pushError = '';
+		pushMsg = '';
+		try {
+			const res = await api.testPush();
+			pushMsg = res.message || 'Test notification sent! Check your device.';
+		} catch (err) {
+			pushError = err instanceof Error ? err.message : 'Test failed.';
+		}
+		pushTestLoading = false;
+	}
+
 	const tabs: Array<{ key: Tab; label: string; icon: string; show?: () => boolean }> = [
 		{ key: 'overview', label: 'Overview', icon: '📊' },
 		{ key: 'profile', label: 'Profile', icon: '👤' },
@@ -365,7 +510,36 @@
 
 <div class="container-narrow">
 
-{#if !$auth.loading && !user}
+{#if resetToken}
+	<!-- ══════ RESET PASSWORD FORM ══════ -->
+	<div class="auth-section animate-fade-up">
+		<h2>Set a new <span class="text-gold">password</span></h2>
+		<p class="text-secondary" style="margin-bottom: 24px;">Enter your new password below.</p>
+
+		{#if resetMsg}
+			<div style="padding: 14px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 13px; margin-bottom: 16px; text-align: center;">
+				{resetMsg}
+				<div style="margin-top: 12px;">
+					<a href="/account" class="btn btn-gold">Sign In →</a>
+				</div>
+			</div>
+		{:else}
+			<div class="field">
+				<label class="label" for="r-pw">New password *</label>
+				<input class="input" type="password" id="r-pw" placeholder="Minimum 8 characters" bind:value={resetNewPw} />
+			</div>
+			<div class="field" style="margin-top: 12px;">
+				<label class="label" for="r-pw2">Confirm password *</label>
+				<input class="input" type="password" id="r-pw2" placeholder="Repeat password" bind:value={resetConfirm} onkeydown={(e) => e.key === 'Enter' && handleResetPassword()} />
+			</div>
+			{#if resetError}<div class="msg-error">{resetError}</div>{/if}
+			<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={resetLoading} onclick={handleResetPassword}>
+				{#if resetLoading}<span class="spinner spinner-sm"></span>{:else}Reset Password{/if}
+			</button>
+		{/if}
+	</div>
+
+{:else if !$auth.loading && !user}
 	<!-- ══════ AUTH FORM ══════ -->
 	<div class="auth-section animate-fade-up">
 		<h2>{isRegister ? 'Create your' : 'Sign in to your'} <span class="text-gold">account</span></h2>
@@ -404,11 +578,27 @@
 			</button>
 		</div>
 
-		<div style="text-align: center; margin-top: 8px;">
-			<button class="toggle-link" style="font-size: 12px; color: var(--clr-text-muted);" onclick={() => {}}>
-				Forgot password?
-			</button>
-		</div>
+		{#if !showForgot}
+			<div style="text-align: center; margin-top: 8px;">
+				<button class="toggle-link" style="font-size: 12px; color: var(--clr-text-muted);" onclick={() => { showForgot = true; forgotEmail = authEmail; forgotError = ''; forgotMsg = ''; }}>
+					Forgot password?
+				</button>
+			</div>
+		{:else}
+			<div style="margin-top: 16px; padding: 16px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg);">
+				<p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Reset your password</p>
+				<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Enter your email and we'll send you a reset link.</p>
+				<input class="input" type="email" placeholder="you@company.com" bind:value={forgotEmail} onkeydown={(e) => e.key === 'Enter' && handleForgotPassword()} />
+				{#if forgotError}<div class="msg-error" style="margin-top: 8px;">{forgotError}</div>{/if}
+				{#if forgotMsg}<div style="margin-top: 8px; padding: 10px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 12px;">{forgotMsg}</div>{/if}
+				<div style="display: flex; gap: 8px; margin-top: 12px;">
+					<button class="btn btn-blue" style="flex: 1;" disabled={forgotLoading} onclick={handleForgotPassword}>
+						{#if forgotLoading}<span class="spinner spinner-sm"></span>{:else}Send Reset Link{/if}
+					</button>
+					<button class="btn" style="background: var(--clr-bg-deep); color: var(--clr-text-secondary); border: 1px solid var(--clr-border);" onclick={() => showForgot = false}>Cancel</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 
 {:else if $auth.loading}
@@ -1022,7 +1212,57 @@
 		<!-- ── SECURITY TAB ─────────────────────── -->
 		{#if activeTab === 'security'}
 			<div class="tab-content animate-fade-up">
-				<h3 style="margin-bottom: 20px;">Security</h3>
+				<h3 style="margin-bottom: 20px;">Security & Notifications</h3>
+
+				<!-- Push Notifications -->
+				<div class="card" style="margin-bottom: 20px;">
+					<div class="card-header">
+						<span>🔔</span>
+						<span style="font-weight: 700; font-size: 14px;">Push Notifications</span>
+					</div>
+					<div class="card-body">
+						{#if !pushSupported}
+							<p class="text-muted" style="font-size: 13px;">Push notifications are not supported in this browser. Try Chrome, Edge, or Firefox on desktop.</p>
+						{:else}
+							<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+								<div>
+									<p style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">
+										{pushEnabled ? '✓ Enabled' : 'Disabled'}
+									</p>
+									<p class="text-muted" style="font-size: 12px;">
+										Get notified when your monitored sites drop in score.
+									</p>
+								</div>
+								<button
+									class="push-toggle"
+									class:active={pushEnabled}
+									disabled={pushLoading}
+									onclick={togglePush}
+									aria-label={pushEnabled ? 'Disable push notifications' : 'Enable push notifications'}
+								>
+									<span class="push-toggle-knob"></span>
+								</button>
+							</div>
+
+							{#if pushPermission === 'denied'}
+								<div class="msg-warning" style="font-size: 12px;">
+									Notifications are blocked by your browser. To fix: click the lock icon in your address bar → Site settings → Allow notifications.
+								</div>
+							{/if}
+
+							{#if pushError}<div class="msg-error">{pushError}</div>{/if}
+							{#if pushMsg}<div class="msg-success">{pushMsg}</div>{/if}
+
+							{#if pushEnabled}
+								<button class="btn btn-outline btn-sm" style="margin-top: 10px;" disabled={pushTestLoading} onclick={sendTestPush}>
+									{#if pushTestLoading}<span class="spinner spinner-sm"></span>{:else}🔔 Send Test Notification{/if}
+								</button>
+							{/if}
+						{/if}
+					</div>
+				</div>
+
+				<!-- Change Password -->
 				<div class="card">
 					<div class="card-header">
 						<span>🔒</span>
@@ -1044,6 +1284,18 @@
 						{#if pwError}<div class="msg-error">{pwError}</div>{/if}
 						{#if pwSuccess}<div class="msg-success">{pwSuccess}</div>{/if}
 						<button class="btn btn-gold" style="margin-top: 16px;" onclick={changePassword}>Update Password</button>
+					</div>
+				</div>
+
+				<!-- Active Sessions Info -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>🛡️</span>
+						<span style="font-weight: 700; font-size: 14px;">Session</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Your login session is valid for 30 days. Sign out on all devices by changing your password.</p>
+						<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
 					</div>
 				</div>
 			</div>
@@ -1129,6 +1381,14 @@
 
 	.msg-error { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-danger-dim); color: var(--clr-danger); font-size: 12px; border: 1px solid rgba(239,68,68,0.2); }
 	.msg-success { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-success-dim); color: var(--clr-success); font-size: 12px; }
+	.msg-warning { padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(245,158,11,0.08); color: var(--clr-warning); font-size: 12px; border: 1px solid rgba(245,158,11,0.2); }
+
+	/* Push notification toggle */
+	.push-toggle { position: relative; width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer; background: var(--clr-bg-deep); border: 1px solid var(--clr-border); transition: all 0.2s; flex-shrink: 0; }
+	.push-toggle.active { background: var(--clr-success); border-color: var(--clr-success); }
+	.push-toggle:disabled { opacity: 0.5; cursor: wait; }
+	.push-toggle-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+	.push-toggle.active .push-toggle-knob { transform: translateX(20px); }
 
 	/* ── Dashboard Layout (3-column) ─────── */
 	.dash-layout { display: grid; grid-template-columns: 180px 1fr 210px; gap: 0; min-height: calc(100vh - 70px); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); overflow: hidden; width: calc(100vw - 40px); max-width: 1400px; margin: 0 auto; position: relative; left: 50%; transform: translateX(-50%); }

@@ -9,6 +9,7 @@
 	let activeTab = $state('keywords');
 	let gscLoading = $state(false);
 	let gscError = $state('');
+	let gscSuccess = $state('');
 	const isLoggedIn = $derived(!!$auth.user);
 	const isPaid = $derived($auth.user?.plan === 'pro' || $auth.user?.plan === 'agency');
 	const isAgency = $derived($auth.user?.plan === 'agency');
@@ -64,6 +65,15 @@
 	function kwKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchKeywords(); }
 	function blKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchBacklinks(); }
 
+	// ── GSC State ────────────────────────────────────────
+	let gscConnected = $state(false);
+	let gscSites = $state<any[]>([]);
+	let gscSelectedSite = $state('');
+	let gscSitesLoading = $state(false);
+	let gscOverview = $state<any>(null);
+	let gscOverviewLoading = $state(false);
+	let gscDisconnecting = $state(false);
+
 	async function connectGSC() {
 		gscLoading = true;
 		gscError = '';
@@ -82,6 +92,89 @@
 		}
 		gscLoading = false;
 	}
+
+	async function checkGscStatus() {
+		try {
+			const status = await api.gscStatus();
+			gscConnected = status.connected;
+			if (gscConnected) {
+				await loadGscSites();
+			}
+		} catch {
+			gscConnected = false;
+		}
+	}
+
+	async function loadGscSites() {
+		gscSitesLoading = true;
+		try {
+			const res = await api.gscSites();
+			gscSites = res.sites || [];
+			if (gscSites.length > 0 && !gscSelectedSite) {
+				gscSelectedSite = gscSites[0].site_url;
+				await loadGscOverview();
+			}
+		} catch (err) {
+			gscError = 'Failed to load sites. Your token may have expired — try reconnecting.';
+			gscSites = [];
+		}
+		gscSitesLoading = false;
+	}
+
+	async function loadGscOverview() {
+		if (!gscSelectedSite) return;
+		gscOverviewLoading = true;
+		gscOverview = null;
+		try {
+			gscOverview = await api.gscOverview(gscSelectedSite);
+		} catch (err) {
+			gscError = err instanceof Error ? err.message : 'Failed to load GSC data.';
+		}
+		gscOverviewLoading = false;
+	}
+
+	async function disconnectGSC() {
+		if (!confirm('Disconnect Google Search Console? You can reconnect at any time.')) return;
+		gscDisconnecting = true;
+		try {
+			await api.gscDisconnect();
+			gscConnected = false;
+			gscSites = [];
+			gscSelectedSite = '';
+			gscOverview = null;
+			gscSuccess = '';
+		} catch {
+			gscError = 'Failed to disconnect.';
+		}
+		gscDisconnecting = false;
+	}
+
+	function posColor(pos: number): string {
+		if (pos <= 3) return 'var(--clr-success)';
+		if (pos <= 10) return 'var(--clr-blue)';
+		if (pos <= 20) return 'var(--clr-warning)';
+		return 'var(--clr-danger)';
+	}
+
+	onMount(() => {
+		const params = new URLSearchParams(window.location.search);
+		if (params.get('gsc') === 'connected') {
+			activeTab = 'gsc';
+			gscSuccess = 'Google Search Console connected successfully!';
+			// Clean the URL
+			window.history.replaceState({}, '', '/seo');
+		}
+		if (params.get('gsc_error')) {
+			activeTab = 'gsc';
+			gscError = `Connection failed: ${params.get('gsc_error')}`;
+			window.history.replaceState({}, '', '/seo');
+		}
+
+		// Check GSC status if logged in
+		if ($auth.user) {
+			checkGscStatus();
+		}
+	});
 </script>
 
 <Seo title="SEO Dashboard" description="Free keyword research, backlink analysis, Google Search Console integration, and AI-powered SEO strategy tools. Powered by BSCAN." />
@@ -107,7 +200,7 @@
 		<div class="tabs-row animate-fade-up">
 			<button class="seo-tab" class:active={activeTab === 'keywords'} onclick={() => activeTab = 'keywords'}>🔍 Keywords</button>
 			<button class="seo-tab" class:active={activeTab === 'backlinks'} onclick={() => activeTab = 'backlinks'}>🔗 Backlinks</button>
-			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => activeTab = 'gsc'}>📈 Search Console</button>
+			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}>📈 Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
 			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}>📋 History</button>
 		</div>
 
@@ -345,24 +438,208 @@
 		<!-- ════ SEARCH CONSOLE ════ -->
 		{#if activeTab === 'gsc'}
 			<div class="tab-panel animate-fade-up">
-				<div class="card">
-					<div class="card-header">
-						<span>📈</span>
-						<span style="font-weight: 700;">Google Search Console</span>
-						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+				{#if gscSuccess}
+					<div class="msg-success" style="margin-bottom: 16px;">{gscSuccess}</div>
+				{/if}
+				{#if gscError}
+					<div class="msg-error" style="margin-bottom: 16px;">{gscError}
+						<button class="btn-dismiss" onclick={() => gscError = ''}>✕</button>
 					</div>
-					<div class="card-body" style="text-align: center; padding: 32px;">
-						<div style="font-size: 28px; margin-bottom: 8px;">📈</div>
-						<h3>Connect Google Search Console</h3>
-						<p class="text-secondary" style="max-width: 400px; margin: 8px auto 20px; line-height: 1.6;">
-							Link your GSC account to see real keyword rankings, click data, impressions, and average position directly in BSCAN.
-						</p>
-						<button class="btn btn-blue" disabled={gscLoading} onclick={connectGSC}>
-							{#if gscLoading}<span class="spinner spinner-sm"></span>{:else}Connect Google Search Console{/if}
-						</button>
-						{#if gscError}<div class="msg-error" style="margin-top: 12px;">{gscError}</div>{/if}
+				{/if}
+
+				{#if !gscConnected}
+					<!-- Not connected -->
+					<div class="card">
+						<div class="card-header">
+							<span>📈</span>
+							<span style="font-weight: 700;">Google Search Console</span>
+							<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+						</div>
+						<div class="card-body" style="text-align: center; padding: 32px;">
+							<div style="font-size: 28px; margin-bottom: 8px;">📈</div>
+							<h3>Connect Google Search Console</h3>
+							<p class="text-secondary" style="max-width: 400px; margin: 8px auto 20px; line-height: 1.6;">
+								Link your GSC account to see real keyword rankings, click data, impressions, and average position directly in BSCAN.
+							</p>
+							<button class="btn btn-blue" disabled={gscLoading} onclick={connectGSC}>
+								{#if gscLoading}<span class="spinner spinner-sm"></span>{:else}Connect Google Search Console{/if}
+							</button>
+							<p class="text-muted" style="margin-top: 16px; font-size: 11px; max-width: 360px; margin-left: auto; margin-right: auto;">
+								Make sure you connect with the Google account that owns your Search Console properties.
+							</p>
+						</div>
 					</div>
-				</div>
+				{:else}
+					<!-- Connected — Site Selector + Data -->
+					<div class="card" style="margin-bottom: 16px;">
+						<div class="card-header">
+							<span>📈</span>
+							<span style="font-weight: 700;">Google Search Console</span>
+							<div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+								<span class="gsc-connected-badge">✓ Connected</span>
+								<button class="btn-text-danger" disabled={gscDisconnecting} onclick={disconnectGSC}>
+									{#if gscDisconnecting}...{:else}Disconnect{/if}
+								</button>
+							</div>
+						</div>
+						<div class="card-body">
+							{#if gscSitesLoading}
+								<Skeleton lines={2} />
+							{:else if gscSites.length === 0}
+								<div style="text-align: center; padding: 20px;">
+									<p class="text-muted" style="margin-bottom: 12px;">No verified sites found. Make sure the Google account you connected owns verified properties in <a href="https://search.google.com/search-console" target="_blank" rel="noopener" style="color: var(--clr-blue);">Search Console</a>.</p>
+									<button class="btn btn-blue btn-sm" onclick={connectGSC}>Reconnect with different account</button>
+								</div>
+							{:else}
+								<div class="gsc-site-row">
+									<label class="text-muted" style="font-size: 11px; font-weight: 600;">SITE</label>
+									<select class="input" bind:value={gscSelectedSite} onchange={loadGscOverview} style="flex: 1;">
+										{#each gscSites as site}
+											<option value={site.site_url}>{site.site_url}</option>
+										{/each}
+									</select>
+									<button class="btn btn-blue btn-sm" disabled={gscOverviewLoading} onclick={loadGscOverview}>
+										{#if gscOverviewLoading}<span class="spinner spinner-sm"></span>{:else}Refresh{/if}
+									</button>
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					{#if gscOverviewLoading}
+						<Skeleton lines={6} />
+					{/if}
+
+					{#if gscOverview}
+						<!-- Summary Stats -->
+						{#if gscOverview.summary && Object.keys(gscOverview.summary).length > 0}
+							<div class="gsc-stats-grid animate-fade-up">
+								<div class="gsc-stat">
+									<div class="gsc-stat-label">Total Clicks</div>
+									<div class="gsc-stat-value">{gscOverview.summary.total_clicks?.toLocaleString() ?? '—'}</div>
+								</div>
+								<div class="gsc-stat">
+									<div class="gsc-stat-label">Impressions</div>
+									<div class="gsc-stat-value">{gscOverview.summary.total_impressions?.toLocaleString() ?? '—'}</div>
+								</div>
+								<div class="gsc-stat">
+									<div class="gsc-stat-label">Avg Position</div>
+									<div class="gsc-stat-value">{gscOverview.summary.average_position ?? '—'}</div>
+								</div>
+								<div class="gsc-stat">
+									<div class="gsc-stat-label">Avg CTR</div>
+									<div class="gsc-stat-value">{gscOverview.summary.average_ctr ?? '—'}%</div>
+								</div>
+								<div class="gsc-stat">
+									<div class="gsc-stat-label">Keywords</div>
+									<div class="gsc-stat-value">{gscOverview.summary.total_keywords ?? '—'}</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Position Distribution -->
+						{#if gscOverview.position_distribution && Object.keys(gscOverview.position_distribution).length > 0}
+							<div class="card animate-fade-up" style="margin-bottom: 16px;">
+								<div class="card-header">
+									<span>📊</span>
+									<span style="font-weight: 700; font-size: 13px;">Position Distribution</span>
+								</div>
+								<div class="card-body">
+									<div class="pos-dist-row">
+										{#each Object.entries(gscOverview.position_distribution) as [range, count]}
+											<div class="pos-dist-item">
+												<div class="pos-dist-bar" style="height: {Math.max(4, Math.min(60, (count as number) * 3))}px;"></div>
+												<div class="pos-dist-count">{count}</div>
+												<div class="pos-dist-label">{range}</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Top Keywords -->
+						{#if gscOverview.top_keywords?.length > 0}
+							<div class="card animate-fade-up" style="margin-bottom: 16px;">
+								<div class="card-header">
+									<span>🔍</span>
+									<span style="font-weight: 700; font-size: 13px;">Top Keywords ({gscOverview.top_keywords.length})</span>
+								</div>
+								<div class="card-body" style="padding: 0;">
+									<div class="gsc-table-header">
+										<span class="gsc-th-kw">Keyword</span>
+										<span class="gsc-th">Clicks</span>
+										<span class="gsc-th">Impr.</span>
+										<span class="gsc-th">CTR</span>
+										<span class="gsc-th">Pos.</span>
+									</div>
+									{#each gscOverview.top_keywords.slice(0, 25) as kw}
+										<div class="gsc-table-row">
+											<span class="gsc-td-kw font-mono">{kw.keyword}</span>
+											<span class="gsc-td">{kw.clicks}</span>
+											<span class="gsc-td">{kw.impressions?.toLocaleString()}</span>
+											<span class="gsc-td">{kw.ctr}%</span>
+											<span class="gsc-td" style="color: {posColor(kw.position)}; font-weight: 700;">{kw.position}</span>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Quick Win Opportunities -->
+						{#if gscOverview.opportunities?.length > 0}
+							<div class="card animate-fade-up" style="margin-bottom: 16px;">
+								<div class="card-header">
+									<span>🎯</span>
+									<span style="font-weight: 700; font-size: 13px;">Quick Win Opportunities</span>
+								</div>
+								<div class="card-body" style="padding: 0;">
+									{#each gscOverview.opportunities.slice(0, 8) as opp}
+										<div class="gsc-opp-row">
+											<div>
+												<div class="font-mono" style="font-size: 13px;">{opp.keyword}</div>
+												<div class="text-muted" style="font-size: 11px; margin-top: 2px;">{opp.potential}</div>
+											</div>
+											<div style="text-align: right; flex-shrink: 0;">
+												<div style="font-size: 18px; font-weight: 800; color: {posColor(opp.position)};">{opp.position}</div>
+												<div class="text-muted" style="font-size: 10px;">{opp.impressions} impr.</div>
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Top Pages -->
+						{#if gscOverview.top_pages?.length > 0}
+							<div class="card animate-fade-up" style="margin-bottom: 16px;">
+								<div class="card-header">
+									<span>📄</span>
+									<span style="font-weight: 700; font-size: 13px;">Top Pages ({gscOverview.top_pages.length})</span>
+								</div>
+								<div class="card-body" style="padding: 0;">
+									{#each gscOverview.top_pages.slice(0, 15) as pg}
+										<div class="gsc-page-row">
+											<span class="gsc-page-url font-mono">{pg.page?.replace('https://', '').replace('http://', '') || '—'}</span>
+											<span class="gsc-page-clicks">{pg.clicks} clicks</span>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- No data state -->
+						{#if (!gscOverview.top_keywords || gscOverview.top_keywords.length === 0) && (!gscOverview.top_pages || gscOverview.top_pages.length === 0)}
+							<div class="card animate-fade-up">
+								<div class="card-body" style="text-align: center; padding: 32px;">
+									<div style="font-size: 28px; margin-bottom: 8px;">📭</div>
+									<h3>No data yet</h3>
+									<p class="text-muted" style="max-width: 400px; margin: 8px auto;">This site doesn't have any Search Console data for the last 28 days. Make sure the site is verified and receiving traffic.</p>
+								</div>
+							</div>
+						{/if}
+					{/if}
+				{/if}
 			</div>
 		{/if}
 
@@ -406,7 +683,9 @@
 	.seo-tab.active { background: var(--clr-blue); color: white; }
 
 	.search-row { display: flex; gap: 8px; }
-	.msg-error { margin-top: 8px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-danger-dim); color: var(--clr-danger); font-size: 12px; }
+	.msg-error { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--clr-danger-dim); color: var(--clr-danger); font-size: 12px; position: relative; }
+	.msg-success { padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 12px; font-weight: 600; }
+	.btn-dismiss { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: inherit; cursor: pointer; font-size: 14px; padding: 4px; }
 	.upgrade-gate { text-align: center; padding: var(--space-xl); }
 
 	/* ── Keyword Results ──────────────── */
@@ -490,9 +769,54 @@
 	.hist-query { flex: 1; font-size: 13px; font-family: var(--font-mono); }
 	.hist-date { font-size: 11px; }
 
+	/* ── GSC Connected State ─────────── */
+	.gsc-dot { width: 6px; height: 6px; background: var(--clr-success); border-radius: 50%; display: inline-block; margin-left: 4px; vertical-align: middle; }
+	.gsc-connected-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: var(--clr-success); background: rgba(16,185,129,0.1); border-radius: var(--radius-full); }
+	.btn-text-danger { background: none; border: none; color: var(--clr-danger); font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 600; padding: 4px 8px; border-radius: 4px; transition: background 0.15s; }
+	.btn-text-danger:hover { background: rgba(239,68,68,0.1); }
+
+	.gsc-site-row { display: flex; align-items: center; gap: 10px; }
+	.gsc-site-row label { flex-shrink: 0; }
+
+	.gsc-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+	.gsc-stat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 16px; text-align: center; }
+	.gsc-stat-label { font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+	.gsc-stat-value { font-size: 22px; font-weight: 800; }
+
+	/* Position distribution */
+	.pos-dist-row { display: flex; justify-content: space-around; align-items: flex-end; gap: 8px; height: 80px; padding: 0 12px; }
+	.pos-dist-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+	.pos-dist-bar { width: 32px; background: var(--clr-blue); border-radius: 4px 4px 0 0; transition: height 0.3s; }
+	.pos-dist-count { font-size: 12px; font-weight: 700; }
+	.pos-dist-label { font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); }
+
+	/* GSC keyword table */
+	.gsc-table-header { display: grid; grid-template-columns: 1fr 60px 70px 55px 50px; gap: 8px; padding: 8px 16px; font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; border-bottom: 1px solid var(--clr-border); }
+	.gsc-table-row { display: grid; grid-template-columns: 1fr 60px 70px 55px 50px; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); font-size: 12px; }
+	.gsc-table-row:last-child { border-bottom: none; }
+	.gsc-th { text-align: right; }
+	.gsc-th-kw { text-align: left; }
+	.gsc-td { text-align: right; color: var(--clr-text-secondary); }
+	.gsc-td-kw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--clr-text-primary); }
+
+	/* GSC opportunities */
+	.gsc-opp-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--clr-border); }
+	.gsc-opp-row:last-child { border-bottom: none; }
+
+	/* GSC pages */
+	.gsc-page-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); font-size: 12px; }
+	.gsc-page-row:last-child { border-bottom: none; }
+	.gsc-page-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--clr-text-secondary); }
+	.gsc-page-clicks { flex-shrink: 0; font-weight: 700; color: var(--clr-blue); margin-left: 12px; }
+
 	@media (max-width: 640px) {
 		.search-row { flex-direction: column; }
 		.search-row select { width: 100% !important; }
 		.alpha-grid { grid-template-columns: repeat(2, 1fr); }
+		.gsc-table-header { display: none; }
+		.gsc-table-row { grid-template-columns: 1fr 50px 50px; }
+		.gsc-table-row .gsc-td:nth-child(3),
+		.gsc-table-row .gsc-td:nth-child(4) { display: none; }
+		.gsc-site-row { flex-direction: column; align-items: stretch; }
 	}
 </style>

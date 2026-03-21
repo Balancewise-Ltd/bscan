@@ -17,11 +17,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		'Content-Security-Policy',
 		[
 			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline'",
+			"script-src 'self' 'unsafe-inline' https://www.gstatic.com",
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"font-src 'self' https://fonts.gstatic.com",
 			"img-src 'self' https://api-bscan.balancewises.io https://www.google.com/s2/favicons data: blob:",
-			"connect-src 'self' https://api-bscan.balancewises.io https://fonts.googleapis.com https://fonts.gstatic.com",
+			"connect-src 'self' https://api-bscan.balancewises.io https://fonts.googleapis.com https://fonts.gstatic.com https://fcm.googleapis.com https://firebaseinstallations.googleapis.com https://firebaselogging-pa.googleapis.com",
 			"frame-src 'none'",
 			"form-action 'self'",
 			"base-uri 'self'",

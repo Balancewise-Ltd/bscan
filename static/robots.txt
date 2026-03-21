@@ -1,3 +1,7 @@
-# allow crawling everything by default
+# BSCAN — bscan.balancewises.io
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /account
+Disallow: /team
+
+Sitemap: https://bscan.balancewises.io/sitemap.xml
