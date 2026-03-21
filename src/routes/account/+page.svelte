@@ -1391,7 +1391,7 @@
 	.push-toggle.active .push-toggle-knob { transform: translateX(20px); }
 
 	/* ── Dashboard Layout (3-column) ─────── */
-	.dash-layout { display: grid; grid-template-columns: 180px 1fr 210px; gap: 0; min-height: calc(100vh - 70px); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); overflow: hidden; width: calc(100vw - 40px); max-width: 1400px; margin: 0 auto; position: relative; left: 50%; transform: translateX(-50%); }
+	.dash-layout { display: grid; grid-template-columns: 180px 1fr 210px; gap: 0; min-height: calc(100vh - 70px); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); overflow: hidden; width: 100%; max-width: 1400px; margin: 0 auto; position: relative; left: 50%; transform: translateX(-50%); }
 
 	/* ── Left Sidebar ─────────────────────── */
 	.sidebar { background: var(--clr-bg-card); border-right: 1px solid var(--clr-border); display: flex; flex-direction: column; padding: var(--space-md) 0; }
@@ -1519,7 +1519,7 @@
 
 	/* ── Responsive ────────────────────────── */
 	@media (max-width: 1100px) {
-		.dash-layout { grid-template-columns: 180px 1fr; width: calc(100vw - 20px); }
+		.dash-layout { grid-template-columns: 180px 1fr; width: 100%; }
 		.right-panel { display: none; }
 	}
 	@media (max-width: 768px) {
