@@ -73,6 +73,7 @@
 	let gscOverview = $state<any>(null);
 	let gscOverviewLoading = $state(false);
 	let gscDisconnecting = $state(false);
+	let showDisconnectModal = $state(false);
 
 	async function connectGSC() {
 		gscLoading = true;
@@ -134,8 +135,8 @@
 	}
 
 	async function disconnectGSC() {
-		if (!confirm('Disconnect Google Search Console? You can reconnect at any time.')) return;
 		gscDisconnecting = true;
+		showDisconnectModal = false;
 		try {
 			await api.gscDisconnect();
 			gscConnected = false;
@@ -156,12 +157,13 @@
 		return 'var(--clr-danger)';
 	}
 
+	let gscChecked = $state(false);
+
 	onMount(() => {
 		const params = new URLSearchParams(window.location.search);
 		if (params.get('gsc') === 'connected') {
 			activeTab = 'gsc';
 			gscSuccess = 'Google Search Console connected successfully!';
-			// Clean the URL
 			window.history.replaceState({}, '', '/seo');
 		}
 		if (params.get('gsc_error')) {
@@ -169,9 +171,12 @@
 			gscError = `Connection failed: ${params.get('gsc_error')}`;
 			window.history.replaceState({}, '', '/seo');
 		}
+	});
 
-		// Check GSC status if logged in
-		if ($auth.user) {
+	// Watch for auth to finish loading, then check GSC status
+	$effect(() => {
+		if ($auth.user && !gscChecked) {
+			gscChecked = true;
 			checkGscStatus();
 		}
 	});
@@ -477,7 +482,7 @@
 							<span style="font-weight: 700;">Google Search Console</span>
 							<div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
 								<span class="gsc-connected-badge">✓ Connected</span>
-								<button class="btn-text-danger" disabled={gscDisconnecting} onclick={disconnectGSC}>
+								<button class="btn-text-danger" disabled={gscDisconnecting} onclick={() => showDisconnectModal = true}>
 									{#if gscDisconnecting}...{:else}Disconnect{/if}
 								</button>
 							</div>
@@ -674,6 +679,24 @@
 	{/if}
 </div>
 
+<!-- Disconnect Modal -->
+{#if showDisconnectModal}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={(e) => e.target === e.currentTarget && (showDisconnectModal = false)} onkeydown={(e) => e.key === 'Escape' && (showDisconnectModal = false)}>
+		<div class="modal-card">
+			<div style="font-size: 28px; margin-bottom: 12px;">⚠️</div>
+			<h3 style="margin-bottom: 8px;">Disconnect Search Console?</h3>
+			<p class="text-muted" style="font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
+				Your GSC data will be removed from BSCAN. You can reconnect at any time.
+			</p>
+			<div style="display: flex; gap: 10px; justify-content: center;">
+				<button class="btn" style="background: var(--clr-bg-deep); color: var(--clr-text-secondary); border: 1px solid var(--clr-border);" onclick={() => showDisconnectModal = false}>Cancel</button>
+				<button class="btn" style="background: var(--clr-danger); color: white; border: none;" onclick={disconnectGSC}>Disconnect</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.page-header { text-align: center; margin-bottom: var(--space-xl); }
 	.page-header h1 { font-style: italic; margin: 8px 0; }
@@ -808,6 +831,10 @@
 	.gsc-page-row:last-child { border-bottom: none; }
 	.gsc-page-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--clr-text-secondary); }
 	.gsc-page-clicks { flex-shrink: 0; font-weight: 700; color: var(--clr-blue); margin-left: 12px; }
+
+	/* Disconnect modal */
+	.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+	.modal-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 32px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
 
 	@media (max-width: 640px) {
 		.search-row { flex-direction: column; }
