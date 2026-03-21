@@ -3,7 +3,18 @@
 	import Seo from '$lib/components/ui/Seo.svelte';
 </script>
 
-<Seo title="API Documentation" description="BSCAN API documentation. Integrate website auditing into your applications with our RESTful API. Pro and Agency plans include API access." />
+<Seo
+	title="API Documentation — BSCAN REST API"
+	description="BSCAN REST API documentation. Integrate website auditing into your applications. Scan URLs, get scores, retrieve issues programmatically."
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "TechArticle",
+		"headline": "BSCAN API Documentation",
+		"url": "https://bscan.balancewises.io/api-docs",
+		"description": "RESTful API for website auditing. Endpoints for scanning URLs, retrieving scores, managing API keys, and bulk operations.",
+		"author": { "@type": "Organization", "name": "Balancewise Technologies", "url": "https://balancewises.io" }
+	}}
+/>
 
 <div class="container" style="max-width: 800px;">
 	<div class="page-header animate-fade-up">

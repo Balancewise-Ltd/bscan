@@ -97,7 +97,20 @@
 	}
 </script>
 
-<Seo title="Deep Crawl & Bulk Scan" description="Multi-page site audits and batch URL scanning. Crawl up to 50 pages, scan up to 25 URLs at once." />
+<Seo
+	title="Deep Crawl — Multi-Page Website Audit Tool"
+	description="Crawl up to 50 internal pages and audit each one. Find issues across your entire site with bulk URL scanning. Agency plan feature."
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		"name": "BSCAN Deep Crawl",
+		"url": "https://bscan.balancewises.io/deep-crawl",
+		"applicationCategory": "SEO Tool",
+		"description": "Multi-page website crawler that audits up to 50 pages at once. Identifies issues across your entire site with AI-powered fix suggestions.",
+		"operatingSystem": "All",
+		"offers": { "@type": "Offer", "price": "29.00", "priceCurrency": "GBP", "description": "Agency plan — £29/month" }
+	}}
+/>
 
 <div class="container" style="max-width: 960px;">
 	<div class="page-header animate-fade-up">

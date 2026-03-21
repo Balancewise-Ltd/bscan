@@ -182,7 +182,20 @@
 	});
 </script>
 
-<Seo title="SEO Dashboard" description="Free keyword research, backlink analysis, Google Search Console integration, and AI-powered SEO strategy tools. Powered by BSCAN." />
+<Seo
+	title="SEO Dashboard — Free Keyword Research & Backlink Analysis"
+	description="Free keyword research, backlink analysis, Google Search Console integration, and AI-powered SEO strategy tools. Powered by BSCAN."
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		"name": "BSCAN SEO Dashboard",
+		"url": "https://bscan.balancewises.io/seo",
+		"applicationCategory": "SEO Tool",
+		"description": "Free keyword research tool with Google Autocomplete data, backlink analysis, and Google Search Console integration.",
+		"operatingSystem": "All",
+		"offers": { "@type": "Offer", "price": "0.00", "priceCurrency": "GBP", "description": "Free keyword research and backlink analysis" }
+	}}
+/>
 
 <div class="container" style="max-width: 960px;">
 	<div class="page-header animate-fade-up">

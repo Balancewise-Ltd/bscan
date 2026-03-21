@@ -106,7 +106,20 @@
 	}
 </script>
 
-<Seo title="Site Monitoring" description="Monitor your websites automatically. Get email alerts when scores drop. Track trends over time." />
+<Seo
+	title="Site Monitoring — Automated Website Health Alerts"
+	description="Monitor your websites automatically. Get email and push notification alerts when scores drop. Track performance trends over time."
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		"name": "BSCAN Site Monitoring",
+		"url": "https://bscan.balancewises.io/monitoring",
+		"applicationCategory": "Monitoring Tool",
+		"description": "Automated website monitoring with hourly checks. Receive email and push alerts when your site health score drops below threshold.",
+		"operatingSystem": "All",
+		"offers": { "@type": "Offer", "price": "9.00", "priceCurrency": "GBP", "description": "Pro plan — £9/month" }
+	}}
+/>
 
 <div class="container" style="max-width: 900px;">
 	<div class="page-header animate-fade-up">

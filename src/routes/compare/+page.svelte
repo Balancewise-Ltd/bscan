@@ -66,7 +66,20 @@
 	const categories = ['seo', 'performance', 'accessibility', 'security', 'mobile', 'links'];
 </script>
 
-<Seo title="Compare Websites" description="Compare two websites side-by-side across SEO, performance, accessibility, security, and more. See who wins in every category." />
+<Seo
+	title="Compare Websites — Side-by-Side SEO & Performance Analysis"
+	description="Compare two websites side-by-side across SEO, performance, accessibility, security, and more. See who wins in every category."
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "WebApplication",
+		"name": "BSCAN Website Comparator",
+		"url": "https://bscan.balancewises.io/compare",
+		"applicationCategory": "SEO Tool",
+		"description": "Compare two websites side-by-side across SEO, performance, accessibility, and security. See detailed category breakdowns and a winner for each metric.",
+		"operatingSystem": "All",
+		"offers": { "@type": "Offer", "price": "0.00", "priceCurrency": "GBP" }
+	}}
+/>
 
 <div class="container" style="max-width: 900px;">
 	<div class="page-header animate-fade-up">

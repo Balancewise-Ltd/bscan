@@ -40,7 +40,19 @@
 	}
 </script>
 
-<Seo title="Leaderboard" description="See the top-performing websites on BSCAN. Public rankings updated weekly showing SEO, performance, and security scores." />
+<Seo
+	title="Website Leaderboard — Top Scoring Sites"
+	description="See the top-performing websites on BSCAN. Public rankings showing SEO, performance, and security scores. Can your site make the top 10?"
+	jsonLd={{
+		"@context": "https://schema.org",
+		"@type": "ItemList",
+		"name": "BSCAN Website Leaderboard",
+		"description": "Public rankings of top-performing websites scored by BSCAN across SEO, performance, accessibility, and security.",
+		"url": "https://bscan.balancewises.io/leaderboard",
+		"itemListOrder": "https://schema.org/ItemListOrderDescending",
+		"numberOfItems": 20
+	}}
+/>
 
 <div class="container" style="max-width: 800px;">
 	<div class="page-header animate-fade-up">
