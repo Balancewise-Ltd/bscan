@@ -79,6 +79,8 @@
 
 	// Challenge landing (?challenge=xxx)
 	let refCode = $state('');
+	let sparklineScans = $state<{score: number; domain: string; date: string}[]>([]);
+	let sparklineLoading = $state(false);
 	let challengeBanner = $state<{ domain: string; score: number; achievements: any[] } | null>(null);
 
 	onMount(async () => {
@@ -94,6 +96,20 @@
 			try { sessionStorage.setItem('bscan_ref', refParam); } catch {}
 		} else {
 			try { refCode = sessionStorage.getItem('bscan_ref') || ''; } catch {}
+		}
+
+		// Load score sparkline for logged-in users
+		if ($auth.user) {
+			sparklineLoading = true;
+			try {
+				const res = await api.getScanHistory(undefined, 10);
+				sparklineScans = (res.items || []).reverse().map(s => ({
+					score: s.overall_score || 0,
+					domain: (s.url || '').replace('https://', '').replace('http://', '').split('/')[0],
+					date: s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '',
+				}));
+			} catch {}
+			sparklineLoading = false;
 		}
 
 		// Handle challenge URL
@@ -576,6 +592,55 @@
 				{:else}
 					<a href="/account" class="btn btn-gold btn-sm" style="white-space: nowrap;">Sign Up Free</a>
 				{/if}
+			</div>
+		</section>
+	{/if}
+
+	<!-- ── Score Sparkline (logged-in users) ─────── -->
+	{#if $auth.user && sparklineScans.length >= 2}
+		<section class="sparkline-section">
+			<div class="sparkline-header">
+				<h3 style="font-size: 15px; font-weight: 700; margin: 0;">Your Score Trend</h3>
+				<a href="/account" style="font-size: 12px; color: var(--clr-blue);">View all scans &rarr;</a>
+			</div>
+			<div class="sparkline-chart">
+				<svg viewBox="0 0 {sparklineScans.length * 80} 120" class="sparkline-svg">
+					<!-- Grid lines -->
+					<line x1="0" y1="30" x2={sparklineScans.length * 80} y2="30" stroke="var(--clr-border)" stroke-width="0.5" stroke-dasharray="4"/>
+					<line x1="0" y1="60" x2={sparklineScans.length * 80} y2="60" stroke="var(--clr-border)" stroke-width="0.5" stroke-dasharray="4"/>
+					<line x1="0" y1="90" x2={sparklineScans.length * 80} y2="90" stroke="var(--clr-border)" stroke-width="0.5" stroke-dasharray="4"/>
+
+					<!-- Area fill -->
+					<path
+						d="M {sparklineScans.map((s, i) => `${i * 80 + 40},${110 - s.score}`).join(' L ')} L {(sparklineScans.length - 1) * 80 + 40},110 L 40,110 Z"
+						fill="url(#sparkGradient)"
+						opacity="0.15"
+					/>
+
+					<!-- Line -->
+					<polyline
+						points={sparklineScans.map((s, i) => `${i * 80 + 40},${110 - s.score}`).join(' ')}
+						fill="none"
+						stroke="var(--clr-gold)"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+
+					<!-- Dots + labels -->
+					{#each sparklineScans as s, i}
+						<circle cx={i * 80 + 40} cy={110 - s.score} r="4" fill="var(--clr-gold)" stroke="var(--clr-bg-deep)" stroke-width="2"/>
+						<text x={i * 80 + 40} y={110 - s.score - 10} text-anchor="middle" fill={s.score >= 80 ? 'var(--clr-success)' : s.score >= 60 ? 'var(--clr-blue)' : 'var(--clr-danger)'} font-size="12" font-weight="700" font-family="var(--font-mono)">{s.score}</text>
+						<text x={i * 80 + 40} y="125" text-anchor="middle" fill="var(--clr-text-muted)" font-size="9" font-family="var(--font-mono)">{s.domain.length > 10 ? s.domain.slice(0, 10) : s.domain}</text>
+					{/each}
+
+					<defs>
+						<linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stop-color="var(--clr-gold)"/>
+							<stop offset="100%" stop-color="var(--clr-gold)" stop-opacity="0"/>
+						</linearGradient>
+					</defs>
+				</svg>
 			</div>
 		</section>
 	{/if}
@@ -1122,4 +1187,8 @@
 	.referral-cta { max-width: var(--max-width); margin: 0 auto var(--space-xl); padding: 0 var(--space-lg); }
 	.referral-cta-inner { display: flex; align-items: center; gap: 16px; padding: 20px; background: linear-gradient(135deg, rgba(240,165,0,0.06), rgba(59,130,246,0.06)); border: 1px solid rgba(240,165,0,0.15); border-radius: var(--radius-lg); }
 	@media (max-width: 640px) { .referral-cta-inner { flex-direction: column; text-align: center; } }
+	.sparkline-section { max-width: var(--max-width); margin: 0 auto var(--space-xl); padding: 0 var(--space-lg); }
+	.sparkline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+	.sparkline-chart { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 20px 12px 12px; overflow-x: auto; }
+	.sparkline-svg { width: 100%; min-width: 300px; height: 140px; display: block; }
 </style>

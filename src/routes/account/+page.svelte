@@ -568,7 +568,7 @@
 
 <Seo title="Account" description="Sign in to your BSCAN account. View scan history, manage your subscription, edit your profile, and access API keys." />
 
-<div class="container-narrow">
+<div class="account-wrap">
 
 {#if resetToken}
 	<!-- ══════ RESET PASSWORD FORM ══════ -->
@@ -1482,6 +1482,9 @@
 </div>
 
 <style>
+	/* ── Account Wrapper (full width) ──── */
+	.account-wrap { width: 100%; max-width: 100%; padding: 0 var(--space-md); }
+
 	/* ── Auth ──────────────────────────────── */
 	.auth-section { max-width: 400px; margin: var(--space-xl) auto; text-align: center; }
 	.field { text-align: left; }
