@@ -1,18 +1,30 @@
 <script lang="ts">
 	import { chat } from '$lib/stores/chat';
-	import { sanitizeWithBreaks } from '$lib/utils/security';
+	import { sanitize } from '$lib/utils/security';
 
 	let inputText = $state('');
 	let messagesEl: HTMLDivElement | undefined = $state();
 
 	const quickPrompts = [
-		'What does BSCAN check?',
-		'What does my score mean?',
-		'What should I fix first?',
-		'How do I improve my SEO?'
+		'What can BSCAN do?',
+		'How do I improve my score?',
+		'What SEO tools are free?',
+		'How does site monitoring work?',
+		'What does Agency plan include?',
+		'How do I get AI fix suggestions?'
 	];
 
 	let showQuick = $state(true);
+
+	function linkify(text: string): string {
+		// Sanitize first, then convert URLs to clickable links
+		const safe = sanitize(text);
+		// Match URLs (http/https)
+		return safe.replace(
+			/(https?:\/\/[^\s<&]+)/g,
+			'<a href="$1" target="_blank" rel="noopener" style="color: var(--clr-gold); text-decoration: underline;">$1</a>'
+		).replace(/\n/g, '<br>');
+	}
 
 	function handleSend() {
 		if (!inputText.trim()) return;
@@ -80,7 +92,7 @@
 				{#each $chat.messages as msg}
 					<div class="msg" class:msg-user={msg.role === 'user'} class:msg-bot={msg.role === 'assistant'}>
 						<div class="msg-bubble" class:bubble-user={msg.role === 'user'} class:bubble-bot={msg.role === 'assistant'}>
-							{@html sanitizeWithBreaks(msg.content)}
+							{@html linkify(msg.content)}
 						</div>
 					</div>
 				{/each}
@@ -109,7 +121,7 @@
 				<input
 					class="chat-input"
 					type="text"
-					placeholder="Ask anything about your scan..."
+					placeholder="Ask anything about BSCAN..."
 					bind:value={inputText}
 					onkeydown={handleKeydown}
 				/>
@@ -249,6 +261,7 @@
 		font-size: 13px;
 		line-height: 1.6;
 		border-radius: 12px;
+		word-break: break-word;
 	}
 
 	.bubble-user {
