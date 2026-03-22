@@ -237,6 +237,22 @@
 	});
 
 	const isPaid = $derived($auth.isPaid || userPlan === 'pro' || userPlan === 'agency');
+
+	// Load sparkline when auth resolves
+	$effect(() => {
+		if ($auth.user && sparklineScans.length === 0 && !sparklineLoading) {
+			sparklineLoading = true;
+			api.getScanHistory(undefined, 10).then(res => {
+				sparklineScans = (res.items || []).reverse().map(s => ({
+					score: s.overall_score || 0,
+					domain: (s.url || '').replace('https://', '').replace('http://', '').split('/')[0],
+					date: s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '',
+				}));
+				sparklineLoading = false;
+			}).catch(() => { sparklineLoading = false; });
+		}
+	});
+
 </script>
 
 <Seo
