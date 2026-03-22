@@ -98,19 +98,7 @@
 			try { refCode = sessionStorage.getItem('bscan_ref') || ''; } catch {}
 		}
 
-		// Load score sparkline for logged-in users
-		if ($auth.user) {
-			sparklineLoading = true;
-			try {
-				const res = await api.getScanHistory(undefined, 10);
-				sparklineScans = (res.items || []).reverse().map(s => ({
-					score: s.overall_score || 0,
-					domain: (s.url || '').replace('https://', '').replace('http://', '').split('/')[0],
-					date: s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '',
-				}));
-			} catch {}
-			sparklineLoading = false;
-		}
+		// Sparkline loads via $effect below (auth not ready in onMount)
 
 		// Handle challenge URL
 		const params = new URLSearchParams(window.location.search);
