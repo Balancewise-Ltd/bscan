@@ -16,6 +16,9 @@
 	let authName = $state('');
 	let authError = $state('');
 	let authLoading = $state(false);
+	let showReinstate = $state(false);
+	let reinstateLoading = $state(false);
+	let reinstateMsg = $state('');
 
 	// ── Forgot / Reset Password ─────────────────────────
 	let showForgot = $state(false);
@@ -76,6 +79,12 @@
 	let pwConfirm = $state('');
 	let pwError = $state('');
 	let pwSuccess = $state('');
+
+	// __ Delete Account state
+	let showDeleteConfirm = $state(false);
+	let deleteConfirmText = $state('');
+	let deleteLoading = $state(false);
+	let deleteMsg = $state('');
 
 	// ── Branding state (Agency white-label) ────────────────
 	let brandName = $state('');
@@ -206,9 +215,32 @@
 			}
 			loadDashboard();
 		} catch (err) {
-			authError = err instanceof Error ? err.message : 'Authentication failed.';
+			const msg = err instanceof Error ? err.message : 'Authentication failed.';
+			if (msg.includes('ACCOUNT_DELETED')) {
+				showReinstate = true;
+				authError = '';
+			} else {
+				authError = msg;
+			}
 		}
 		authLoading = false;
+	}
+
+	async function handleReinstate() {
+		if (!authEmail || !authPassword) { reinstateMsg = 'Enter your email and password above.'; return; }
+		reinstateLoading = true;
+		reinstateMsg = '';
+		try {
+			await api.reinstateAccount(authEmail, authPassword);
+			reinstateMsg = 'Account reinstated! Logging you in...';
+			showReinstate = false;
+			setTimeout(async () => {
+				try { await auth.login(authEmail, authPassword); loadDashboard(); } catch {}
+			}, 1500);
+		} catch (err) {
+			reinstateMsg = err instanceof Error ? err.message : 'Could not reinstate account.';
+		}
+		reinstateLoading = false;
 	}
 
 	// ── Profile ──────────────────────────────────────────
@@ -558,6 +590,20 @@
 		claimLoading = false;
 	}
 
+	async function handleDeleteAccount() {
+		if (deleteConfirmText !== 'DELETE') return;
+		deleteLoading = true;
+		deleteMsg = '';
+		try {
+			await api.deleteAccount();
+			deleteMsg = 'Account deleted. You will be logged out.';
+			setTimeout(() => auth.logout(), 3000);
+		} catch (err) {
+			deleteMsg = err instanceof Error ? err.message : 'Failed to delete account.';
+		}
+		deleteLoading = false;
+	}
+
 	const tabs: Array<{ key: Tab; label: string; icon: string; show?: () => boolean }> = [
 		{ key: 'overview', label: 'Overview', icon: '📊' },
 		{ key: 'profile', label: 'Profile', icon: '👤' },
@@ -640,6 +686,18 @@
 				{isRegister ? 'Sign in' : 'Create one'}
 			</button>
 		</div>
+
+		{#if showReinstate}
+			<div style="margin-top: 16px; padding: 16px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); border-radius: var(--radius-lg);">
+				<p style="font-size: 14px; font-weight: 600; color: var(--clr-warning); margin-bottom: 8px;">Account Deleted</p>
+				<p class="text-muted" style="font-size: 12px; margin-bottom: 12px; line-height: 1.6;">Your account was previously deleted. Your data has been kept for 6 months. You can reinstate your account now to regain full access.</p>
+				{#if reinstateMsg}<div style="padding: 10px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 12px; margin-bottom: 12px;">{reinstateMsg}</div>{/if}
+				<button class="btn btn-gold" style="width: 100%;" disabled={reinstateLoading} onclick={handleReinstate}>
+					{#if reinstateLoading}Reinstating...{:else}Reinstate My Account{/if}
+				</button>
+				<button class="toggle-link" style="display: block; text-align: center; margin-top: 8px; font-size: 11px; color: var(--clr-text-muted);" onclick={() => { showReinstate = false; authError = ''; }}>Cancel</button>
+			</div>
+		{/if}
 
 		{#if !showForgot}
 			<div style="text-align: center; margin-top: 8px;">
@@ -1391,6 +1449,44 @@
 					<div class="card-body">
 						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Your login session is valid for 30 days. Sign out on all devices by changing your password.</p>
 						<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
+					</div>
+				</div>
+			</div>
+
+				<!-- Delete Account -->
+				<div class="card" style="margin-top: 20px; border-color: rgba(239,68,68,0.2);">
+					<div class="card-header">
+						<span>&#x26A0;&#xFE0F;</span>
+						<span style="font-weight: 700; font-size: 14px; color: var(--clr-danger);">Danger Zone</span>
+					</div>
+					<div class="card-body">
+						{#if !showDeleteConfirm}
+							<p style="font-size: 13px; color: var(--clr-text-secondary); line-height: 1.6; margin-bottom: 12px;">Permanently delete your account and all associated data. This action cannot be undone after the retention period.</p>
+							<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => showDeleteConfirm = true}>Delete My Account</button>
+						{:else}
+							<div style="padding: 16px; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.15); border-radius: var(--radius-md);">
+								<h4 style="color: var(--clr-danger); font-size: 14px; margin-bottom: 12px;">Are you sure?</h4>
+								<div style="font-size: 12px; color: var(--clr-text-secondary); line-height: 1.7; margin-bottom: 16px;">
+									<p style="margin-bottom: 8px;">If you delete your account:</p>
+									<p style="padding-left: 12px;">&#x2022; You will lose access immediately</p>
+									<p style="padding-left: 12px;">&#x2022; Your scan history, API keys, and team data will be removed</p>
+									<p style="padding-left: 12px;">&#x2022; Your data is kept for 6 months in case you change your mind</p>
+									<p style="padding-left: 12px;">&#x2022; To reinstate, simply log in again within 6 months</p>
+									<p style="padding-left: 12px;">&#x2022; After 6 months, your data is permanently and irreversibly deleted</p>
+								</div>
+								<div style="margin-bottom: 12px;">
+									<label class="label" style="font-size: 11px; margin-bottom: 6px;">Type DELETE to confirm</label>
+									<input class="input" type="text" placeholder="DELETE" bind:value={deleteConfirmText} style="text-transform: uppercase; font-family: var(--font-mono);" />
+								</div>
+								{#if deleteMsg}<div class="msg-error" style="margin-bottom: 12px;">{deleteMsg}</div>{/if}
+								<div style="display: flex; gap: 8px;">
+									<button class="btn" style="background: var(--clr-danger); color: white; border: none; flex: 1;" disabled={deleteLoading || deleteConfirmText !== 'DELETE'} onclick={handleDeleteAccount}>
+										{#if deleteLoading}Deleting...{:else}Delete My Account{/if}
+									</button>
+									<button class="btn btn-outline" style="border-color: var(--clr-border);" onclick={() => { showDeleteConfirm = false; deleteConfirmText = ''; deleteMsg = ''; }}>Cancel</button>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>

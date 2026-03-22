@@ -601,4 +601,17 @@ export async function claimReferralReward(): Promise<any> {
 	return request('/api/auth/referral/claim', { method: 'POST' });
 }
 
+
+// ACCOUNT DELETION
+export async function deleteAccount(): Promise<any> {
+	return request('/api/auth/delete-account', { method: 'POST' });
+}
+
+export async function reinstateAccount(email: string, password: string): Promise<any> {
+	return request('/api/auth/reinstate-account', {
+		method: 'POST',
+		body: JSON.stringify({ email, password }),
+	});
+}
+
 export { ApiError, API_BASE };
