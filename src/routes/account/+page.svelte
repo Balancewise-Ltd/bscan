@@ -1130,7 +1130,8 @@
 									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro — £9/mo</button>
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Go Agency — £29/mo</button>
 								{:else if user.billing_type === 'gift'}
-									<button class="btn btn-gold" onclick={() => ui.openCheckout(plan === 'agency' ? 'agency' : 'pro')}>Switch to Paid Plan</button>
+									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Subscribe Pro — £9/mo</button>
+									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Subscribe Agency — £29/mo</button>
 								{:else if plan === 'pro'}
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
 								{/if}
@@ -1157,8 +1158,8 @@
 									{/if}
 								</div>
 							</div>
-							<button class="btn btn-gold btn-sm" onclick={() => ui.openCheckout(plan === 'agency' ? 'agency' : 'pro')}>
-								{daysLeft <= 0 ? 'Upgrade Now' : 'Switch to Paid'}
+							<button class="btn btn-gold btn-sm" onclick={() => { const el = document.querySelector('.plan-compare'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}>
+								{daysLeft <= 0 ? 'Choose a Plan' : 'View Plans'}
 							</button>
 						</div>
 					{/if}
@@ -1251,18 +1252,24 @@
 
 				<!-- ── Plan Comparison ──────────────────── -->
 				<div class="plan-compare">
-					<div class="compare-col" class:active-plan={!isPaid}>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="compare-col" class:active-plan={!isPaid} class:clickable={isPaid} onclick={() => { /* Free = no checkout */ }}>
 						<div class="compare-header free">Free</div>
 						<div class="compare-feat">3 scans/month</div>
 						<div class="compare-feat">Basic audit</div>
 						<div class="compare-feat dim">No PDF export</div>
 						<div class="compare-feat dim">No scan history</div>
 						<div class="compare-feat dim">No compare tool</div>
-						{#if isPaid}
+						{#if !isPaid}
+							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-success); font-weight: 700;">✓ Your current plan</div>
+						{:else}
 							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-text-muted);">Current features exceed this plan</div>
 						{/if}
 					</div>
-					<div class="compare-col" class:featured={!isPaid || plan === 'pro'} class:active-plan={plan === 'pro'}>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="compare-col" class:featured={!isPaid || plan === 'pro'} class:active-plan={plan === 'pro'} class:clickable={plan !== 'pro'} onclick={() => { if (plan !== 'pro') ui.openCheckout('pro'); }}>
 						<div class="compare-header pro">Pro · £9/mo</div>
 						<div class="compare-feat">30 scans/month</div>
 						<div class="compare-feat">Core Web Vitals</div>
@@ -1270,13 +1277,17 @@
 						<div class="compare-feat">Scan history</div>
 						<div class="compare-feat">Compare tool</div>
 						<div class="compare-feat">SEO tools</div>
-						{#if !isPaid}
-							<button class="btn btn-gold btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('pro')}>Upgrade</button>
-						{:else if plan === 'pro'}
+						{#if plan === 'pro'}
 							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-gold); font-weight: 700;">✓ Your current plan</div>
+						{:else}
+							<button class="btn btn-gold btn-sm" style="margin-top: 12px; width: 100%;" onclick={(e) => { e.stopPropagation(); ui.openCheckout('pro'); }}>
+								{#if plan === 'agency'}Switch to Pro{:else}Upgrade to Pro{/if}
+							</button>
 						{/if}
 					</div>
-					<div class="compare-col" class:featured={plan === 'agency'} class:active-plan={plan === 'agency'}>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="compare-col" class:featured={plan === 'agency'} class:active-plan={plan === 'agency'} class:clickable={plan !== 'agency'} onclick={() => { if (plan !== 'agency') ui.openCheckout('agency'); }}>
 						<div class="compare-header agency">Agency · £29/mo</div>
 						<div class="compare-feat">Unlimited scans</div>
 						<div class="compare-feat">5 team members</div>
@@ -1284,10 +1295,10 @@
 						<div class="compare-feat">White-label PDFs</div>
 						<div class="compare-feat">AI SEO strategy</div>
 						<div class="compare-feat">Priority support</div>
-						{#if plan !== 'agency'}
-							<button class="btn btn-blue btn-sm" style="margin-top: 12px;" onclick={() => ui.openCheckout('agency')}>Upgrade</button>
-						{:else}
+						{#if plan === 'agency'}
 							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-blue); font-weight: 700;">✓ Your current plan</div>
+						{:else}
+							<button class="btn btn-blue btn-sm" style="margin-top: 12px; width: 100%;" onclick={(e) => { e.stopPropagation(); ui.openCheckout('agency'); }}>Upgrade to Agency</button>
 						{/if}
 					</div>
 				</div>
@@ -1829,7 +1840,9 @@
 
 	/* ── Plan Comparison ──────────────────── */
 	.plan-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
-	.compare-col { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 16px; text-align: center; }
+	.compare-col { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 16px; text-align: center; transition: all var(--duration-fast); }
+	.compare-col.clickable { cursor: pointer; }
+	.compare-col.clickable:hover { border-color: var(--clr-border-light); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 	.compare-col.featured { border-color: var(--clr-gold); box-shadow: var(--shadow-glow-gold); }
 	.compare-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--clr-border); }
 	.compare-header.pro { color: var(--clr-gold); }
