@@ -1090,62 +1090,166 @@
 			<div class="tab-content animate-fade-up">
 				<h3 style="margin-bottom: 20px;">Billing & Plan</h3>
 
-				<!-- Current Plan -->
-				<div class="card" style="margin-bottom: 20px;">
+				<!-- ── Plan Status Card ─────────────────── -->
+				<div class="card billing-hero" style="margin-bottom: 20px;">
 					<div class="card-body">
-						<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-							<div>
-								<div class="text-muted" style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px;">Current Plan</div>
-								<div style="font-size: 28px; font-weight: 800;">{planLabel}</div>
+						<div class="billing-hero-row">
+							<div class="billing-hero-left">
+								<div class="billing-plan-icon" class:gift={user.billing_type === 'gift'} class:stripe={user.billing_type === 'stripe'}>
+									{#if user.billing_type === 'gift'}🎁{:else if user.billing_type === 'stripe'}💳{:else}🆓{/if}
+								</div>
+								<div>
+									<div class="billing-plan-name">
+										{planLabel} plan
+										<span class="billing-type-badge" class:gift={user.billing_type === 'gift'} class:stripe={user.billing_type === 'stripe'} class:free={!isPaid}>
+											{#if user.billing_type === 'gift'}Gift{:else if user.billing_type === 'stripe'}Monthly{:else}Free{/if}
+										</span>
+									</div>
+									<div class="billing-plan-desc">
+										{#if user.billing_type === 'gift' && user.plan_expires_at}
+											{@const daysLeft = Math.max(0, Math.ceil((new Date(user.plan_expires_at).getTime() - Date.now()) / 86400000))}
+											{#if daysLeft <= 0}
+												<span style="color: var(--clr-danger);">Expired — upgrade to keep your features</span>
+											{:else if daysLeft <= 7}
+												<span style="color: var(--clr-warning);">Expires in {daysLeft} day{daysLeft === 1 ? '' : 's'} — {new Date(user.plan_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+											{:else}
+												Active until {new Date(user.plan_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+											{/if}
+										{:else if user.billing_type === 'gift'}
+											Gifted — no expiry date
+										{:else if user.billing_type === 'stripe'}
+											Your subscription renews automatically via Stripe
+										{:else}
+											3 scans per month — upgrade for more
+										{/if}
+									</div>
+								</div>
 							</div>
-							<div style="margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap;">
+							<div class="billing-hero-actions">
 								{#if !isPaid}
 									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro — £9/mo</button>
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Go Agency — £29/mo</button>
+								{:else if user.billing_type === 'gift'}
+									<button class="btn btn-gold" onclick={() => ui.openCheckout(plan === 'agency' ? 'agency' : 'pro')}>Switch to Paid Plan</button>
 								{:else if plan === 'pro'}
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
-									{#if user.billing_type === "stripe"}
-										<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
-											{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
-										</button>
-									{:else if user.billing_type === "gift"}
-										<span style="font-size: 11px; padding: 6px 14px; background: rgba(245,166,35,0.12); color: var(--clr-gold); border-radius: 6px; font-weight: 700; letter-spacing: 0.5px;">GIFT PLAN</span>
-									{/if}
-								{:else}
-									<!-- Agency — highest plan -->
-									{#if user.billing_type === "stripe"}
-										<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
-											{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
-										</button>
-									{:else if user.billing_type === "gift"}
-										<span style="font-size: 11px; padding: 6px 14px; background: rgba(245,166,35,0.12); color: var(--clr-gold); border-radius: 6px; font-weight: 700; letter-spacing: 0.5px;">GIFT PLAN</span>
-									{/if}
 								{/if}
 							</div>
 						</div>
-						{#if billingError && user.billing_type === "stripe"}
-							<div class="msg-error" style="margin-top: 12px;">{billingError}</div>
-						{/if}
-						{#if isPaid && user.billing_type === "gift"}
-							<div style="margin-top: 14px; padding: 16px; background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.15); border-radius: var(--radius-md);">
-								<div style="font-size: 13px; font-weight: 700; color: var(--clr-gold); margin-bottom: 6px;">Gift Plan Active</div>
-								<div style="font-size: 12px; color: var(--clr-text-secondary); line-height: 1.7;">
-									{#if user.plan_expires_at}
-										Your <strong style="color: var(--clr-text-primary);">{planLabel}</strong> plan was gifted and expires on <strong style="color: var(--clr-text-primary);">{new Date(user.plan_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>. After expiry you will return to Free unless you subscribe.
-									{:else}
-										Your <strong style="color: var(--clr-text-primary);">{planLabel}</strong> plan was gifted with no expiry. Enjoy full access.
-									{/if}
-								</div>
-							</div>
-						{:else if isPaid && user.billing_type === "stripe"}
-							<div style="margin-top: 12px; font-size: 12px; color: var(--clr-text-muted);">
-								To downgrade or cancel, click Manage Subscription above. If unavailable, email <a href="mailto:support@balancewises.io" style="color: var(--clr-blue);">support@balancewises.io</a>.
-							</div>
-						{/if}
 					</div>
 				</div>
 
-				<!-- Plan Comparison — visible to all -->
+				<!-- ── Gift Expiry Warning ──────────────── -->
+				{#if user.billing_type === 'gift' && user.plan_expires_at}
+					{@const daysLeft = Math.max(0, Math.ceil((new Date(user.plan_expires_at).getTime() - Date.now()) / 86400000))}
+					{#if daysLeft <= 14}
+						<div class="billing-warning" class:expired={daysLeft <= 0}>
+							<div class="billing-warning-icon">{daysLeft <= 0 ? '⚠️' : '⏳'}</div>
+							<div class="billing-warning-content">
+								<div class="billing-warning-title">
+									{#if daysLeft <= 0}Your gift plan has expired{:else}Your gift plan expires in {daysLeft} day{daysLeft === 1 ? '' : 's'}{/if}
+								</div>
+								<div class="billing-warning-sub">
+									{#if daysLeft <= 0}
+										Upgrade now to keep PDF reports, scan history, compare tool, and all {planLabel} features.
+									{:else}
+										Switch to a paid plan before it expires to keep all your features without interruption.
+									{/if}
+								</div>
+							</div>
+							<button class="btn btn-gold btn-sm" onclick={() => ui.openCheckout(plan === 'agency' ? 'agency' : 'pro')}>
+								{daysLeft <= 0 ? 'Upgrade Now' : 'Switch to Paid'}
+							</button>
+						</div>
+					{/if}
+				{/if}
+
+				<!-- ── Payment & Invoices (Stripe users) ── -->
+				{#if user.billing_type === 'stripe'}
+					<div class="card" style="margin-bottom: 20px;">
+						<div class="card-header">
+							<span>💳</span>
+							<span style="font-weight: 700; font-size: 14px;">Payment & Invoices</span>
+						</div>
+						<div class="card-body">
+							<div class="billing-portal-row">
+								<div>
+									<div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Manage via Stripe</div>
+									<div class="text-muted" style="font-size: 12px; line-height: 1.6;">
+										View invoices, update your payment method, change your plan, or download receipts through Stripe's secure billing portal.
+									</div>
+								</div>
+								<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
+									{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Open Billing Portal →
+								</button>
+							</div>
+							{#if billingError}<div class="msg-error">{billingError}</div>{/if}
+						</div>
+					</div>
+
+					<!-- Cancellation -->
+					<div class="card" style="margin-bottom: 20px;">
+						<div class="card-header">
+							<span>🚫</span>
+							<span style="font-weight: 700; font-size: 14px;">Cancellation</span>
+						</div>
+						<div class="card-body">
+							<div class="billing-portal-row">
+								<div class="text-muted" style="font-size: 12px; line-height: 1.6;">
+									Cancel your plan anytime through Stripe. You'll keep access until the end of your current billing period.
+								</div>
+								<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" disabled={portalLoading} onclick={openBillingPortal}>
+									{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Cancel Plan
+								</button>
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- ── Gift Plan Info ───────────────────── -->
+				{#if user.billing_type === 'gift'}
+					<div class="card" style="margin-bottom: 20px;">
+						<div class="card-header">
+							<span>🎁</span>
+							<span style="font-weight: 700; font-size: 14px;">Gift Plan Details</span>
+						</div>
+						<div class="card-body">
+							<div class="billing-detail-grid">
+								<div class="billing-detail">
+									<div class="billing-detail-label">Plan</div>
+									<div class="billing-detail-value">{planLabel}</div>
+								</div>
+								<div class="billing-detail">
+									<div class="billing-detail-label">Type</div>
+									<div class="billing-detail-value" style="color: var(--clr-gold);">Gift</div>
+								</div>
+								<div class="billing-detail">
+									<div class="billing-detail-label">Expires</div>
+									<div class="billing-detail-value">
+										{#if user.plan_expires_at}
+											{new Date(user.plan_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+										{:else}
+											Never
+										{/if}
+									</div>
+								</div>
+								<div class="billing-detail">
+									<div class="billing-detail-label">Cost</div>
+									<div class="billing-detail-value">£0.00</div>
+								</div>
+							</div>
+							<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--clr-border); font-size: 12px; color: var(--clr-text-muted); line-height: 1.6;">
+								{#if user.plan_expires_at}
+									When your gift expires, your account will revert to the Free plan. Subscribe before then to keep all your features.
+								{:else}
+									Your gift plan has no expiry — enjoy full {planLabel} features indefinitely. You can switch to a paid plan at any time if you'd like to support BSCAN.
+								{/if}
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- ── Plan Comparison ──────────────────── -->
 				<div class="plan-compare">
 					<div class="compare-col" class:active-plan={!isPaid}>
 						<div class="compare-header free">Free</div>
@@ -1188,10 +1292,10 @@
 					</div>
 				</div>
 
-				<!-- Promo Code -->
+				<!-- ── Promo Code ───────────────────────── -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
-						<span>🎁</span>
+						<span>🎟️</span>
 						<span style="font-weight: 700; font-size: 14px;">Promo Code</span>
 					</div>
 					<div class="card-body">
@@ -1734,6 +1838,38 @@
 	.compare-feat.dim { color: var(--clr-text-muted); opacity: 0.5; }
 	.active-plan { border-color: var(--clr-success); box-shadow: 0 0 0 1px var(--clr-success); }
 
+	/* ── Billing Hero ─────────────────────── */
+	.billing-hero { border-left: 3px solid var(--clr-gold); }
+	.billing-hero-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+	.billing-hero-left { display: flex; align-items: center; gap: 14px; }
+	.billing-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+	.billing-plan-icon { width: 48px; height: 48px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; background: var(--clr-bg-elevated); border: 1px solid var(--clr-border); }
+	.billing-plan-icon.gift { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.2); }
+	.billing-plan-icon.stripe { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); }
+	.billing-plan-name { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+	.billing-plan-desc { font-size: 12px; color: var(--clr-text-secondary); margin-top: 2px; }
+	.billing-type-badge { font-size: 10px; padding: 3px 10px; border-radius: var(--radius-full); font-weight: 700; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; }
+	.billing-type-badge.gift { background: rgba(245,166,35,0.12); color: var(--clr-gold); }
+	.billing-type-badge.stripe { background: rgba(99,102,241,0.12); color: #818cf8; }
+	.billing-type-badge.free { background: var(--clr-border); color: var(--clr-text-muted); }
+
+	/* ── Billing Warning Banner ───────────── */
+	.billing-warning { display: flex; align-items: center; gap: 14px; padding: 14px 20px; background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.2); border-radius: var(--radius-lg); margin-bottom: 20px; flex-wrap: wrap; }
+	.billing-warning.expired { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
+	.billing-warning-icon { font-size: 22px; flex-shrink: 0; }
+	.billing-warning-content { flex: 1; min-width: 200px; }
+	.billing-warning-title { font-size: 14px; font-weight: 700; }
+	.billing-warning.expired .billing-warning-title { color: var(--clr-danger); }
+	.billing-warning-sub { font-size: 12px; color: var(--clr-text-secondary); margin-top: 2px; }
+
+	/* ── Billing Portal Row ───────────────── */
+	.billing-portal-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+	/* ── Billing Detail Grid ──────────────── */
+	.billing-detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+	.billing-detail-label { font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+	.billing-detail-value { font-size: 15px; font-weight: 700; }
+
 	/* ── API Keys ─────────────────────────── */
 	.key-reveal { margin-top: 12px; padding: 12px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); border-radius: var(--radius-md); }
 	.key-code { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--clr-gold); word-break: break-all; padding: 8px; background: var(--clr-bg-deep); border-radius: var(--radius-sm); margin-top: 4px; }
@@ -1777,6 +1913,20 @@
 		.big-action-text h3 { font-size: 14px; }
 		.big-action-text p { font-size: 10px; -webkit-line-clamp: 1; }
 	}
+	@media (max-width: 640px) {
+		.form-grid { grid-template-columns: 1fr; }
+		.plan-compare { grid-template-columns: 1fr; }
+		.billing-hero-row { flex-direction: column; align-items: flex-start; }
+		.billing-hero-left { flex-direction: column; align-items: flex-start; gap: 10px; }
+		.billing-hero-actions { width: 100%; }
+		.billing-hero-actions .btn { flex: 1; text-align: center; }
+		.billing-plan-name { font-size: 18px; }
+		.billing-detail-grid { grid-template-columns: repeat(2, 1fr); }
+		.billing-portal-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+		.billing-portal-row .btn { width: 100%; text-align: center; }
+		.billing-warning { flex-direction: column; text-align: center; gap: 10px; }
+		.billing-warning .btn { width: 100%; }
+	}
 	@media (max-width: 480px) {
 		.action-grid { grid-template-columns: 1fr; }
 		.stats-grid { grid-template-columns: 1fr 1fr 1fr; }
@@ -1788,10 +1938,10 @@
 		.scan-table-header { display: none; }
 		.scan-table-row { grid-template-columns: 2fr 50px 80px; }
 		.st-trend { display: none; }
-	}
-	@media (max-width: 640px) {
-		.form-grid { grid-template-columns: 1fr; }
-		.plan-compare { grid-template-columns: 1fr; }
+		.billing-detail-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+		.billing-plan-icon { width: 40px; height: 40px; font-size: 18px; }
+		.billing-plan-name { font-size: 16px; gap: 6px; }
+		.billing-type-badge { font-size: 9px; padding: 2px 8px; }
 	}
 	/* Email verification banner */
 	.verify-banner { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
