@@ -1451,7 +1451,6 @@
 						<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
 					</div>
 				</div>
-			</div>
 
 				<!-- Delete Account -->
 				<div class="card" style="margin-top: 20px; border-color: rgba(239,68,68,0.2);">
