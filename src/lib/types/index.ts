@@ -30,6 +30,9 @@ export interface User {
 	team_id?: string;
 	email_verified?: boolean;
 	avatar_url?: string;
+	billing_type?: string;
+	plan_expires_at?: string;
+	plan_source?: string;
 }
 
 export interface AuthState {
