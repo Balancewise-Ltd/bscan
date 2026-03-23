@@ -1104,14 +1104,22 @@
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Go Agency — £29/mo</button>
 								{:else if plan === 'pro'}
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
-									<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
-										{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
-									</button>
+									{#if user.billing_type === "stripe"}
+										<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
+											{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
+										</button>
+									{:else if user.billing_type === "gift"}
+										<span style="font-size: 11px; padding: 6px 14px; background: rgba(245,166,35,0.12); color: var(--clr-gold); border-radius: 6px; font-weight: 700; letter-spacing: 0.5px;">GIFT PLAN</span>
+									{/if}
 								{:else}
 									<!-- Agency — highest plan -->
-									<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
-										{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
-									</button>
+									{#if user.billing_type === "stripe"}
+										<button class="btn btn-outline" disabled={portalLoading} onclick={openBillingPortal}>
+											{#if portalLoading}<span class="spinner spinner-sm"></span>{/if} Manage Subscription
+										</button>
+									{:else if user.billing_type === "gift"}
+										<span style="font-size: 11px; padding: 6px 14px; background: rgba(245,166,35,0.12); color: var(--clr-gold); border-radius: 6px; font-weight: 700; letter-spacing: 0.5px;">GIFT PLAN</span>
+									{/if}
 								{/if}
 							</div>
 						</div>
