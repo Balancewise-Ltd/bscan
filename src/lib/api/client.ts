@@ -590,6 +590,14 @@ export async function resendVerification(): Promise<{ message: string }> {
 	return request('/api/auth/resend-verification', { method: 'POST' });
 }
 
+/** Resend verification email by email address (no auth required — for login flow) */
+export async function resendVerificationByEmail(email: string): Promise<{ message: string }> {
+	return request('/api/auth/resend-verification-email', {
+		method: 'POST',
+		body: JSON.stringify({ email })
+	});
+}
+
 
 
 // REFERRAL SYSTEM

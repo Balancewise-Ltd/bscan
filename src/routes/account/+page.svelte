@@ -38,6 +38,8 @@
 	let verifyMsg = $state('');
 	let verifyError = $state('');
 	let resendLoading = $state(false);
+	let showVerifyPrompt = $state(false);
+	let verifyPromptEmail = $state('');
 
 	// ── Referral System ─────────────────────────────────
 	let referralData = $state<any>(null);
@@ -218,6 +220,10 @@
 			const msg = err instanceof Error ? err.message : 'Authentication failed.';
 			if (msg.includes('ACCOUNT_DELETED')) {
 				showReinstate = true;
+				authError = '';
+			} else if (msg.includes('EMAIL_NOT_VERIFIED')) {
+				showVerifyPrompt = true;
+				verifyPromptEmail = authEmail;
 				authError = '';
 			} else {
 				authError = msg;
@@ -696,6 +702,33 @@
 					{#if reinstateLoading}Reinstating...{:else}Reinstate My Account{/if}
 				</button>
 				<button class="toggle-link" style="display: block; text-align: center; margin-top: 8px; font-size: 11px; color: var(--clr-text-muted);" onclick={() => { showReinstate = false; authError = ''; }}>Cancel</button>
+			</div>
+		{/if}
+
+		{#if showVerifyPrompt}
+			<div style="margin-top: 16px; padding: 20px; background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.15); border-radius: var(--radius-lg); text-align: center;">
+				<div style="font-size: 28px; margin-bottom: 8px;">📧</div>
+				<div style="font-weight: 700; font-size: 15px; margin-bottom: 6px;">Verify your email</div>
+				<div style="font-size: 13px; color: var(--clr-text-secondary); margin-bottom: 14px; line-height: 1.6;">
+					We sent a verification link to <strong style="color: var(--clr-text-primary);">{verifyPromptEmail}</strong>.<br/>Check your inbox (and spam folder) and click the link to activate your account.
+				</div>
+				<button class="btn btn-gold" style="width: 100%;" disabled={resendLoading} onclick={async () => {
+					resendLoading = true;
+					verifyMsg = '';
+					verifyError = '';
+					try {
+						const res = await api.resendVerificationByEmail(verifyPromptEmail);
+						verifyMsg = res.message || 'Verification email sent! Check your inbox.';
+					} catch (err) {
+						verifyError = err instanceof Error ? err.message : 'Failed to resend. Try again later.';
+					}
+					resendLoading = false;
+				}}>
+					{#if resendLoading}<span class="spinner spinner-sm"></span> Sending...{:else}Resend Verification Email{/if}
+				</button>
+				{#if verifyMsg}<div class="msg-success" style="margin-top: 10px;">{verifyMsg}</div>{/if}
+				{#if verifyError}<div class="msg-error" style="margin-top: 10px;">{verifyError}</div>{/if}
+				<button style="margin-top: 12px; background: none; border: none; color: var(--clr-text-muted); font-size: 12px; cursor: pointer; font-family: inherit;" onclick={() => { showVerifyPrompt = false; }}>← Back to login</button>
 			</div>
 		{/if}
 
