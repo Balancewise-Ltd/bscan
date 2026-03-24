@@ -1,0 +1,7 @@
+# BSCAN — bscan.balancewises.io
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /team
+
+Sitemap: https://bscan.balancewises.io/sitemap.xml

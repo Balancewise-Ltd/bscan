@@ -1,0 +1,1 @@
+export const env={"PUBLIC_API_BASE":"https://api-bscan.balancewises.io","PUBLIC_SITE_URL":"https://bscan.balancewises.io","PUBLIC_SITE_NAME":"BSCAN"}
