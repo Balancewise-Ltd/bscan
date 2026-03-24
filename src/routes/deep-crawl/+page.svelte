@@ -67,7 +67,14 @@
 		pdfLoading = true;
 		try {
 			const blob = await api.downloadDeepCrawlPdf({ url: deepResult.url || deepUrl, pages: deepResult.pages || [], summary: deepResult.summary || {}, issues: deepResult.issues || [] });
-			const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "bscan-crawl-report.pdf"; a.click(); URL.revokeObjectURL(a.href);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = "bscan-crawl-report.pdf";
+			a.style.display = "none";
+			document.body.appendChild(a);
+			a.click();
+			setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 		} catch { deepError = "PDF generation failed."; }
 		pdfLoading = false;
 	}
