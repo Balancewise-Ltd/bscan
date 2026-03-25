@@ -436,8 +436,8 @@
 										<div class="bl-stat-value" style="color: var(--clr-warning);">{la.external_links}</div>
 									</div>
 									<div class="bl-stat">
-										<div class="bl-stat-label">Broken</div>
-										<div class="bl-stat-value" style="color: {la.broken_anchors > 0 ? 'var(--clr-danger)' : 'var(--clr-success)'};">{la.broken_anchors}</div>
+										<div class="bl-stat-label">Empty Anchors</div>
+										<div class="bl-stat-value" style="color: {la.broken_anchors > 10 ? 'var(--clr-text-muted)' : la.broken_anchors > 0 ? 'var(--clr-warning)' : 'var(--clr-success)'};">{la.broken_anchors}</div>
 									</div>
 								</div>
 
@@ -523,46 +523,164 @@
 						{/if}
 					{/if}
 
-					<!-- ── Section 2: Backlink Estimates ── -->
-					{#if blData}
+					<!-- ── Section 2: SEO Recommendations ── -->
+					{#if linkHealthData?.summary?.link_analysis}
+						{@const r = linkHealthData.summary.link_analysis}
 						<div class="card animate-fade-up" style="margin-top: 16px;">
 							<div class="card-header">
-								<span><TrendingUp size={14} strokeWidth={2} /></span>
-								<span style="font-weight: 700; font-size: 13px;">Inbound Backlink Estimate</span>
-								<span class="text-muted" style="margin-left: auto; font-size: 10px; font-family: var(--font-mono);">via {sanitize(blData.source || 'Public Index')}</span>
+								<span><Target size={14} strokeWidth={2} /></span>
+								<span style="font-weight: 700; font-size: 13px;">SEO Recommendations</span>
+								<span class="badge badge-gold" style="margin-left: auto;">AI</span>
 							</div>
-							<div class="card-body">
-								<div class="bl-stats-grid">
-									<div class="bl-stat">
-										<div class="bl-stat-label">Est. Backlinks</div>
-										<div class="bl-stat-value">{blData.total_backlinks ? `~${blData.total_backlinks.toLocaleString()}` : '—'}</div>
+							<div class="card-body" style="padding: 0;">
+								<!-- Dofollow/Nofollow recommendation -->
+								{#if r.nofollow_pct === 0 && r.external_links > 0}
+									<div class="rec-item rec-warning">
+										<div class="rec-severity">Fix</div>
+										<div class="rec-content">
+											<div class="rec-title">Add nofollow to untrusted external links</div>
+											<div class="rec-detail">All {r.external_links} external links pass link equity (dofollow). Add <code>rel="nofollow"</code> to affiliate, ad, or user-submitted links to protect your domain authority.</div>
+										</div>
 									</div>
-									<div class="bl-stat">
-										<div class="bl-stat-label">Referring Domains</div>
-										<div class="bl-stat-value">{blData.referring_domains ? `~${blData.referring_domains.toLocaleString()}` : '—'}</div>
+								{:else if r.nofollow_pct > 0 && r.nofollow_pct <= 30}
+									<div class="rec-item rec-pass">
+										<div class="rec-severity">Good</div>
+										<div class="rec-content">
+											<div class="rec-title">Healthy dofollow/nofollow balance</div>
+											<div class="rec-detail">{r.dofollow_pct}% dofollow / {r.nofollow_pct}% nofollow is a natural link profile. Search engines see this as organic.</div>
+										</div>
 									</div>
-									<div class="bl-stat">
-										<div class="bl-stat-label">Link Quality</div>
-										<div class="bl-stat-value" style="font-size: 16px; color: {blData.link_quality === 'Excellent' || blData.link_quality === 'Strong' ? 'var(--clr-success)' : blData.link_quality === 'Moderate' ? 'var(--clr-warning)' : 'var(--clr-text-muted)'};">{sanitize(blData.link_quality || '—')}</div>
-									</div>
-								</div>
-
-								{#if blData.link_signals?.length > 0}
-									<div style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px;">
-										{#each blData.link_signals as signal}
-											<div style="font-size: 11px; color: var(--clr-text-secondary); padding: 4px 0;">
-												<span style="color: var(--clr-success); margin-right: 4px;">✓</span> {sanitize(signal)}
-											</div>
-										{/each}
+								{:else if r.nofollow_pct > 50}
+									<div class="rec-item rec-info">
+										<div class="rec-severity">Tip</div>
+										<div class="rec-content">
+											<div class="rec-title">Consider switching trusted links to dofollow</div>
+											<div class="rec-detail">Over {r.nofollow_pct}% of your links are nofollow. If some point to trusted editorial sources, making them dofollow can strengthen your content's authority signals.</div>
+										</div>
 									</div>
 								{/if}
 
-								<div style="margin-top: 16px; padding: 12px; border-radius: var(--radius-md); background: var(--clr-bg-primary); border: 1px solid var(--clr-border);">
-									<p style="font-size: 11px; color: var(--clr-text-muted); line-height: 1.5; margin: 0;">
-										These are rough estimates from public web indexes. For accurate backlink data from Google, 
-										<button style="background: none; border: none; color: var(--clr-blue); font-size: 11px; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0;" onclick={() => activeTab = 'gsc'}>connect Google Search Console</button> — it's free and shows the real links Google sees.
-									</p>
-								</div>
+								<!-- External link ratio -->
+								{#if r.external_pct > 40}
+									<div class="rec-item rec-warning">
+										<div class="rec-severity">Fix</div>
+										<div class="rec-content">
+											<div class="rec-title">High external link ratio ({r.external_pct}%)</div>
+											<div class="rec-detail">Over 40% of your links point to other sites. Add more internal links to keep users on your site and distribute page authority across your pages.</div>
+										</div>
+									</div>
+								{:else if r.external_pct > 0}
+									<div class="rec-item rec-pass">
+										<div class="rec-severity">Good</div>
+										<div class="rec-content">
+											<div class="rec-title">Balanced internal/external links</div>
+											<div class="rec-detail">{r.internal_links} internal vs {r.external_links} external links ({r.external_pct}% external). Internal linking is strong.</div>
+										</div>
+									</div>
+								{:else}
+									<div class="rec-item rec-info">
+										<div class="rec-severity">Tip</div>
+										<div class="rec-content">
+											<div class="rec-title">Add external links to authoritative sources</div>
+											<div class="rec-detail">Pages with zero outbound links can look thin to search engines. Link to relevant, high-quality sources to add topical context.</div>
+										</div>
+									</div>
+								{/if}
+
+								<!-- Empty anchors -->
+								{#if r.broken_anchors > 10}
+									<div class="rec-item rec-info">
+										<div class="rec-severity">Info</div>
+										<div class="rec-content">
+											<div class="rec-title">{r.broken_anchors} empty anchor tags found (href="#")</div>
+											<div class="rec-detail">These are links with <code>href="#"</code> or empty href — used for interactive UI elements like dropdowns, tabs, and selectors. Not broken links, but search engines can't follow them.</div>
+											{#if r.broken_anchor_samples?.length > 0}
+												<div style="margin-top: 8px; padding: 8px 10px; background: var(--clr-bg-deep); border-radius: var(--radius-sm); border: 1px solid var(--clr-border);">
+													<div style="font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); margin-bottom: 6px;">SAMPLES:</div>
+													{#each r.broken_anchor_samples.slice(0, 5) as sample}
+														<div style="font-size: 11px; color: var(--clr-text-secondary); padding: 2px 0; font-family: var(--font-mono);">
+															<span style="color: var(--clr-text-muted);">href="{sample.href}"</span> &rarr; <span style="color: var(--clr-text-primary);">"{sample.text?.split('\n')[0]?.trim()}"</span>
+														</div>
+													{/each}
+													{#if r.broken_anchor_samples.length > 5}
+														<div style="font-size: 10px; color: var(--clr-text-muted); margin-top: 4px;">+ {r.broken_anchors - 5} more</div>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									</div>
+								{:else if r.broken_anchors > 0}
+									<div class="rec-item rec-warning">
+										<div class="rec-severity">Fix</div>
+										<div class="rec-content">
+											<div class="rec-title">{r.broken_anchors} empty anchor tag{r.broken_anchors > 1 ? 's' : ''}</div>
+											<div class="rec-detail">Links with empty or # hrefs don't help navigation or SEO. Replace with real URLs or remove them.</div>
+											{#if r.broken_anchor_samples?.length > 0}
+												<div style="margin-top: 8px; padding: 8px 10px; background: var(--clr-bg-deep); border-radius: var(--radius-sm); border: 1px solid var(--clr-border);">
+													{#each r.broken_anchor_samples as sample}
+														<div style="font-size: 11px; color: var(--clr-text-secondary); padding: 2px 0; font-family: var(--font-mono);">
+															<span style="color: var(--clr-text-muted);">href="{sample.href}"</span> &rarr; <span style="color: var(--clr-text-primary);">"{sample.text?.split('\n')[0]?.trim()}"</span>
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									</div>
+								{:else}
+									<div class="rec-item rec-pass">
+										<div class="rec-severity">Good</div>
+										<div class="rec-content">
+											<div class="rec-title">No empty anchors detected</div>
+											<div class="rec-detail">All link elements have valid destinations.</div>
+										</div>
+									</div>
+								{/if}
+
+								<!-- Sponsored/UGC -->
+								{#if r.sponsored > 0 || r.ugc > 0}
+									<div class="rec-item rec-pass">
+										<div class="rec-severity">Good</div>
+										<div class="rec-content">
+											<div class="rec-title">Proper use of link attributes</div>
+											<div class="rec-detail">
+												{#if r.sponsored > 0}{r.sponsored} sponsored link{r.sponsored > 1 ? 's' : ''} correctly marked. {/if}
+												{#if r.ugc > 0}{r.ugc} user-generated content link{r.ugc > 1 ? 's' : ''} correctly marked.{/if}
+												Google rewards sites that properly classify their links.
+											</div>
+										</div>
+									</div>
+								{/if}
+
+								<!-- Link volume -->
+								{#if r.total_links < 5}
+									<div class="rec-item rec-warning">
+										<div class="rec-severity">Fix</div>
+										<div class="rec-content">
+											<div class="rec-title">Very few links on page ({r.total_links})</div>
+											<div class="rec-detail">Pages with too few links may signal thin content. Add relevant internal links to related pages and external links to authoritative sources.</div>
+										</div>
+									</div>
+								{:else if r.total_links > 200}
+									<div class="rec-item rec-info">
+										<div class="rec-severity">Tip</div>
+										<div class="rec-content">
+											<div class="rec-title">High link count ({r.total_links})</div>
+											<div class="rec-detail">Google recommends keeping links reasonable per page. Consider consolidating navigation or using pagination to reduce link bloat.</div>
+										</div>
+									</div>
+								{/if}
+
+								<!-- Link signals from basic analysis -->
+								{#if blData?.link_signals?.length > 0}
+									{#each blData.link_signals as signal}
+										<div class="rec-item rec-pass">
+											<div class="rec-severity">Good</div>
+											<div class="rec-content">
+												<div class="rec-title">{sanitize(signal)}</div>
+											</div>
+										</div>
+									{/each}
+								{/if}
 							</div>
 						</div>
 					{/if}
@@ -1014,6 +1132,18 @@
 	/* Disconnect modal */
 	.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 16px; }
 	.modal-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 32px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+
+	/* ── SEO Recommendations ──────────── */
+	.rec-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--clr-border); align-items: flex-start; }
+	.rec-item:last-child { border-bottom: none; }
+	.rec-severity { flex-shrink: 0; font-size: 10px; font-weight: 700; font-family: var(--font-mono); text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-full); letter-spacing: 0.3px; margin-top: 1px; }
+	.rec-warning .rec-severity { background: rgba(245,158,11,0.12); color: var(--clr-warning); }
+	.rec-pass .rec-severity { background: rgba(16,185,129,0.12); color: var(--clr-success); }
+	.rec-info .rec-severity { background: rgba(59,130,246,0.12); color: var(--clr-blue); }
+	.rec-content { flex: 1; min-width: 0; }
+	.rec-title { font-size: 13px; font-weight: 600; color: var(--clr-text-primary); margin-bottom: 3px; }
+	.rec-detail { font-size: 12px; color: var(--clr-text-secondary); line-height: 1.5; }
+	.rec-detail code { font-size: 11px; padding: 1px 5px; background: var(--clr-bg-primary); border-radius: 3px; border: 1px solid var(--clr-border); }
 
 	@media (max-width: 640px) {
 		.search-row { flex-direction: column; }

@@ -328,6 +328,12 @@ h3 { font-size: clamp(16px, 2vw, 20px); }
 	z-index: 1;
 	padding-top: calc(var(--nav-height) + var(--space-xl));
 	min-height: 100vh;
+	max-width: var(--max-width);
+	margin: 0 auto;
+	padding-left: var(--space-lg);
+	padding-right: var(--space-lg);
+	overflow-x: hidden;
+	box-sizing: border-box;
 }
 
 /* ── Animations ────────────────────────────────────────── */
