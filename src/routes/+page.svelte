@@ -84,6 +84,7 @@
 	let challengeBanner = $state<{ domain: string; score: number; achievements: any[] } | null>(null);
 
 	onMount(async () => {
+		const params = new URLSearchParams(window.location.search);
 		const saved = safeGetStorage('bscan_email');
 		if (saved) gateEmail = saved;
 		const savedName = safeGetStorage('bscan_name');
@@ -101,7 +102,6 @@
 		// Sparkline loads via $effect below (auth not ready in onMount)
 
 		// Handle challenge URL
-		const params = new URLSearchParams(window.location.search);
 		const challengeId = params.get('challenge');
 		if (challengeId) {
 			try {
