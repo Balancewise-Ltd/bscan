@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
-		"firebase": "^12.11.0"
+		"firebase": "^12.11.0",
+		"lucide-svelte": "^1.0.1"
 	}
 }

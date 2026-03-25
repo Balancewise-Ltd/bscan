@@ -2,22 +2,23 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
+	import { Search, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from 'lucide-svelte';
 
 	const links = [
-		{ href: '/', label: '🔍 Scanner', key: '/' },
-		{ href: '/leaderboard', label: '🏆 Leaderboard', key: '/leaderboard' },
-		{ href: '/seo', label: '📊 SEO', key: '/seo' },
-		{ href: '/compare', label: '⚔️ Compare', key: '/compare' },
-		{ href: '/monitoring', label: '📡 Monitor', key: '/monitoring' }
+		{ href: '/', label: 'Scanner', key: '/', icon: Search },
+		{ href: '/leaderboard', label: 'Leaderboard', key: '/leaderboard', icon: Trophy },
+		{ href: '/seo', label: 'SEO', key: '/seo', icon: BarChart3 },
+		{ href: '/compare', label: 'Compare', key: '/compare', icon: Scale },
+		{ href: '/monitoring', label: 'Monitor', key: '/monitoring', icon: Bell }
 	];
 
 	const mobileLinks = [
-		{ href: '/account', label: 'Login / Account', icon: '👤' },
-		{ href: '/monitoring', label: 'Monitoring', icon: '📡' },
-		{ href: '/seo', label: 'SEO Dashboard', icon: '📊' },
-		{ href: '/compare', label: 'Compare', icon: '⚔️' },
-		{ href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
-		{ href: '/', label: 'Scanner', icon: '🔍' }
+		{ href: '/account', label: 'Login / Account', icon: User },
+		{ href: '/monitoring', label: 'Monitoring', icon: Bell },
+		{ href: '/seo', label: 'SEO Dashboard', icon: BarChart3 },
+		{ href: '/compare', label: 'Compare', icon: Scale },
+		{ href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+		{ href: '/', label: 'Scanner', icon: Search }
 	];
 </script>
 
@@ -33,6 +34,7 @@
 				class="nav-link"
 				class:active={$page.url.pathname === link.key}
 			>
+				<svelte:component this={link.icon} size={15} strokeWidth={2} />
 				{link.label}
 			</a>
 		{/each}
@@ -43,7 +45,8 @@
 			{#if $auth.user}
 				<span class="account-avatar">{($auth.user.name || $auth.user.email)[0].toUpperCase()}</span>
 			{:else}
-				⚡ Account
+				<User size={15} strokeWidth={2} />
+				Account
 			{/if}
 		</a>
 
@@ -64,19 +67,19 @@
 	<div class="mobile-menu">
 		{#each mobileLinks as link}
 			<a href={link.href} class="mobile-item" onclick={() => ui.closeMobileMenu()}>
-				<span class="mobile-icon">{link.icon}</span>
+				<span class="mobile-icon"><svelte:component this={link.icon} size={18} strokeWidth={1.8} /></span>
 				<span>{link.label}</span>
 				<span class="mobile-arrow">›</span>
 			</a>
 		{/each}
 		<div class="mobile-divider"></div>
 		<a href="https://balancewises.io/#services" class="mobile-item" onclick={() => ui.closeMobileMenu()}>
-			<span class="mobile-icon">🛠️</span>
+			<span class="mobile-icon"><Wrench size={18} strokeWidth={1.8} /></span>
 			<span>Services</span>
 			<span class="mobile-arrow">›</span>
 		</a>
 		<a href="https://balancewises.io/#contact" class="mobile-item mobile-cta" onclick={() => ui.closeMobileMenu()}>
-			<span class="mobile-icon">💬</span>
+			<span class="mobile-icon"><MessageCircle size={18} strokeWidth={1.8} /></span>
 			<span>Get a Quote</span>
 			<span class="mobile-arrow">›</span>
 		</a>
@@ -122,6 +125,9 @@
 	}
 
 	.nav-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		padding: 7px 14px;
 		border-radius: var(--radius-sm);
 		color: var(--clr-text-secondary);
@@ -242,9 +248,11 @@
 		}
 
 		.mobile-icon {
-			font-size: 16px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
 			width: 24px;
-			text-align: center;
+			color: var(--clr-text-secondary);
 		}
 
 		.mobile-arrow {
@@ -260,6 +268,10 @@
 		}
 
 		.mobile-cta {
+			color: var(--clr-gold);
+		}
+
+		.mobile-cta .mobile-icon {
 			color: var(--clr-gold);
 		}
 	}
