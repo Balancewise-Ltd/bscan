@@ -41,6 +41,29 @@
 	let linkHealthLoading = $state(false);
 	let linkHealthData = $state<any>(null);
 
+	// ── AI Fix Generator ─────────────────────────────────
+	let aiFixes = $state<Record<string, any>>({});
+	let aiFixLoading = $state<Record<string, boolean>>({});
+
+	async function getAiFixForRec(title: string, detail: string, domain: string) {
+		const key = title;
+		if (aiFixes[key] || aiFixLoading[key]) return;
+		aiFixLoading = { ...aiFixLoading, [key]: true };
+		try {
+			const fix = await api.getAiFix({
+				issue_title: title,
+				issue_description: detail,
+				issue_category: 'links',
+				issue_severity: 'warning',
+				url: `https://${domain}`,
+			});
+			aiFixes = { ...aiFixes, [key]: fix };
+		} catch {
+			aiFixes = { ...aiFixes, [key]: { error: 'Failed to generate fix.' } };
+		}
+		aiFixLoading = { ...aiFixLoading, [key]: false };
+	}
+
 	async function searchBacklinks() {
 		if (!blInput.trim()) return;
 		blError = ''; blLoading = true; blData = null; linkHealthData = null;
@@ -683,6 +706,65 @@
 								{/if}
 							</div>
 						</div>
+
+						<!-- AI Fix buttons for actionable recommendations -->
+						{@const fixableRecs = [
+							r.nofollow_pct === 0 && r.external_links > 0 ? { title: 'Add nofollow to untrusted external links', detail: `All ${r.external_links} external links are dofollow. Add rel="nofollow" to affiliate, ad, or untrusted links.` } : null,
+							r.external_pct > 40 ? { title: `High external link ratio (${r.external_pct}%)`, detail: `Over 40% of links point externally. Add more internal links.` } : null,
+							r.broken_anchors > 0 && r.broken_anchors <= 10 ? { title: `${r.broken_anchors} empty anchor tags`, detail: `Links with empty or # hrefs. Replace with real URLs.` } : null,
+							r.total_links < 5 ? { title: `Very few links on page (${r.total_links})`, detail: `Add relevant internal and external links.` } : null,
+							r.total_links > 200 ? { title: `High link count (${r.total_links})`, detail: `Consider consolidating navigation to reduce link bloat.` } : null,
+						].filter(Boolean)}
+
+						{#if fixableRecs.length > 0}
+							<div class="card animate-fade-up" style="margin-top: 12px;">
+								<div class="card-body" style="padding: 0;">
+									{#each fixableRecs as rec}
+										<div class="rec-fix-row">
+											<div style="flex: 1; min-width: 0;">
+												<div style="font-size: 12px; font-weight: 600; color: var(--clr-text-primary);">{rec.title}</div>
+											</div>
+											<button class="btn-ai-fix" onclick={() => getAiFixForRec(rec.title, rec.detail, blInput.trim())} disabled={!!aiFixLoading[rec.title]}>
+												{#if aiFixLoading[rec.title]}
+													<span class="spinner spinner-sm"></span> Generating...
+												{:else if aiFixes[rec.title] && !aiFixes[rec.title].error}
+													View Fix
+												{:else}
+													AI Fix
+												{/if}
+											</button>
+										</div>
+
+										{#if aiFixes[rec.title] && !aiFixes[rec.title].error}
+											{@const fix = aiFixes[rec.title]}
+											<div class="ai-fix-panel">
+												<div class="ai-fix-summary">{fix.fix_summary}</div>
+												{#if fix.priority || fix.effort}
+													<div style="display: flex; gap: 6px; margin: 8px 0;">
+														{#if fix.priority}<span class="ai-badge">{fix.priority}</span>{/if}
+														{#if fix.effort}<span class="ai-badge">{fix.effort}</span>{/if}
+													</div>
+												{/if}
+												{#each (fix.code_snippets || []) as snippet}
+													<div class="ai-code-block">
+														<div class="ai-code-header">
+															<span style="font-size: 10px; color: var(--clr-blue); font-weight: 600;">{snippet.language}</span>
+															<span style="font-size: 10px; color: var(--clr-text-muted);">{snippet.filename}</span>
+															<button class="ai-copy-btn" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
+														</div>
+														<pre class="ai-code">{snippet.code}</pre>
+														{#if snippet.explanation}<p class="ai-code-explain">{snippet.explanation}</p>{/if}
+													</div>
+												{/each}
+												{#if fix.additional_notes}<p class="ai-notes">{fix.additional_notes}</p>{/if}
+											</div>
+										{:else if aiFixes[rec.title]?.error}
+											<div style="padding: 10px 16px; font-size: 12px; color: var(--clr-danger);">{aiFixes[rec.title].error}</div>
+										{/if}
+									{/each}
+								</div>
+							</div>
+						{/if}
 					{/if}
 
 					<!-- ── Section 3: GSC Prompt (if not connected) ── -->
@@ -1144,6 +1226,23 @@
 	.rec-title { font-size: 13px; font-weight: 600; color: var(--clr-text-primary); margin-bottom: 3px; }
 	.rec-detail { font-size: 12px; color: var(--clr-text-secondary); line-height: 1.5; }
 	.rec-detail code { font-size: 11px; padding: 1px 5px; background: var(--clr-bg-primary); border-radius: 3px; border: 1px solid var(--clr-border); }
+
+	/* ── AI Fix Panel ─────────────────── */
+	.rec-fix-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); }
+	.rec-fix-row:last-child { border-bottom: none; }
+	.btn-ai-fix { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; font-size: 11px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.03em; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: var(--clr-blue); border-radius: var(--radius-full); cursor: pointer; transition: all 0.15s; }
+	.btn-ai-fix:hover { background: rgba(59,130,246,0.15); border-color: var(--clr-blue); }
+	.btn-ai-fix:disabled { opacity: 0.5; cursor: not-allowed; }
+	.ai-fix-panel { padding: 16px; background: var(--clr-bg-deep); border-bottom: 1px solid var(--clr-border); }
+	.ai-fix-summary { font-size: 13px; color: var(--clr-text-secondary); line-height: 1.6; margin-bottom: 8px; }
+	.ai-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); background: rgba(59,130,246,0.1); color: var(--clr-blue); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; }
+	.ai-code-block { margin-top: 10px; border: 1px solid var(--clr-border); border-radius: var(--radius-md); overflow: hidden; }
+	.ai-code-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: var(--clr-bg-primary); border-bottom: 1px solid var(--clr-border); }
+	.ai-copy-btn { background: none; border: 1px solid var(--clr-border); color: var(--clr-text-muted); font-size: 10px; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: var(--font-mono); transition: all 0.15s; }
+	.ai-copy-btn:hover { border-color: var(--clr-blue); color: var(--clr-blue); }
+	.ai-code { margin: 0; padding: 12px; font-size: 12px; font-family: var(--font-mono); color: var(--clr-text-secondary); line-height: 1.6; overflow-x: auto; background: var(--clr-bg-card); white-space: pre-wrap; word-break: break-word; }
+	.ai-code-explain { padding: 8px 12px; font-size: 11px; color: var(--clr-text-muted); line-height: 1.5; border-top: 1px solid var(--clr-border); margin: 0; }
+	.ai-notes { padding: 10px 0 0; font-size: 11px; color: var(--clr-text-muted); line-height: 1.5; font-style: italic; margin: 0; }
 
 	@media (max-width: 640px) {
 		.search-row { flex-direction: column; }
