@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Bell } from 'lucide-svelte';
+	import { Bell, TrendingUp } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
