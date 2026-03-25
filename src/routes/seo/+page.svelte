@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale } from 'lucide-svelte';
+	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale, ExternalLink } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { sanitize, safeRedirect, safeGetStorage } from '$lib/utils/security';
@@ -38,16 +38,38 @@
 	let blLoading = $state(false);
 	let blData = $state<any>(null);
 	let blError = $state('');
+	let linkHealthLoading = $state(false);
+	let linkHealthData = $state<any>(null);
 
 	async function searchBacklinks() {
 		if (!blInput.trim()) return;
-		blError = ''; blLoading = true; blData = null;
+		blError = ''; blLoading = true; blData = null; linkHealthData = null;
 		try {
-			blData = await api.getBacklinks(blInput.trim());
+			// Run backlink estimate + outbound link health in parallel
+			const domain = blInput.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+			const [backlinks, crawl] = await Promise.allSettled([
+				api.getBacklinks(domain),
+				fetchLinkHealth(domain)
+			]);
+			if (backlinks.status === 'fulfilled') blData = backlinks.value;
+			if (crawl.status === 'fulfilled') linkHealthData = crawl.value;
 		} catch (err) {
 			blError = err instanceof Error ? err.message : 'Analysis failed.';
 		}
 		blLoading = false;
+	}
+
+	async function fetchLinkHealth(domain: string) {
+		const token = safeGetStorage('bscan_token');
+		if (!token) return null;
+		const url = domain.includes('://') ? domain : `https://${domain}`;
+		const res = await fetch('https://api-bscan.balancewises.io/api/crawl/deep', {
+			method: 'POST',
+			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url, max_pages: 1 })
+		});
+		if (!res.ok) return null;
+		return res.json();
 	}
 
 	// ── SEO History ──────────────────────────────────────
@@ -353,11 +375,12 @@
 				<div class="card">
 					<div class="card-header">
 						<span><Link2 size={14} strokeWidth={2} /></span>
-						<span style="font-weight: 700;">Backlink Analysis</span>
+						<span style="font-weight: 700;">Link Intelligence</span>
 						{#if !isPaid}<span class="badge badge-blue" style="margin-left: auto;">Pro</span>{/if}
 					</div>
 					<div class="card-body">
 						{#if isPaid}
+							<p class="text-secondary" style="font-size: 12px; margin-bottom: 12px;">Analyse any domain's backlink profile and outbound link health in one scan.</p>
 							<div class="search-row">
 								<input class="input" type="text" placeholder="Enter domain (e.g. example.com)" bind:value={blInput} onkeydown={blKeydown} style="flex: 1;" />
 								<button class="btn btn-blue" disabled={blLoading} onclick={searchBacklinks}>
@@ -367,88 +390,230 @@
 							{#if blError}<div class="msg-error">{blError}</div>{/if}
 						{:else}
 							<div class="upgrade-gate">
-								<div style="font-size: 24px; margin-bottom: 8px;"><Link2 size={24} strokeWidth={1.5} /></div>
-								<h3>Backlink Analysis</h3>
-								<p class="text-secondary" style="max-width: 400px; margin: 0 auto;">Analyse your backlink profile: referring domains, link quality, anchor text distribution, and top linkers.</p>
+								<div style="margin-bottom: 12px;"><Link2 size={28} strokeWidth={1.5} /></div>
+								<h3>Link Intelligence</h3>
+								<p class="text-secondary" style="max-width: 420px; margin: 0 auto; line-height: 1.6;">Outbound link health analysis, dofollow/nofollow detection, backlink estimates, AI-powered recommendations, and Google Search Console integration.</p>
 								<a href="/#pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
+								<div style="margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">Dofollow / Nofollow detection</span>
+									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">Outbound link audit</span>
+									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">Backlink estimates</span>
+									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">AI recommendations</span>
+									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">GSC integration</span>
+								</div>
 							</div>
 						{/if}
 					</div>
 				</div>
 
 				{#if blLoading}
-					<div style="margin-top: 16px;"><Skeleton lines={4} /></div>
+					<div style="margin-top: 16px;"><Skeleton lines={6} /></div>
 				{/if}
 
-				{#if blData}
-					<div class="bl-results">
-						<!-- Overview Stats -->
-						<div class="bl-stats-grid">
-							<div class="bl-stat">
-								<div class="bl-stat-label">Total Backlinks</div>
-								<div class="bl-stat-value">{blData.total_backlinks ?? '—'}</div>
+				{#if blData || linkHealthData}
+					<!-- ── Section 1: Outbound Link Health (from deep crawl) ── -->
+					{#if linkHealthData?.summary?.link_analysis}
+						{@const la = linkHealthData.summary.link_analysis}
+						<div class="card animate-fade-up" style="margin-top: 16px;">
+							<div class="card-header">
+								<span><Link2 size={14} strokeWidth={2} /></span>
+								<span style="font-weight: 700; font-size: 13px;">Outbound Link Health</span>
+								<span class="badge badge-blue" style="margin-left: auto;">Live Scan</span>
 							</div>
-							<div class="bl-stat">
-								<div class="bl-stat-label">Referring Domains</div>
-								<div class="bl-stat-value">{blData.referring_domains ?? '—'}</div>
-							</div>
-							<div class="bl-stat">
-								<div class="bl-stat-label">Link Influence</div>
-								<div class="bl-stat-value">{blData.link_influence_score ?? '—'}</div>
-							</div>
-							<div class="bl-stat">
-								<div class="bl-stat-label">Nofollow %</div>
-								<div class="bl-stat-value">{blData.nofollow_percentage ?? '—'}%</div>
+							<div class="card-body" style="padding: 0;">
+								<!-- Link stats grid -->
+								<div class="bl-stats-grid" style="padding: 16px;">
+									<div class="bl-stat">
+										<div class="bl-stat-label">Total Links</div>
+										<div class="bl-stat-value">{la.total_links}</div>
+									</div>
+									<div class="bl-stat">
+										<div class="bl-stat-label">Internal</div>
+										<div class="bl-stat-value" style="color: var(--clr-blue);">{la.internal_links}</div>
+									</div>
+									<div class="bl-stat">
+										<div class="bl-stat-label">External</div>
+										<div class="bl-stat-value" style="color: var(--clr-warning);">{la.external_links}</div>
+									</div>
+									<div class="bl-stat">
+										<div class="bl-stat-label">Broken</div>
+										<div class="bl-stat-value" style="color: {la.broken_anchors > 0 ? 'var(--clr-danger)' : 'var(--clr-success)'};">{la.broken_anchors}</div>
+									</div>
+								</div>
+
+								<!-- Dofollow / Nofollow bar -->
+								<div style="padding: 0 16px 16px;">
+									<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
+										<span class="text-muted font-mono">Dofollow {la.dofollow_pct}%</span>
+										<span class="text-muted font-mono">Nofollow {la.nofollow_pct}%</span>
+									</div>
+									<div style="height: 8px; border-radius: 4px; background: var(--clr-bg-primary); overflow: hidden; display: flex;">
+										<div style="width: {la.dofollow_pct}%; background: var(--clr-success); transition: width 0.5s;"></div>
+										<div style="width: {la.nofollow_pct}%; background: var(--clr-warning); transition: width 0.5s;"></div>
+									</div>
+
+									<!-- Link attribute breakdown -->
+									<div style="display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap;">
+										<div style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+											<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--clr-success); display: inline-block;"></span>
+											<span class="text-muted">Dofollow: {la.dofollow}</span>
+										</div>
+										<div style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+											<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--clr-warning); display: inline-block;"></span>
+											<span class="text-muted">Nofollow: {la.nofollow}</span>
+										</div>
+										{#if la.sponsored > 0}
+											<div style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+												<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--clr-blue); display: inline-block;"></span>
+												<span class="text-muted">Sponsored: {la.sponsored}</span>
+											</div>
+										{/if}
+										{#if la.ugc > 0}
+											<div style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+												<span style="width: 8px; height: 8px; border-radius: 50%; background: #a78bfa; display: inline-block;"></span>
+												<span class="text-muted">UGC: {la.ugc}</span>
+											</div>
+										{/if}
+									</div>
+								</div>
+
+								<!-- AI-style insight -->
+								{#if la.total_links > 0}
+									<div style="padding: 12px 16px; border-top: 1px solid var(--clr-border); background: rgba(59,130,246,0.04);">
+										<div style="font-size: 12px; color: var(--clr-text-secondary); line-height: 1.6;">
+											{#if la.nofollow_pct === 0 && la.external_links > 0}
+												<strong style="color: var(--clr-warning);">Heads up:</strong> All {la.external_links} external links are dofollow — you're passing link equity to every external site. Consider adding <code style="font-size: 11px; padding: 1px 4px; background: var(--clr-bg-primary); border-radius: 3px;">rel="nofollow"</code> to affiliate, ad, or untrusted links.
+											{:else if la.nofollow_pct > 0 && la.nofollow_pct < 20}
+												<strong style="color: var(--clr-success);">Healthy mix:</strong> {la.dofollow_pct}% dofollow / {la.nofollow_pct}% nofollow is a natural link profile. External links are well-managed.
+											{:else if la.nofollow_pct >= 50}
+												<strong style="color: var(--clr-blue);">Conservative approach:</strong> Over half your links are nofollow. If some are trusted editorial links, switching them to dofollow could help those pages rank better.
+											{:else if la.external_links === 0}
+												<strong style="color: var(--clr-text-muted);">No external links found.</strong> Adding relevant outbound links to authoritative sources can actually improve your SEO — Google values pages that reference quality content.
+											{:else}
+												<strong style="color: var(--clr-success);">Good balance.</strong> Your dofollow/nofollow ratio looks healthy at {la.dofollow_pct}%/{la.nofollow_pct}%.
+											{/if}
+										</div>
+									</div>
+								{/if}
 							</div>
 						</div>
 
-						{#if blData.link_quality}
-							<div class="bl-quality" class:quality-good={blData.link_quality === 'good' || blData.link_quality === 'excellent'} class:quality-bad={blData.link_quality === 'poor'}>
-								Link Quality: <strong>{sanitize(blData.link_quality)}</strong>
-							</div>
-						{/if}
-
-						<!-- Top Anchors -->
-						{#if blData.top_anchors?.length}
-							<div class="card" style="margin-top: 16px;">
+						<!-- Per-page breakdown -->
+						{#if linkHealthData.pages?.length > 0}
+							<div class="card animate-fade-up" style="margin-top: 12px;">
 								<div class="card-header">
-									<span>⚓</span>
-									<span style="font-weight: 700; font-size: 13px;">Top Anchor Texts</span>
+									<span><ClipboardList size={14} strokeWidth={2} /></span>
+									<span style="font-weight: 700; font-size: 13px;">Page Breakdown</span>
 								</div>
 								<div class="card-body" style="padding: 0;">
-									{#each blData.top_anchors.slice(0, 10) as anchor}
-										<div class="bl-row">
-											<span class="bl-anchor">{sanitize(typeof anchor === 'string' ? anchor : anchor.text || anchor.anchor || '')}</span>
-											{#if typeof anchor === 'object' && anchor.count}
-												<span class="bl-count font-mono">{anchor.count}</span>
-											{/if}
+									{#each linkHealthData.pages as pg}
+										{@const pla = pg.link_analysis || {}}
+										<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); font-size: 12px;">
+											<span class="font-mono" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--clr-text-secondary);">{pg.url?.replace('https://', '').replace('http://', '') || '—'}</span>
+											<div style="display: flex; gap: 12px; flex-shrink: 0; margin-left: 12px;">
+												<span class="text-muted">{pla.total_links || 0} links</span>
+												<span style="color: var(--clr-success); font-weight: 600;">{pla.dofollow || 0} df</span>
+												<span style="color: var(--clr-warning); font-weight: 600;">{pla.nofollow || 0} nf</span>
+												<span style="color: var(--clr-text-muted);">{pla.external_links || 0} ext</span>
+											</div>
 										</div>
 									{/each}
 								</div>
 							</div>
 						{/if}
+					{/if}
 
-						<!-- Top Referring Domains -->
-						{#if blData.top_referring_domains?.length}
-							<div class="card" style="margin-top: 16px;">
-								<div class="card-header">
-									<span>🌐</span>
-									<span style="font-weight: 700; font-size: 13px;">Top Referring Domains</span>
+					<!-- ── Section 2: Backlink Estimates ── -->
+					{#if blData}
+						<div class="card animate-fade-up" style="margin-top: 16px;">
+							<div class="card-header">
+								<span><TrendingUp size={14} strokeWidth={2} /></span>
+								<span style="font-weight: 700; font-size: 13px;">Inbound Backlink Estimate</span>
+								<span class="text-muted" style="margin-left: auto; font-size: 10px; font-family: var(--font-mono);">via {sanitize(blData.source || 'Public Index')}</span>
+							</div>
+							<div class="card-body">
+								<div class="bl-stats-grid">
+									<div class="bl-stat">
+										<div class="bl-stat-label">Est. Backlinks</div>
+										<div class="bl-stat-value">{blData.total_backlinks ? `~${blData.total_backlinks.toLocaleString()}` : '—'}</div>
+									</div>
+									<div class="bl-stat">
+										<div class="bl-stat-label">Referring Domains</div>
+										<div class="bl-stat-value">{blData.referring_domains ? `~${blData.referring_domains.toLocaleString()}` : '—'}</div>
+									</div>
+									<div class="bl-stat">
+										<div class="bl-stat-label">Link Quality</div>
+										<div class="bl-stat-value" style="font-size: 16px; color: {blData.link_quality === 'Excellent' || blData.link_quality === 'Strong' ? 'var(--clr-success)' : blData.link_quality === 'Moderate' ? 'var(--clr-warning)' : 'var(--clr-text-muted)'};">{sanitize(blData.link_quality || '—')}</div>
+									</div>
 								</div>
-								<div class="card-body" style="padding: 0;">
-									{#each blData.top_referring_domains.slice(0, 10) as domain}
-										<div class="bl-row">
-											<span class="bl-domain">{sanitize(typeof domain === 'string' ? domain : domain.domain || domain.url || '')}</span>
-											{#if typeof domain === 'object' && domain.links}
-												<span class="bl-count font-mono">{domain.links} links</span>
-											{/if}
-										</div>
-									{/each}
+
+								{#if blData.link_signals?.length > 0}
+									<div style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px;">
+										{#each blData.link_signals as signal}
+											<div style="font-size: 11px; color: var(--clr-text-secondary); padding: 4px 0;">
+												<span style="color: var(--clr-success); margin-right: 4px;">✓</span> {sanitize(signal)}
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								<div style="margin-top: 16px; padding: 12px; border-radius: var(--radius-md); background: var(--clr-bg-primary); border: 1px solid var(--clr-border);">
+									<p style="font-size: 11px; color: var(--clr-text-muted); line-height: 1.5; margin: 0;">
+										These are rough estimates from public web indexes. For accurate backlink data from Google, 
+										<button style="background: none; border: none; color: var(--clr-blue); font-size: 11px; cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0;" onclick={() => activeTab = 'gsc'}>connect Google Search Console</button> — it's free and shows the real links Google sees.
+									</p>
 								</div>
 							</div>
-						{/if}
+						</div>
+					{/if}
 
-						<div class="bl-source text-muted">Source: {sanitize(blData.source || 'Unknown')}</div>
+					<!-- ── Section 3: GSC Prompt (if not connected) ── -->
+					{#if !gscConnected}
+						<div class="card animate-fade-up" style="margin-top: 16px; border: 1px solid rgba(59,130,246,0.2);">
+							<div class="card-body" style="text-align: center; padding: 24px;">
+								<TrendingUp size={24} strokeWidth={1.5} style="color: var(--clr-blue); margin-bottom: 8px;" />
+								<h3 style="font-size: 15px; margin-bottom: 6px;">Want real backlink data?</h3>
+								<p class="text-secondary" style="font-size: 12px; max-width: 380px; margin: 0 auto 16px; line-height: 1.5;">
+									Google Search Console shows the actual links Google has found pointing to your site — completely free. Connect in 30 seconds.
+								</p>
+								<button class="btn btn-blue btn-sm" onclick={() => { activeTab = 'gsc'; }}>
+									Connect Search Console
+								</button>
+							</div>
+						</div>
+					{:else}
+						<div class="card animate-fade-up" style="margin-top: 16px; border: 1px solid rgba(16,185,129,0.2);">
+							<div class="card-body" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px;">
+								<div style="display: flex; align-items: center; gap: 8px;">
+									<span class="gsc-connected-badge">✓ GSC Connected</span>
+									<span class="text-muted" style="font-size: 11px;">Real ranking data available</span>
+								</div>
+								<button class="btn btn-blue btn-sm" onclick={() => { activeTab = 'gsc'; }}>
+									View GSC Data
+								</button>
+							</div>
+						</div>
+					{/if}
+
+					<!-- ── Section 4: Deep Crawl CTA ── -->
+					{#if !linkHealthData && isPaid}
+						<div class="card animate-fade-up" style="margin-top: 16px;">
+							<div class="card-body" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px;">
+								<div>
+									<div style="font-size: 13px; font-weight: 600;">Full Site Link Audit</div>
+									<div class="text-muted" style="font-size: 11px;">Crawl up to 25 pages for complete nofollow/dofollow analysis</div>
+								</div>
+								<a href="/deep-crawl" class="btn btn-gold btn-sm">Deep Crawl</a>
+							</div>
+						</div>
+					{/if}
+				{/if}
+
+				<!-- Empty state before search (Pro users only) -->
+				{#if isPaid && !blData && !linkHealthData && !blLoading}
+					<div style="margin-top: 24px; text-align: center; padding: 32px 16px;">
+						<Link2 size={32} strokeWidth={1.2} style="color: var(--clr-text-muted); margin-bottom: 12px;" />
+						<p class="text-secondary" style="font-size: 13px; max-width: 400px; margin: 0 auto;">Enter a domain above to scan its outbound link health, detect dofollow/nofollow attributes, and estimate inbound backlinks.</p>
 					</div>
 				{/if}
 			</div>
@@ -651,7 +816,7 @@
 						{#if (!gscOverview.top_keywords || gscOverview.top_keywords.length === 0) && (!gscOverview.top_pages || gscOverview.top_pages.length === 0)}
 							<div class="card animate-fade-up">
 								<div class="card-body" style="text-align: center; padding: 32px;">
-									<div style="font-size: 28px; margin-bottom: 8px;">📭</div>
+									<div style="font-size: 28px; margin-bottom: 8px;"><Search size={28} strokeWidth={1.2} /></div>
 									<h3>No data yet</h3>
 									<p class="text-muted" style="max-width: 400px; margin: 8px auto;">This site doesn't have any Search Console data for the last 28 days. Make sure the site is verified and receiving traffic.</p>
 								</div>
