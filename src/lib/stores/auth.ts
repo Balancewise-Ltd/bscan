@@ -45,12 +45,14 @@ async function login(email: string, password: string) {
 	return result;
 }
 
-async function register(email: string, password: string, name: string, referral_code: string = '') {
-	const result = await api.register(email, password, name, referral_code);
-	safeSetStorage('bscan_token', result.access_token);
-	safeSetStorage('bscan_email', email);
-	_token.set(result.access_token);
-	_user.set(result.user);
+async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = '') {
+	const result = await api.register(email, password, name, referral_code, verification_code);
+	if (result.access_token) {
+		safeSetStorage('bscan_token', result.access_token);
+		safeSetStorage('bscan_email', email);
+		_token.set(result.access_token);
+		_user.set(result.user);
+	}
 	return result;
 }
 

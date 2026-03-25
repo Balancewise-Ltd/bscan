@@ -15,6 +15,7 @@
 	let authPassword = $state('');
 	let authName = $state('');
 	let authError = $state('');
+	let authPassword2 = $state('');
 	let authLoading = $state(false);
 	let showReinstate = $state(false);
 	let reinstateLoading = $state(false);
@@ -40,6 +41,13 @@
 	let resendLoading = $state(false);
 	let showVerifyPrompt = $state(false);
 	let verifyPromptEmail = $state('');
+	let showCodeInput = $state(false);
+	let verificationCode = $state('');
+	let codeSending = $state(false);
+	let codeError = $state('');
+	let pendingName = $state('');
+	let pendingPassword = $state('');
+	let pendingEmail = $state('');
 
 	// ── Referral System ─────────────────────────────────
 	let referralData = $state<any>(null);
@@ -208,16 +216,28 @@
 		authError = '';
 		if (!authEmail || !authPassword) { authError = 'Fill in all fields.'; return; }
 		if (isRegister && !authName) { authError = 'Name is required.'; return; }
+		if (isRegister && authPassword.length < 8) { authError = 'Password must be at least 8 characters.'; return; }
+		if (isRegister && authPassword !== authPassword2) { authError = 'Passwords do not match.'; return; }
 		authLoading = true;
 		try {
 			if (isRegister) {
-				await auth.register(authEmail, authPassword, authName);
+				// Step 1: Send verification code
+				await api.sendCode(authEmail);
+				pendingName = authName;
+				pendingEmail = authEmail;
+				pendingPassword = authPassword;
+				showCodeInput = true;
+				authLoading = false;
+				return;
 			} else {
 				await auth.login(authEmail, authPassword);
 			}
 			loadDashboard();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Authentication failed.';
+			let msg = 'Something went wrong. Please try again.';
+			if (err instanceof Error) msg = err.message;
+			else if (typeof err === 'string') msg = err;
+			if (msg.includes('[object')) msg = 'Something went wrong. Please try again.';
 			if (msg.includes('ACCOUNT_DELETED')) {
 				showReinstate = true;
 				authError = '';
@@ -444,6 +464,40 @@
 
 	function kd(e: KeyboardEvent) { if (e.key === 'Enter') handleAuth(); }
 
+	async function handleCodeVerify() {
+		codeError = '';
+		if (!verificationCode || verificationCode.length !== 6) {
+			codeError = 'Please enter the 6-digit code.';
+			return;
+		}
+		authLoading = true;
+		try {
+			await auth.register(pendingEmail, pendingPassword, pendingName, '', verificationCode);
+			loadDashboard();
+		} catch (err) {
+			let msg = err instanceof Error ? err.message : 'Verification failed.';
+			if (msg.includes('expired') || msg.includes('not found')) codeError = 'That code has expired. Click Resend code to get a new one.';
+			else if (msg.includes('Invalid')) codeError = 'That code is incorrect. Please check your email and try again.';
+			else codeError = msg;
+		} finally {
+			authLoading = false;
+		}
+	}
+
+	async function resendCode() {
+		codeSending = true;
+		codeError = '';
+		try {
+			await api.sendCode(pendingEmail);
+			codeError = 'New code sent!';
+		} catch (err) {
+			codeError = 'Failed to resend. Wait a minute and try again.';
+		} finally {
+			codeSending = false;
+		}
+	}
+
+
 	async function handleForgotPassword() {
 		if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
 			forgotError = 'Enter a valid email address.';
@@ -655,6 +709,24 @@
 	</div>
 
 {:else if !$auth.loading && !user}
+	{#if showCodeInput}
+	<div class="auth-section animate-fade-up" style="text-align: center;">
+		<div style="font-size: 56px; margin-bottom: 16px;">&#9993;</div>
+		<h2>Check your <span class="text-gold">email</span></h2>
+		<p class="text-muted" style="margin-bottom: 8px;">We sent a 6-digit verification code to</p>
+		<p style="font-weight: 600; margin-bottom: 24px; color: var(--clr-gold);">{pendingEmail}</p>
+		<input class="input" type="text" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="text-align: center; font-size: 32px; letter-spacing: 10px; font-family: var(--font-mono); max-width: 280px; margin: 0 auto 16px;" bind:value={verificationCode} onkeydown={(e) => { if (e.key === 'Enter') handleCodeVerify(); }} />
+		{#if codeError}<div class="msg-error" style="margin-bottom: 12px;">{codeError}</div>{/if}
+		<button class="btn btn-gold" style="width: 100%; max-width: 280px; margin: 0 auto;" disabled={authLoading} onclick={handleCodeVerify}>
+			{#if authLoading}<span class="spinner spinner-sm"></span> Verifying...{:else}Verify & Create Account{/if}
+		</button>
+		<div style="margin-top: 20px; display: flex; justify-content: center; gap: 16px;">
+			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" disabled={codeSending} onclick={resendCode}>{codeSending ? 'Sending...' : 'Resend code'}</button>
+			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { showCodeInput = false; verificationCode = ''; codeError = ''; }}>Use different email</button>
+		</div>
+		<p class="text-muted" style="margin-top: 16px; font-size: 11px;">Code expires in 10 minutes. Check spam if you don't see it.</p>
+	</div>
+	{:else}
 	<!-- ══════ AUTH FORM ══════ -->
 	<div class="auth-section animate-fade-up">
 		<h2>{isRegister ? 'Create your' : 'Sign in to your'} <span class="text-gold">account</span></h2>
@@ -678,6 +750,13 @@
 			<label class="label" for="a-pw">Password *</label>
 			<input class="input" type="password" id="a-pw" placeholder="Minimum 8 characters" bind:value={authPassword} onkeydown={kd} />
 		</div>
+
+		{#if isRegister}
+		<div class="field" style="margin-top: 12px;">
+			<label class="label" for="a-pw2">Confirm password *</label>
+			<input class="input" type="password" id="a-pw2" placeholder="Repeat your password" bind:value={authPassword2} onkeydown={kd} />
+		</div>
+		{/if}
 
 		{#if authError}<div class="msg-error">{authError}</div>{/if}
 
@@ -754,6 +833,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 
 {:else if $auth.loading}
 	<div style="max-width: 600px; margin: var(--space-xl) auto;">

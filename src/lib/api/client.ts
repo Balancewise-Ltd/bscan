@@ -69,10 +69,17 @@ export async function login(email: string, password: string): Promise<AuthRespon
 	});
 }
 
-export async function register(email: string, password: string, name: string, referral_code: string = ''): Promise<AuthResponse> {
+export async function sendCode(email: string): Promise<{ message: string; email: string }> {
+	return request('/api/auth/send-code', {
+		method: 'POST',
+		body: JSON.stringify({ email })
+	});
+}
+
+export async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = ''): Promise<any> {
 	return request('/api/auth/register', {
 		method: 'POST',
-		body: JSON.stringify({ email, password, name, referral_code })
+		body: JSON.stringify({ email, password, name, referral_code, verification_code })
 	});
 }
 
