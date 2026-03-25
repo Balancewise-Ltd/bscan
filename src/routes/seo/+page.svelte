@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale, ExternalLink } from 'lucide-svelte';
+	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale, ExternalLink } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { sanitize, safeRedirect, safeGetStorage } from '$lib/utils/security';

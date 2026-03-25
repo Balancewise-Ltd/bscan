@@ -28,8 +28,8 @@
 		"vitest": "^4.1.0"
 	},
 	"dependencies": {
+		"@lucide/svelte": "^1.7.0",
 		"@sveltejs/adapter-static": "^3.0.10",
-		"firebase": "^12.11.0",
-		"lucide-svelte": "^1.0.1"
+		"firebase": "^12.11.0"
 	}
 }

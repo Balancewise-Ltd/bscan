@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
-	import { Search, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from 'lucide-svelte';
+	import { Search, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
 
 	const links = [
 		{ href: '/', label: 'Scanner', key: '/', icon: Search },

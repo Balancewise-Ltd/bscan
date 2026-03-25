@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Scale, ClipboardList } from 'lucide-svelte';
+	import { Scale, ClipboardList } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
 	import { normalizeUrl, scoreColor, formatDate } from '$lib/utils/score';
