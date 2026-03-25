@@ -8,6 +8,7 @@
 	import type { ScanResult } from '$lib/types';
 	import Seo from '$lib/components/ui/Seo.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import { LayoutDashboard, User, CreditCard, ClipboardList, Key, Palette, ShieldCheck, Search, Scale, Target, Users, Gift, Link, Trophy, MessageCircle, Camera } from 'lucide-svelte';
 
 	// ── Auth form state ──────────────────────────────────
 	let isRegister = $state(false);
@@ -664,14 +665,14 @@
 		deleteLoading = false;
 	}
 
-	const tabs: Array<{ key: Tab; label: string; icon: string; show?: () => boolean }> = [
-		{ key: 'overview', label: 'Overview', icon: '📊' },
-		{ key: 'profile', label: 'Profile', icon: '👤' },
-		{ key: 'billing', label: 'Billing', icon: '💳' },
-		{ key: 'history', label: 'History', icon: '📋' },
-		{ key: 'api-keys', label: 'API Keys', icon: '🔑', show: () => isPaid },
-		{ key: 'branding', label: 'Branding', icon: '🎨', show: () => isAgency },
-		{ key: 'security', label: 'Security', icon: '🔒' },
+	const tabs: Array<{ key: Tab; label: string; icon: any; show?: () => boolean }> = [
+		{ key: 'overview', label: 'Overview', icon: LayoutDashboard },
+		{ key: 'profile', label: 'Profile', icon: User },
+		{ key: 'billing', label: 'Billing', icon: CreditCard },
+		{ key: 'history', label: 'History', icon: ClipboardList },
+		{ key: 'api-keys', label: 'API Keys', icon: Key, show: () => isPaid },
+		{ key: 'branding', label: 'Branding', icon: Palette, show: () => isAgency },
+		{ key: 'security', label: 'Security', icon: ShieldCheck },
 	];
 </script>
 
@@ -867,7 +868,7 @@
 					{:else}
 						<span class="avatar-letter">{(user.name || user.email)[0].toUpperCase()}</span>
 					{/if}
-					<div class="avatar-overlay">📷</div>
+					<div class="avatar-overlay"><Camera size={14} strokeWidth={2} /></div>
 				</div>
 				<input type="file" id="avatar-upload" accept="image/png,image/jpeg,image/webp" style="display: none;" onchange={async (e) => {
 					const file = (e.target as HTMLInputElement).files?.[0];
@@ -902,7 +903,7 @@
 								class:active={activeTab === tab.key}
 								onclick={() => activeTab = tab.key}
 							>
-								<span class="sidebar-icon">{tab.icon}</span>
+								<span class="sidebar-icon"><svelte:component this={tab.icon} size={16} strokeWidth={1.8} /></span>
 								<span class="sidebar-label">{tab.label}</span>
 							</button>
 						{/if}
@@ -956,28 +957,28 @@
 				<!-- Big Action Cards (2x2) -->
 				<div class="action-grid">
 					<a href="/" class="big-action-card action-scan">
-						<div class="big-action-icon">🔍</div>
+						<div class="big-action-icon"><Search size={28} strokeWidth={1.8} /></div>
 						<div class="big-action-text">
 							<h3>New Scan</h3>
 							<p>Get a complete website audit — scores, issues, and fixes.</p>
 						</div>
 					</a>
 					<a href="/compare" class="big-action-card action-compare">
-						<div class="big-action-icon">📊</div>
+						<div class="big-action-icon"><Scale size={28} strokeWidth={1.8} /></div>
 						<div class="big-action-text">
 							<h3>Compare</h3>
 							<p>See how two sites stack up across all categories.</p>
 						</div>
 					</a>
 					<a href="/seo" class="big-action-card action-seo">
-						<div class="big-action-icon">🎯</div>
+						<div class="big-action-icon"><Target size={28} strokeWidth={1.8} /></div>
 						<div class="big-action-text">
 							<h3>SEO Tools</h3>
 							<p>Keywords, backlinks, Search Console, and more.</p>
 						</div>
 					</a>
 					<a href="/team" class="big-action-card action-team">
-						<div class="big-action-icon">👥</div>
+						<div class="big-action-icon"><Users size={28} strokeWidth={1.8} /></div>
 						<div class="big-action-text">
 							<h3>Team</h3>
 							<p>Manage your team and share scan access.</p>
@@ -990,7 +991,7 @@
 				{#if referralData && !referralLoading}
 					<div class="referral-card">
 						<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-							<span style="font-size: 22px;">🎁</span>
+							<Gift size={22} strokeWidth={1.8} color="var(--clr-gold)" />
 							<div>
 								<h3 style="margin: 0; font-size: 14px;">Invite Friends, Get Pro Free</h3>
 								<p class="text-muted" style="font-size: 11px; margin: 2px 0 0;">Refer 3 verified users to earn 1 month Pro</p>
@@ -1021,7 +1022,7 @@
 				{#if historyItems.length > 0}
 					<div class="card" style="margin-top: 20px;">
 						<div class="card-header">
-							<span>📋</span>
+							<span><ClipboardList size={16} strokeWidth={1.8} /></span>
 							<span style="font-weight: 700; font-size: 14px;">Recent Scans</span>
 							<button class="btn btn-ghost btn-sm" style="margin-left: auto;" onclick={() => activeTab = 'history'}>View All →</button>
 						</div>
@@ -1069,7 +1070,7 @@
 				<!-- Name & Identity -->
 				<div class="card" style="margin-bottom: 16px;">
 					<div class="card-header">
-						<span>👤</span>
+						<span><User size={16} strokeWidth={1.8} /></span>
 						<span style="font-weight: 700; font-size: 14px;">Name & Identity</span>
 					</div>
 					<div class="card-body">
@@ -1209,7 +1210,7 @@
 						<div class="billing-hero-row">
 							<div class="billing-hero-left">
 								<div class="billing-plan-icon" class:gift={user.billing_type === 'gift'} class:stripe={user.billing_type === 'stripe'}>
-									{#if user.billing_type === 'gift'}🎁{:else if user.billing_type === 'stripe'}💳{:else}🆓{/if}
+									{#if user.billing_type === 'gift'}<Gift size={16} strokeWidth={1.8} />{:else if user.billing_type === 'stripe'}<CreditCard size={16} strokeWidth={1.8} />{:else}🆓{/if}
 								</div>
 								<div>
 									<div class="billing-plan-name">
@@ -1282,7 +1283,7 @@
 				{#if user.billing_type === 'stripe'}
 					<div class="card" style="margin-bottom: 20px;">
 						<div class="card-header">
-							<span>💳</span>
+							<span><CreditCard size={16} strokeWidth={1.8} /></span>
 							<span style="font-weight: 700; font-size: 14px;">Payment & Invoices</span>
 						</div>
 						<div class="card-body">
@@ -1324,7 +1325,7 @@
 				{#if user.billing_type === 'gift'}
 					<div class="card" style="margin-bottom: 20px;">
 						<div class="card-header">
-							<span>🎁</span>
+							<span><Gift size={16} strokeWidth={1.8} /></span>
 							<span style="font-weight: 700; font-size: 14px;">Gift Plan Details</span>
 						</div>
 						<div class="card-body">
@@ -1443,7 +1444,7 @@
 
 				{#if !isPaid}
 					<div class="upgrade-banner">
-						<span>🔒</span>
+						<span><ShieldCheck size={16} strokeWidth={1.8} /></span>
 						<span>Scan history is a Pro feature. <button class="toggle-link" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro →</button></span>
 					</div>
 				{/if}
@@ -1478,7 +1479,7 @@
 												try { await api.downloadPdf(s.id, `bscan-${getDomain(s.url)}.pdf`); } catch {}
 											}}>📄 PDF</button>
 										{:else}
-											<button class="btn btn-ghost btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download professional audit reports. Upgrade to Pro to unlock.')}>🔒 PDF</button>
+											<button class="btn btn-ghost btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download professional audit reports. Upgrade to Pro to unlock.')}><ShieldCheck size={12} strokeWidth={2} /> PDF</button>
 										{/if}
 									{/if}
 								</div>
@@ -1523,7 +1524,7 @@
 
 				<div class="card">
 					<div class="card-header">
-						<span>🔑</span>
+						<span><Key size={16} strokeWidth={1.8} /></span>
 						<span style="font-weight: 700; font-size: 14px;">Active Keys</span>
 					</div>
 					<div class="card-body" style="padding: 0;">
@@ -1552,7 +1553,7 @@
 				{#if !isAgency}
 					<div class="card">
 						<div class="card-body" style="text-align: center; padding: 40px;">
-							<div style="font-size: 48px; margin-bottom: 12px;">🎨</div>
+							<div style="margin-bottom: 12px;"><Palette size={48} strokeWidth={1.2} color="var(--clr-gold)" /></div>
 							<h3 style="margin-bottom: 8px;">Agency Feature</h3>
 							<p class="text-muted" style="max-width: 400px; margin: 0 auto 16px;">White-label your PDF reports with your own brand name, colours, and logo. Clients see your brand, not BSCAN.</p>
 							<button class="btn btn-gold" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency →</button>
@@ -1665,7 +1666,7 @@
 				<!-- Change Password -->
 				<div class="card">
 					<div class="card-header">
-						<span>🔒</span>
+						<span><ShieldCheck size={16} strokeWidth={1.8} /></span>
 						<span style="font-weight: 700; font-size: 14px;">Change Password</span>
 					</div>
 					<div class="card-body">
@@ -1761,13 +1762,13 @@
 		<!-- ── RIGHT PANEL ───────────────────────── -->
 		<aside class="right-panel">
 			<div class="rp-section">
-				<div class="rp-title">💬 Team Space</div>
+				<div class="rp-title"><span style="display:inline-flex;align-items:center;gap:6px;"><MessageCircle size={14} strokeWidth={2} /> Team Space</span></div>
 				{#if isAgency}
 					<p class="rp-desc">Share ideas and discuss with your team members.</p>
 					<div class="team-avatars">
-						<div class="team-avatar-sm">👤</div>
-						<div class="team-avatar-sm">👤</div>
-						<div class="team-avatar-sm">👤</div>
+						<div class="team-avatar-sm"><User size={14} strokeWidth={1.8} /></div>
+						<div class="team-avatar-sm"><User size={14} strokeWidth={1.8} /></div>
+						<div class="team-avatar-sm"><User size={14} strokeWidth={1.8} /></div>
 						<div class="team-avatar-sm plus">+</div>
 					</div>
 					<a href="/team" class="btn btn-outline btn-sm" style="width: 100%; text-align: center; margin-top: 10px;">Open Team →</a>
@@ -1778,7 +1779,7 @@
 			</div>
 
 			<div class="rp-section">
-				<div class="rp-title">📊 Quick Stats</div>
+				<div class="rp-title" style="display:flex;align-items:center;gap:6px;"><LayoutDashboard size={14} strokeWidth={2} /> Quick Stats</div>
 				<div class="rp-stat">
 					<span class="text-muted">Scans</span>
 					<div style="display: flex; align-items: center; gap: 6px;">
@@ -1799,19 +1800,19 @@
 			<div class="rp-section">
 				<div class="rp-title">🔗 Quick Links</div>
 				<a href="/" class="rp-link-card">
-					<span>🔍 New Scan</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;"><Search size={14} strokeWidth={2} /> New Scan</span>
 					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 				</a>
 				<a href="/compare" class="rp-link-card">
-					<span>📊 Compare</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;"><Scale size={14} strokeWidth={2} /> Compare</span>
 					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 				</a>
 				<a href="/seo" class="rp-link-card">
-					<span>🎯 SEO Tools</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;"><Target size={14} strokeWidth={2} /> SEO Tools</span>
 					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 				</a>
 				<a href="/leaderboard" class="rp-link-card">
-					<span>🏆 Leaderboard</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;"><Trophy size={14} strokeWidth={2} /> Leaderboard</span>
 					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 				</a>
 				<a href="/api-docs" class="rp-link-card">
