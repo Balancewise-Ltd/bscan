@@ -8,7 +8,7 @@
 	import type { ScanResult } from '$lib/types';
 	import Seo from '$lib/components/ui/Seo.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
-	import { LayoutDashboard, User, CreditCard, ClipboardList, Key, Palette, ShieldCheck, Search, Scale, Target, Users, Gift, Link, Trophy, MessageCircle, Camera } from 'lucide-svelte';
+	import { LayoutDashboard, User, CreditCard, ClipboardList, Key, Palette, ShieldCheck, Search, Scale, Target, Users, Gift, Link2, Trophy, MessageCircle, Camera } from 'lucide-svelte';
 
 	// ── Auth form state ──────────────────────────────────
 	let isRegister = $state(false);
