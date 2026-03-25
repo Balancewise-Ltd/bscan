@@ -707,64 +707,7 @@
 							</div>
 						</div>
 
-						<!-- AI Fix buttons for actionable recommendations -->
-						{@const fixableRecs = [
-							r.nofollow_pct === 0 && r.external_links > 0 ? { title: 'Add nofollow to untrusted external links', detail: `All ${r.external_links} external links are dofollow. Add rel="nofollow" to affiliate, ad, or untrusted links.` } : null,
-							r.external_pct > 40 ? { title: `High external link ratio (${r.external_pct}%)`, detail: `Over 40% of links point externally. Add more internal links.` } : null,
-							r.broken_anchors > 0 && r.broken_anchors <= 10 ? { title: `${r.broken_anchors} empty anchor tags`, detail: `Links with empty or # hrefs. Replace with real URLs.` } : null,
-							r.total_links < 5 ? { title: `Very few links on page (${r.total_links})`, detail: `Add relevant internal and external links.` } : null,
-							r.total_links > 200 ? { title: `High link count (${r.total_links})`, detail: `Consider consolidating navigation to reduce link bloat.` } : null,
-						].filter(Boolean)}
 
-						{#if fixableRecs.length > 0}
-							<div class="card animate-fade-up" style="margin-top: 12px;">
-								<div class="card-body" style="padding: 0;">
-									{#each fixableRecs as rec}
-										<div class="rec-fix-row">
-											<div style="flex: 1; min-width: 0;">
-												<div style="font-size: 12px; font-weight: 600; color: var(--clr-text-primary);">{rec.title}</div>
-											</div>
-											<button class="btn-ai-fix" onclick={() => getAiFixForRec(rec.title, rec.detail, blInput.trim())} disabled={!!aiFixLoading[rec.title]}>
-												{#if aiFixLoading[rec.title]}
-													<span class="spinner spinner-sm"></span> Generating...
-												{:else if aiFixes[rec.title] && !aiFixes[rec.title].error}
-													View Fix
-												{:else}
-													AI Fix
-												{/if}
-											</button>
-										</div>
-
-										{#if aiFixes[rec.title] && !aiFixes[rec.title].error}
-											{@const fix = aiFixes[rec.title]}
-											<div class="ai-fix-panel">
-												<div class="ai-fix-summary">{fix.fix_summary}</div>
-												{#if fix.priority || fix.effort}
-													<div style="display: flex; gap: 6px; margin: 8px 0;">
-														{#if fix.priority}<span class="ai-badge">{fix.priority}</span>{/if}
-														{#if fix.effort}<span class="ai-badge">{fix.effort}</span>{/if}
-													</div>
-												{/if}
-												{#each (fix.code_snippets || []) as snippet}
-													<div class="ai-code-block">
-														<div class="ai-code-header">
-															<span style="font-size: 10px; color: var(--clr-blue); font-weight: 600;">{snippet.language}</span>
-															<span style="font-size: 10px; color: var(--clr-text-muted);">{snippet.filename}</span>
-															<button class="ai-copy-btn" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
-														</div>
-														<pre class="ai-code">{snippet.code}</pre>
-														{#if snippet.explanation}<p class="ai-code-explain">{snippet.explanation}</p>{/if}
-													</div>
-												{/each}
-												{#if fix.additional_notes}<p class="ai-notes">{fix.additional_notes}</p>{/if}
-											</div>
-										{:else if aiFixes[rec.title]?.error}
-											<div style="padding: 10px 16px; font-size: 12px; color: var(--clr-danger);">{aiFixes[rec.title].error}</div>
-										{/if}
-									{/each}
-								</div>
-							</div>
-						{/if}
 					{/if}
 
 					<!-- ── Section 3: GSC Prompt (if not connected) ── -->
@@ -792,6 +735,70 @@
 									View GSC Data
 								</button>
 							</div>
+
+							<!-- AI Fix buttons for each recommendation -->
+							<div style="border-top: 1px solid var(--clr-border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+								{#if r.nofollow_pct === 0 && r.external_links > 0}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Add nofollow to untrusted external links', `All ${r.external_links} external links are dofollow`, blInput.trim())} disabled={!!aiFixLoading['Add nofollow to untrusted external links']}>
+										{#if aiFixLoading['Add nofollow to untrusted external links']}<span class="spinner spinner-sm"></span>{:else if aiFixes['Add nofollow to untrusted external links']}View Fix{:else}AI Fix: Nofollow{/if}
+									</button>
+								{/if}
+								{#if r.external_pct > 40}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('High external link ratio', `${r.external_pct}% of links are external`, blInput.trim())} disabled={!!aiFixLoading['High external link ratio']}>
+										{#if aiFixLoading['High external link ratio']}<span class="spinner spinner-sm"></span>{:else if aiFixes['High external link ratio']}View Fix{:else}AI Fix: External Links{/if}
+									</button>
+								{/if}
+								{#if r.broken_anchors > 0}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Empty anchor tags', `${r.broken_anchors} links with href=# or empty href found. Samples: ${(r.broken_anchor_samples || []).slice(0,3).map(s => s.text).join(', ')}`, blInput.trim())} disabled={!!aiFixLoading['Empty anchor tags']}>
+										{#if aiFixLoading['Empty anchor tags']}<span class="spinner spinner-sm"></span>{:else if aiFixes['Empty anchor tags']}View Fix{:else}AI Fix: Empty Anchors{/if}
+									</button>
+								{/if}
+								{#if r.total_links < 5}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Very few links', `Only ${r.total_links} links on the page`, blInput.trim())} disabled={!!aiFixLoading['Very few links']}>
+										{#if aiFixLoading['Very few links']}<span class="spinner spinner-sm"></span>{:else if aiFixes['Very few links']}View Fix{:else}AI Fix: Add Links{/if}
+									</button>
+								{/if}
+								{#if r.total_links > 200}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('High link count', `${r.total_links} links on the page — consider reducing`, blInput.trim())} disabled={!!aiFixLoading['High link count']}>
+										{#if aiFixLoading['High link count']}<span class="spinner spinner-sm"></span>{:else if aiFixes['High link count']}View Fix{:else}AI Fix: Link Bloat{/if}
+									</button>
+								{/if}
+								{#if r.nofollow_pct > 50}
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Too many nofollow links', `${r.nofollow_pct}% of links are nofollow — some trusted links could be dofollow`, blInput.trim())} disabled={!!aiFixLoading['Too many nofollow links']}>
+										{#if aiFixLoading['Too many nofollow links']}<span class="spinner spinner-sm"></span>{:else if aiFixes['Too many nofollow links']}View Fix{:else}AI Fix: Nofollow Balance{/if}
+									</button>
+								{/if}
+							</div>
+
+							<!-- AI Fix results panel -->
+							{#each Object.entries(aiFixes) as [key, fix]}
+								{#if fix && !fix.error}
+									<div class="ai-fix-panel">
+										<div style="font-size: 11px; font-weight: 700; color: var(--clr-blue); margin-bottom: 6px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em;">{key}</div>
+										<div class="ai-fix-summary">{fix.fix_summary}</div>
+										{#if fix.priority || fix.effort}
+											<div style="display: flex; gap: 6px; margin: 8px 0;">
+												{#if fix.priority}<span class="ai-badge">{fix.priority}</span>{/if}
+												{#if fix.effort}<span class="ai-badge">{fix.effort}</span>{/if}
+											</div>
+										{/if}
+										{#each (fix.code_snippets || []) as snippet}
+											<div class="ai-code-block">
+												<div class="ai-code-header">
+													<span style="font-size: 10px; color: var(--clr-blue); font-weight: 600;">{snippet.language}</span>
+													<span style="font-size: 10px; color: var(--clr-text-muted);">{snippet.filename}</span>
+													<button class="ai-copy-btn" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
+												</div>
+												<pre class="ai-code">{snippet.code}</pre>
+												{#if snippet.explanation}<p class="ai-code-explain">{snippet.explanation}</p>{/if}
+											</div>
+										{/each}
+										{#if fix.additional_notes}<p class="ai-notes">{fix.additional_notes}</p>{/if}
+									</div>
+								{:else if fix?.error}
+									<div style="padding: 10px 16px; font-size: 12px; color: var(--clr-danger);">{fix.error}</div>
+								{/if}
+							{/each}
 						</div>
 					{/if}
 
