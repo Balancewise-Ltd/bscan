@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { sanitize, safeRedirect, safeGetStorage } from '$lib/utils/security';
@@ -199,7 +200,7 @@
 
 <div class="container" style="max-width: 960px;">
 	<div class="page-header animate-fade-up">
-		<span class="badge badge-gold">📊 SEO</span>
+		<span class="badge badge-gold"><BarChart3 size={14} strokeWidth={2} /> SEO</span>
 		<h1>SEO <span class="text-gold">Dashboard</span></h1>
 		<p class="text-secondary">Keyword research, backlink analysis, and SEO intelligence tools.</p>
 	</div>
@@ -216,10 +217,10 @@
 	{:else}
 		<!-- Tabs -->
 		<div class="tabs-row animate-fade-up">
-			<button class="seo-tab" class:active={activeTab === 'keywords'} onclick={() => activeTab = 'keywords'}>🔍 Keywords</button>
-			<button class="seo-tab" class:active={activeTab === 'backlinks'} onclick={() => activeTab = 'backlinks'}>🔗 Backlinks</button>
-			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}>📈 Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
-			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}>📋 History</button>
+			<button class="seo-tab" class:active={activeTab === 'keywords'} onclick={() => activeTab = 'keywords'}><Search size={14} strokeWidth={2} /> Keywords</button>
+			<button class="seo-tab" class:active={activeTab === 'backlinks'} onclick={() => activeTab = 'backlinks'}><Link2 size={14} strokeWidth={2} /> Backlinks</button>
+			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}><TrendingUp size={14} strokeWidth={2} /> Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
+			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}><ClipboardList size={14} strokeWidth={2} /> History</button>
 		</div>
 
 		<!-- ════ KEYWORDS ════ -->
@@ -227,7 +228,7 @@
 			<div class="tab-panel animate-fade-up">
 				<div class="card">
 					<div class="card-header">
-						<span>🔍</span>
+						<span><Search size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700;">Keyword Research</span>
 						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
 					</div>
@@ -290,7 +291,7 @@
 						<!-- Prepositions -->
 						{#if kwData.prepositions?.length}
 							<div class="kw-section">
-								<div class="kw-section-title">🔗 Preposition Variations ({kwData.prepositions.length})</div>
+								<div class="kw-section-title"><Link2 size={14} strokeWidth={2} style="display:inline" /> Preposition Variations ({kwData.prepositions.length})</div>
 								<div class="kw-tags">
 									{#each kwData.prepositions.slice(0, 30) as p}
 										<span class="kw-tag">{sanitize(p)}</span>
@@ -302,7 +303,7 @@
 						<!-- Comparisons -->
 						{#if kwData.comparisons?.length}
 							<div class="kw-section">
-								<div class="kw-section-title">⚔️ Comparison Keywords ({kwData.comparisons.length})</div>
+								<div class="kw-section-title"><Scale size={14} strokeWidth={2} style="display:inline" /> Comparison Keywords ({kwData.comparisons.length})</div>
 								<div class="kw-tags">
 									{#each kwData.comparisons.slice(0, 20) as c}
 										<span class="kw-tag">{sanitize(c)}</span>
@@ -314,7 +315,7 @@
 						<!-- Long Tail -->
 						{#if kwData.long_tail?.length}
 							<div class="kw-section">
-								<div class="kw-section-title">🎯 Long-Tail Ideas ({kwData.long_tail.length})</div>
+								<div class="kw-section-title"><Target size={14} strokeWidth={2} style="display:inline" /> Long-Tail Ideas ({kwData.long_tail.length})</div>
 								<div class="kw-tags">
 									{#each kwData.long_tail.slice(0, 30) as lt}
 										<span class="kw-tag subtle">{sanitize(lt)}</span>
@@ -351,7 +352,7 @@
 			<div class="tab-panel animate-fade-up">
 				<div class="card">
 					<div class="card-header">
-						<span>🔗</span>
+						<span><Link2 size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700;">Backlink Analysis</span>
 						{#if !isPaid}<span class="badge badge-blue" style="margin-left: auto;">Pro</span>{/if}
 					</div>
@@ -366,7 +367,7 @@
 							{#if blError}<div class="msg-error">{blError}</div>{/if}
 						{:else}
 							<div class="upgrade-gate">
-								<div style="font-size: 24px; margin-bottom: 8px;">🔗</div>
+								<div style="font-size: 24px; margin-bottom: 8px;"><Link2 size={24} strokeWidth={1.5} /></div>
 								<h3>Backlink Analysis</h3>
 								<p class="text-secondary" style="max-width: 400px; margin: 0 auto;">Analyse your backlink profile: referring domains, link quality, anchor text distribution, and top linkers.</p>
 								<a href="/#pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
@@ -469,12 +470,12 @@
 					<!-- Not connected -->
 					<div class="card">
 						<div class="card-header">
-							<span>📈</span>
+							<span><TrendingUp size={14} strokeWidth={2} /></span>
 							<span style="font-weight: 700;">Google Search Console</span>
 							<span class="badge badge-gold" style="margin-left: auto;">Free</span>
 						</div>
 						<div class="card-body" style="text-align: center; padding: 32px;">
-							<div style="font-size: 28px; margin-bottom: 8px;">📈</div>
+							<div style="font-size: 28px; margin-bottom: 8px;"><TrendingUp size={28} strokeWidth={1.5} /></div>
 							<h3>Connect Google Search Console</h3>
 							<p class="text-secondary" style="max-width: 400px; margin: 8px auto 20px; line-height: 1.6;">
 								Link your GSC account to see real keyword rankings, click data, impressions, and average position directly in BSCAN.
@@ -491,7 +492,7 @@
 					<!-- Connected — Site Selector + Data -->
 					<div class="card" style="margin-bottom: 16px;">
 						<div class="card-header">
-							<span>📈</span>
+							<span><TrendingUp size={14} strokeWidth={2} /></span>
 							<span style="font-weight: 700;">Google Search Console</span>
 							<div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
 								<span class="gsc-connected-badge">✓ Connected</span>
@@ -559,7 +560,7 @@
 						{#if gscOverview.position_distribution && Object.keys(gscOverview.position_distribution).length > 0}
 							<div class="card animate-fade-up" style="margin-bottom: 16px;">
 								<div class="card-header">
-									<span>📊</span>
+									<span><BarChart3 size={14} strokeWidth={2} /></span>
 									<span style="font-weight: 700; font-size: 13px;">Position Distribution</span>
 								</div>
 								<div class="card-body">
@@ -580,7 +581,7 @@
 						{#if gscOverview.top_keywords?.length > 0}
 							<div class="card animate-fade-up" style="margin-bottom: 16px;">
 								<div class="card-header">
-									<span>🔍</span>
+									<span><Search size={14} strokeWidth={2} /></span>
 									<span style="font-weight: 700; font-size: 13px;">Top Keywords ({gscOverview.top_keywords.length})</span>
 								</div>
 								<div class="card-body" style="padding: 0;">
@@ -608,7 +609,7 @@
 						{#if gscOverview.opportunities?.length > 0}
 							<div class="card animate-fade-up" style="margin-bottom: 16px;">
 								<div class="card-header">
-									<span>🎯</span>
+									<span><Target size={14} strokeWidth={2} /></span>
 									<span style="font-weight: 700; font-size: 13px;">Quick Win Opportunities</span>
 								</div>
 								<div class="card-body" style="padding: 0;">
@@ -666,7 +667,7 @@
 			<div class="tab-panel animate-fade-up">
 				<div class="card">
 					<div class="card-header">
-						<span>📋</span>
+						<span><ClipboardList size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700;">SEO Research History</span>
 					</div>
 					<div class="card-body">
@@ -679,7 +680,7 @@
 						{:else}
 							{#each seoHistory as item}
 								<div class="hist-row">
-									<div class="hist-type">{item.type === 'backlinks' ? '🔗' : '🔍'}</div>
+									<div class="hist-type">{item.type === 'backlinks' ? 'BL' : 'KW'}</div>
 									<div class="hist-query">{sanitize(item.query || item.keyword || item.domain || '')}</div>
 									<div class="hist-date text-muted">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : ''}</div>
 								</div>

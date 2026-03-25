@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Scale, ClipboardList } from 'lucide-svelte';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
 	import { normalizeUrl, scoreColor, formatDate } from '$lib/utils/score';
@@ -83,7 +84,7 @@
 
 <div class="container" style="max-width: 900px;">
 	<div class="page-header animate-fade-up">
-		<span class="badge badge-gold">⚔️ Compare</span>
+		<span class="badge badge-gold"><Scale size={14} strokeWidth={2} /> Compare</span>
 		<h1>Compare <span class="text-gold">Websites</span></h1>
 		<p class="text-secondary">See how two websites stack up side-by-side across all audit categories.</p>
 	</div>
@@ -100,7 +101,7 @@
 	{:else if !isPaid}
 		<div class="gate-card card animate-fade-up">
 			<div class="card-body" style="text-align: center; padding: 48px;">
-				<div style="font-size: 32px; margin-bottom: 12px;">⚔️</div>
+				<div style="font-size: 32px; margin-bottom: 12px;"><Scale size={28} strokeWidth={1.5} /></div>
 				<h3>Upgrade to unlock Compare</h3>
 				<p class="text-secondary" style="margin: 8px 0 20px;">Side-by-side website comparison is a Pro feature.</p>
 				<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro — £9/mo</button>
@@ -109,8 +110,8 @@
 	{:else}
 		<!-- Tabs -->
 		<div class="tabs-row animate-fade-up">
-			<button class="cmp-tab" class:active={activeTab === 'compare'} onclick={() => activeTab = 'compare'}>⚔️ Compare</button>
-			<button class="cmp-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadHistory(); }}>📋 History</button>
+			<button class="cmp-tab" class:active={activeTab === 'compare'} onclick={() => activeTab = 'compare'}><Scale size={14} strokeWidth={2} /> Compare</button>
+			<button class="cmp-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadHistory(); }}><ClipboardList size={14} strokeWidth={2} /> History</button>
 		</div>
 
 		{#if activeTab === 'compare'}
@@ -128,7 +129,7 @@
 			</div>
 
 			<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={loading} onclick={compare}>
-				{#if loading}<span class="spinner spinner-sm"></span> Comparing...{:else}⚔️ Compare Now{/if}
+				{#if loading}<span class="spinner spinner-sm"></span> Comparing...{:else}<Scale size={14} strokeWidth={2} /> Compare Now{/if}
 			</button>
 
 			{#if error}
@@ -236,7 +237,7 @@
 			<div class="animate-fade-up">
 				<div class="card">
 					<div class="card-header">
-						<span>📋</span>
+						<span><ClipboardList size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700; font-size: 14px;">Compare History</span>
 					</div>
 					<div class="card-body">
@@ -244,7 +245,7 @@
 							<Skeleton lines={4} />
 						{:else if historyItems.length === 0}
 							<div style="text-align: center; padding: 32px;">
-								<div style="font-size: 24px; margin-bottom: 8px;">⚔️</div>
+								<div style="font-size: 24px; margin-bottom: 8px;"><Scale size={28} strokeWidth={1.5} /></div>
 								<p class="text-muted">No comparisons yet. Run your first comparison above!</p>
 							</div>
 						{:else}

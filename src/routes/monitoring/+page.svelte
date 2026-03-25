@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Bell } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
@@ -123,7 +124,7 @@
 
 <div class="container" style="max-width: 900px;">
 	<div class="page-header animate-fade-up">
-		<span class="badge badge-blue">📡 MONITORING</span>
+		<span class="badge badge-blue"><Bell size={14} strokeWidth={2} /> MONITORING</span>
 		<h1>Site <span class="text-gold">Monitoring</span></h1>
 		<p class="text-secondary">Track your websites automatically. Get alerts when scores drop.</p>
 	</div>
@@ -140,7 +141,7 @@
 	{:else if !isPaid}
 		<div class="card animate-fade-up">
 			<div class="card-body" style="text-align: center; padding: 40px;">
-				<div style="font-size: 48px; margin-bottom: 12px;">📡</div>
+				<div style="font-size: 48px; margin-bottom: 12px;"><Bell size={36} strokeWidth={1.5} /></div>
 				<h3>Upgrade to Monitor Sites</h3>
 				<p class="text-muted" style="margin: 8px 0 4px;">Automated scans run on your schedule — daily, weekly, or monthly.</p>
 				<p class="text-muted" style="margin: 0 0 20px;">Get email alerts the moment a score drops.</p>
@@ -190,7 +191,7 @@
 		<!-- Monitored Sites List -->
 		<div class="card animate-fade-up">
 			<div class="card-header">
-				<span>📡</span>
+				<span><Bell size={14} strokeWidth={2} /></span>
 				<span style="font-weight: 700;">Monitored Sites</span>
 			</div>
 			<div class="card-body" style="padding: 0;">
@@ -198,7 +199,7 @@
 					<div class="empty-state"><p class="text-muted">Loading...</p></div>
 				{:else if sites.length === 0}
 					<div class="empty-state">
-						<div style="font-size: 36px; margin-bottom: 8px;">📡</div>
+						<div style="font-size: 36px; margin-bottom: 8px;"><Bell size={36} strokeWidth={1.5} /></div>
 						<p class="text-muted">No sites monitored yet. Add one above.</p>
 					</div>
 				{:else}
@@ -226,7 +227,7 @@
 
 							<div class="site-actions">
 								<button class="btn btn-ghost btn-sm" title="View trend" onclick={() => viewTrend(site)}>
-									📈
+									<TrendingUp size={14} strokeWidth={2} />
 								</button>
 								<button class="btn btn-ghost btn-sm" title="Scan now" onclick={() => triggerScan(site.id)}>
 									🔄
@@ -291,7 +292,7 @@
 			<div class="card-body">
 				<div class="how-grid">
 					<div class="how-item">
-						<div class="how-icon">📡</div>
+						<div class="how-icon"><Bell size={36} strokeWidth={1.5} /></div>
 						<div class="how-text"><strong>Automatic Scans</strong><br><span class="text-muted">We scan your sites on schedule — daily, weekly, or monthly.</span></div>
 					</div>
 					<div class="how-item">
@@ -299,7 +300,7 @@
 						<div class="how-text"><strong>Score Alerts</strong><br><span class="text-muted">Get an email when a score drops below your threshold.</span></div>
 					</div>
 					<div class="how-item">
-						<div class="how-icon">📈</div>
+						<div class="how-icon"><TrendingUp size={20} strokeWidth={1.8} /></div>
 						<div class="how-text"><strong>Trend Charts</strong><br><span class="text-muted">See how your scores change over time.</span></div>
 					</div>
 				</div>
