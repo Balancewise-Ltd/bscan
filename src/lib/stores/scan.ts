@@ -77,13 +77,19 @@ function getSteps(url: string, isPaid: boolean): Array<{ text: string; progress:
 }
 
 let stepTimer: ReturnType<typeof setInterval> | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 function stopTimer() {
 	if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
 }
 
+function stopPollTimer() {
+	if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
 async function startScan(url: string, email: string, businessName?: string, plan: Plan = 'guest') {
 	stopTimer();
+	stopPollTimer();
 	_status.set('scanning');
 	_error.set(null);
 	_result.set(null);
@@ -96,6 +102,7 @@ async function startScan(url: string, email: string, businessName?: string, plan
 	const interval = isPaid ? 500 : 400;
 	let stepIndex = 0;
 
+	// Start step animation
 	stepTimer = setInterval(() => {
 		if (stepIndex >= scanSteps.length) { stopTimer(); return; }
 		const step = scanSteps[stepIndex];
@@ -105,21 +112,109 @@ async function startScan(url: string, email: string, businessName?: string, plan
 	}, interval);
 
 	try {
+		// 1. Submit scan — returns instantly with {id, status: "running"}
 		const data = await api.runScan(url, email, businessName);
-		stopTimer();
-		while (stepIndex < scanSteps.length) {
-			const step = scanSteps[stepIndex];
-			_steps.update((s) => [...s, { index: stepIndex + 1, text: step.text, progress: step.progress, status: 'ok' }]);
-			stepIndex++;
+		const scanId = data.id;
+		_lastScanId.set(scanId);
+
+		// 2. If scan already completed (sync fallback), show result immediately
+		if (data.status !== 'running' && data.overall_score !== null && data.overall_score !== undefined) {
+			stopTimer();
+			while (stepIndex < scanSteps.length) {
+				const step = scanSteps[stepIndex];
+				_steps.update((s) => [...s, { index: stepIndex + 1, text: step.text, progress: step.progress, status: 'ok' }]);
+				stepIndex++;
+			}
+			_steps.update((s) => [...s, { index: stepIndex + 1, text: 'Report generated ✓', progress: 100, status: 'ok' }]);
+			_progress.set(100);
+			await new Promise((r) => setTimeout(r, 600));
+			_result.set(data);
+			_status.set('done');
+			return;
 		}
-		_steps.update((s) => [...s, { index: stepIndex + 1, text: 'Report generated ✓', progress: 100, status: 'ok' }]);
-		_progress.set(100);
-		await new Promise((r) => setTimeout(r, 600));
-		_result.set(data);
-		_lastScanId.set(data.id);
-		_status.set('done');
+
+		// 3. Poll for results every 4 seconds, up to 5 minutes
+		const POLL_INTERVAL = 4000;
+		const MAX_POLLS = 75; // 75 * 4s = 5 minutes
+		let pollCount = 0;
+
+		pollTimer = setInterval(async () => {
+			pollCount++;
+
+			try {
+				const result = await api.getScanResult(scanId);
+
+				// Still running — keep polling, keep step animation going
+				if (result.status === 'running') {
+					// If steps ran out, add waiting steps to keep animation alive
+					if (stepIndex >= scanSteps.length && stepTimer === null) {
+						const waitSteps = [
+							'Waiting for scan worker...',
+							'Processing page content...',
+							'Running deep analysis...',
+							'Almost there...',
+						];
+						const waitIdx = Math.min(pollCount % waitSteps.length, waitSteps.length - 1);
+						const prog = Math.min(97, 92 + pollCount % 6);
+						_steps.update((s) => {
+							// Replace last "waiting" step instead of accumulating
+							const last = s[s.length - 1];
+							if (last && last.text.startsWith('Waiting') || last?.text.startsWith('Processing') || last?.text.startsWith('Running deep') || last?.text.startsWith('Almost')) {
+								return [...s.slice(0, -1), { index: s.length, text: waitSteps[waitIdx], progress: prog, status: 'ok' }];
+							}
+							return [...s, { index: s.length + 1, text: waitSteps[waitIdx], progress: prog, status: 'ok' }];
+						});
+						_progress.set(prog);
+					}
+
+					// Timeout check
+					if (pollCount >= MAX_POLLS) {
+						stopPollTimer();
+						stopTimer();
+						_steps.update((s) => [...s, { index: stepIndex + 1, text: 'Scan timed out — try again', progress: 0, status: 'fail' }]);
+						_error.set('Scan timed out after 5 minutes. Please try again.');
+						_status.set('error');
+					}
+					return;
+				}
+
+				// Scan completed (or failed) — stop polling, show result
+				stopPollTimer();
+				stopTimer();
+
+				if (result.status === 'failed') {
+					_steps.update((s) => [...s, { index: stepIndex + 1, text: 'Scan failed', progress: 0, status: 'fail' }]);
+					_error.set('Scan failed. Please try again.');
+					_status.set('error');
+					return;
+				}
+
+				// Success — flush remaining steps and show result
+				while (stepIndex < scanSteps.length) {
+					const step = scanSteps[stepIndex];
+					_steps.update((s) => [...s, { index: stepIndex + 1, text: step.text, progress: step.progress, status: 'ok' }]);
+					stepIndex++;
+				}
+				_steps.update((s) => [...s, { index: stepIndex + 1, text: 'Report generated ✓', progress: 100, status: 'ok' }]);
+				_progress.set(100);
+				await new Promise((r) => setTimeout(r, 600));
+				_result.set(result);
+				_status.set('done');
+
+			} catch {
+				// Network error during poll — don't crash, just retry on next interval
+				if (pollCount >= MAX_POLLS) {
+					stopPollTimer();
+					stopTimer();
+					_error.set('Lost connection to scan server. Please try again.');
+					_status.set('error');
+				}
+			}
+		}, POLL_INTERVAL);
+
 	} catch (err) {
 		stopTimer();
+		stopPollTimer();
 		const msg = err instanceof Error ? err.message : 'Scan failed';
 		_steps.update((s) => [...s, { index: stepIndex + 1, text: `Error: ${msg}`, progress: 0, status: 'fail' }]);
 		_error.set(msg);
@@ -135,6 +230,7 @@ async function checkAllowance(email: string): Promise<ScanCheckResult> {
 
 function reset() {
 	stopTimer();
+	stopPollTimer();
 	_status.set('idle');
 	_result.set(null);
 	_error.set(null);

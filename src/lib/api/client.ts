@@ -134,6 +134,15 @@ export async function runScan(url: string, email: string, businessName?: string)
 	});
 }
 
+export async function getScanResult(scanId: string): Promise<ScanResult> {
+	const token = getToken();
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	if (token) headers['Authorization'] = `Bearer ${token}`;
+	const res = await fetch(`${API_BASE}/api/scan/${scanId}`, { headers });
+	if (!res.ok) throw new ApiError(res.status, 'Failed to fetch scan result');
+	return res.json();
+}
+
 export async function getScan(scanId: string): Promise<ScanResult> {
 	return request(`/api/scan/${scanId}`);
 }
