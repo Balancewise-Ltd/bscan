@@ -419,6 +419,11 @@
 				{/each}
 			</div>
 
+			<!-- Achievement Badges & Challenge Sharing (shown immediately after scores) -->
+			{#if r.id}
+				<Badges scanId={r.id} overallScore={overallScore} />
+			{/if}
+
 			<!-- Intelligence Feature Cards -->
 			<FeatureCards scanData={r} {isPaid} />
 
@@ -486,7 +491,7 @@
 									</div>
 								{/each}
 								{#if !isPaid && crits.length > 2}
-									<div class="lock-hint">🔒 {crits.length - 2} more hidden · <a href="#pricing" class="text-gold">Upgrade to see all</a></div>
+									<div class="lock-hint">🔒 {crits.length - 2} more hidden · <a href="/pricing" class="text-gold">Upgrade to see all</a></div>
 								{/if}
 							</div>
 						{/if}
@@ -561,11 +566,6 @@
 			<!-- Enrichment Section (Tech Stack, SSL, WHOIS, etc.) -->
 			{#if r.enrichment}
 				<Enrichment enrichment={r.enrichment} {isPaid} />
-			{/if}
-
-			<!-- Achievement Badges & Challenge Sharing -->
-			{#if r.id}
-				<Badges scanId={r.id} overallScore={overallScore} />
 			{/if}
 
 			<!-- CTA Banner -->

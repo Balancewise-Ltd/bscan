@@ -102,7 +102,7 @@
 					{:else if openPanel === 'benchmarks'}
 						<p>See how this site ranks against others in its industry. Percentile scores, industry averages, and recommendations.</p>
 					{/if}
-					<a href="/#pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
+					<a href="/pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
 				</div>
 
 			{:else if openPanel === 'business_intel'}

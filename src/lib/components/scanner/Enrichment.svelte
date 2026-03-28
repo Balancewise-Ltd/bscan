@@ -194,7 +194,7 @@
 			<div style="font-size: 24px; margin-bottom: 8px;">🔬</div>
 			<h3>Full Site Intelligence</h3>
 			<p>Upgrade to Pro to unlock domain age, WHOIS data, W3C validation, Mozilla Observatory score, Wayback history, and more.</p>
-			<a href="/#pricing" class="btn btn-gold" style="margin-top: 12px;">Upgrade to Pro — £9/mo</a>
+			<a href="/pricing" class="btn btn-gold" style="margin-top: 12px;">Upgrade to Pro — £9/mo</a>
 		</div>
 	{/if}
 </div>
