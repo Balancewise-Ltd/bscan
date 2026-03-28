@@ -668,12 +668,13 @@
 
 	// ── Report Functions ──────────────────────────────
 	async function loadReports() {
+		if (!isAgency) { reportLoading = false; return; }
 		reportLoading = true;
 		try {
 			const [sched, stats] = await Promise.all([api.getReportSchedules(), api.getReportStats()]);
-			reportSchedules = sched.schedules;
+			reportSchedules = sched.schedules || [];
 			reportStats = stats;
-		} catch (e: any) { reportError = e.message || 'Failed to load'; }
+		} catch (e: any) { reportError = e.message || 'Failed to load reports'; }
 		reportLoading = false;
 	}
 
@@ -708,7 +709,7 @@
 
 
 	function reportInit(node: HTMLElement) {
-		loadReports();
+		if (isAgency) loadReports();
 		return { destroy() {} };
 	}
 
@@ -719,7 +720,7 @@
 		{ key: 'history', label: 'History', icon: ClipboardList },
 		{ key: 'api-keys', label: 'API Keys', icon: Key, show: () => isPaid },
 		{ key: 'branding', label: 'Branding', icon: Palette, show: () => isAgency },
-		{ key: 'reports', label: 'Reports', icon: Target, show: () => isAgency },
+		{ key: 'reports', label: 'Reports', icon: Target },
 		{ key: 'security', label: 'Security', icon: ShieldCheck },
 	];
 </script>
@@ -1598,6 +1599,18 @@
 
 		{#if activeTab === 'reports'}
 		<!-- ══════ REPORTS ══════ -->
+		{#if !isAgency}
+		<div class="tab-content animate-fade-up">
+			<div style="padding: 48px 24px; text-align: center;">
+				<div style="font-size: 48px; margin-bottom: 12px;">📊</div>
+				<h3 style="margin: 0 0 8px; font-size: 18px;">Scheduled Client Reports</h3>
+				<p class="text-muted" style="max-width: 420px; margin: 0 auto 20px; font-size: 13px;">
+					Automatically scan client websites on a schedule and send branded audit reports with AI-powered fix recommendations. Available on the Agency plan.
+				</p>
+				<button class="btn btn-gold" onclick={() => activeTab = 'billing'}>Upgrade to Agency →</button>
+			</div>
+		</div>
+		{:else}
 		<div class="tab-content animate-fade-up" use:reportInit>
 			<div class="reports-wrap">
 
@@ -1676,7 +1689,9 @@
 		</div>
 		{/if}
 
-		{#if activeTab === 'branding'}
+				{/if}
+
+{#if activeTab === 'branding'}
 			<div class="tab-content animate-fade-up">
 				<h3 style="margin-bottom: 20px;">White-Label Branding</h3>
 				{#if !isAgency}
