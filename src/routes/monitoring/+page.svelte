@@ -147,7 +147,7 @@
 				<p class="text-muted" style="margin: 0 0 20px;">Get email alerts the moment a score drops.</p>
 				<div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
 					<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Pro — 3 sites · £9/mo</button>
-					<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Agency — 20 sites · £29/mo</button>
+					<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Agency — 10 sites · £29/mo</button>
 				</div>
 			</div>
 		</div>

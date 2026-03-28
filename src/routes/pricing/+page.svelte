@@ -26,7 +26,7 @@
 				{ label: '6-category audit (25+ checks)',  free: true,        pro: true,          agency: true },
 				{ label: 'Core Web Vitals (LCP, CLS, TBT)',free: false,       pro: true,          agency: true },
 				{ label: 'Deep page rendering (JS apps)',  free: false,       pro: false,         agency: true },
-				{ label: 'Bulk scan (up to 25 URLs)',      free: false,       pro: true,          agency: true },
+				{ label: 'Bulk scan (up to 25 URLs)',      free: false,       pro: false,         agency: true },
 				{ label: 'Screenshot capture',             free: true,        pro: true,          agency: true },
 				{ label: 'Tech stack detection',           free: true,        pro: true,          agency: true },
 				{ label: 'WHOIS & domain intelligence',    free: true,        pro: true,          agency: true },
@@ -59,7 +59,7 @@
 				{ label: 'Backlink overview',              free: false,       pro: true,          agency: true },
 				{ label: 'Competitor compare tool',        free: false,       pro: true,          agency: true },
 				{ label: 'SEO autocomplete',               free: true,        pro: true,          agency: true },
-				{ label: 'Compare history',                free: false,       pro: true,          agency: true, soon: true },
+				{ label: 'Compare history',                free: false,       pro: true,          agency: true },
 			]
 		},
 		{
@@ -71,14 +71,14 @@
 				{ label: 'White-label PDF (your brand)',   free: false,       pro: false,         agency: true },
 				{ label: 'Scheduled email reports',        free: false,       pro: false,         agency: true },
 				{ label: 'CSV / JSON export',              free: false,       pro: true,          agency: true, soon: true },
-				{ label: 'Score history graph',            free: false,       pro: true,          agency: true, soon: true },
+				{ label: 'Score history graph',            free: false,       pro: true,          agency: true },
 			]
 		},
 		{
 			title: 'Monitoring & Alerts',
 			icon: '🔔',
 			rows: [
-				{ label: 'Monitored sites',                free: false,       pro: '3 sites',     agency: '20 sites' },
+				{ label: 'Monitored sites',                free: false,       pro: '3 sites',     agency: '10 sites' },
 				{ label: 'Monitoring frequency',           free: false,       pro: 'Weekly',      agency: 'Daily' },
 				{ label: 'Score drop alerts',              free: false,       pro: true,          agency: true },
 				{ label: 'Push notifications',             free: false,       pro: true,          agency: true },
@@ -272,7 +272,7 @@
 				<li>Scheduled client reports (auto-email)</li>
 				<li>White-label PDF with your branding</li>
 				<li>5 team members + management</li>
-				<li>20 monitored sites</li>
+				<li>10 monitored sites</li>
 				<li>Bulk scan (up to 25 URLs)</li>
 				<li>5 API keys</li>
 				<li>Priority support + early access</li>
@@ -306,7 +306,7 @@
 						<div class="ms-label">
 							{row.label}
 							{#if row.soon}<span class="soon-pill">Soon</span>{/if}
-							{#if row.tooltip}<span class="tooltip-wrap" title={row.tooltip}>ℹ</span>{/if}
+							{#if row.tooltip}<span class="tooltip-wrap" data-tip={row.tooltip}>ℹ</span>{/if}
 						</div>
 						{#each ['free', 'pro', 'agency'] as col}
 							{@const v = val(row[col as 'free' | 'pro' | 'agency'])}
@@ -763,6 +763,52 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		position: relative;
+	}
+
+	.tooltip-wrap::after {
+		content: attr(data-tip);
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 8px);
+		transform: translateX(-50%);
+		background: var(--clr-bg-elevated);
+		color: var(--clr-text-primary);
+		border: 1px solid var(--clr-border-light);
+		border-radius: var(--radius-md);
+		padding: 8px 12px;
+		font-size: 11px;
+		font-family: var(--font-sans);
+		font-weight: 400;
+		line-height: 1.5;
+		white-space: nowrap;
+		max-width: 240px;
+		white-space: normal;
+		text-align: left;
+		box-shadow: var(--shadow-md);
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity var(--duration-fast);
+		z-index: 100;
+	}
+
+	.tooltip-wrap::before {
+		content: '';
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 2px);
+		transform: translateX(-50%);
+		border: 5px solid transparent;
+		border-top-color: var(--clr-border-light);
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity var(--duration-fast);
+		z-index: 100;
+	}
+
+	.tooltip-wrap:hover::after,
+	.tooltip-wrap:hover::before {
+		opacity: 1;
 	}
 
 	.matrix-cta-row {
