@@ -2202,9 +2202,7 @@
 	/* Email verification banner */
 	.verify-banner { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
 	.verify-banner-inner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
-</style>
 
-<style>
 	/* ── Report Scheduling ─────────────────── */
 	.rpt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
 	.rpt-stat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 16px; text-align: center; transition: border-color 0.2s; }
@@ -2231,4 +2229,7 @@
 		.rpt-stats { grid-template-columns: repeat(2, 1fr); }
 		.rpt-card-btm { flex-direction: column; gap: 10px; align-items: flex-start; }
 	}
+
 </style>
+
+
