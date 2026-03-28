@@ -588,7 +588,7 @@
 			<div class="referral-cta-inner">
 				<span style="font-size: 24px;">🎁</span>
 				<div style="flex: 1;">
-					<h3 style="font-size: 15px; font-weight: 700; margin: 0 0 4px;">Know someone who needs this?</h3>
+					<h3 style="font-size: 16px; font-weight: 700; margin: 0 0 4px;">Know someone who needs this?</h3>
 					<p style="font-size: 12px; color: var(--clr-text-secondary); margin: 0;">Refer 3 friends and get 1 month of Pro free — 30 scans, PDF reports, monitoring, and more.</p>
 				</div>
 				{#if $auth.user}
@@ -604,7 +604,7 @@
 	{#if $auth.user && sparklineScans.length >= 2}
 		<section class="sparkline-section">
 			<div class="sparkline-header">
-				<h3 style="font-size: 15px; font-weight: 700; margin: 0;">Your Score Trend</h3>
+				<h3 style="font-size: 16px; font-weight: 700; margin: 0;">Your Score Trend</h3>
 				<a href="/account" style="font-size: 12px; color: var(--clr-blue);">View all scans &rarr;</a>
 			</div>
 			<div class="sparkline-chart">
@@ -716,7 +716,7 @@
 
 	.hero-sub {
 		color: var(--clr-text-secondary);
-		font-size: 15px;
+		font-size: 16px;
 		line-height: 1.7;
 		max-width: 520px;
 		margin: 0 auto var(--space-xl);
@@ -739,7 +739,7 @@
 		border: 1px solid var(--clr-border);
 		border-radius: var(--radius-md);
 		padding: 14px 18px;
-		font-size: 15px;
+		font-size: 16px;
 		color: var(--clr-text-primary);
 		outline: none;
 		font-family: var(--font-mono);
