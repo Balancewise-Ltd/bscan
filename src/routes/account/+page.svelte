@@ -389,6 +389,22 @@
 	}
 
 	let billingError = $state('');
+	// ── Report Scheduling ────────────────────────────────
+	let reportSchedules = $state<any[]>([]);
+	let reportStats     = $state<any>(null);
+	let reportLoading   = $state(true);
+	let reportSaving    = $state(false);
+	let reportMsg       = $state('');
+	let reportError     = $state('');
+	let showNewSchedule = $state(false);
+	let sendingNow      = $state<string | null>(null);
+	let newSched        = $state({
+		url: '', recipient_email: '', recipient_name: '',
+		frequency: 'monthly', branding_company: '',
+		branding_color: '#D4AF37',
+		include_ai_fixes: true, include_comparison: true
+	});
+
 
 	async function openBillingPortal() {
 		portalLoading = true;
