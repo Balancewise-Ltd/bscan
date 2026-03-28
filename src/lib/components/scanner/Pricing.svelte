@@ -35,6 +35,7 @@
 			<div class="plan-period">forever</div>
 			<p class="plan-desc">Perfect for quick checks and getting started.</p>
 			<a href="#url-input" class="btn btn-outline" style="width:100%;">Start Scanning</a>
+			<a href="/pricing" class="see-more">See full comparison →</a>
 
 			<div class="plan-features">
 				<div class="feat-group">Core</div>
@@ -66,6 +67,7 @@
 			<div class="plan-period">per month{interval === 'annual' ? ' (billed annually)' : ''}</div>
 			<p class="plan-desc">Full audit power for freelancers and small businesses.</p>
 			<button class="btn btn-gold" style="width:100%;" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro</button>
+			<a href="/pricing" class="see-more">See full comparison →</a>
 
 			<div class="plan-features">
 				<div class="feat-group">Everything in Free, plus:</div>
@@ -94,6 +96,7 @@
 			<div class="plan-period">per month{interval === 'annual' ? ' (billed annually)' : ''}</div>
 			<p class="plan-desc">For agencies and teams managing multiple client sites.</p>
 			<button class="btn btn-blue" style="width:100%;" onclick={() => ui.openCheckout('agency')}>Go Agency</button>
+			<a href="/pricing" class="see-more">See full comparison →</a>
 
 			<div class="plan-features">
 				<div class="feat-group">Everything in Pro, plus:</div>
@@ -216,6 +219,19 @@
 		font-weight: 800;
 		letter-spacing: -2px;
 	}
+
+	.see-more {
+		display: block;
+		text-align: center;
+		font-size: 12px;
+		color: var(--clr-text-muted);
+		margin-top: 10px;
+		text-decoration: none;
+		transition: color var(--duration-fast);
+		font-weight: 500;
+	}
+
+	.see-more:hover { color: var(--clr-gold); }
 
 	.plan-period {
 		font-size: 12px;
