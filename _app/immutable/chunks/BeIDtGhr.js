@@ -1,0 +1,1 @@
+const e={pro:{monthly:9,annual:7},agency:{monthly:29,annual:23}},l=[{key:"seo",label:"SEO",icon:"🔍"},{key:"performance",label:"Performance",icon:"⚡"},{key:"accessibility",label:"Accessibility",icon:"♿"},{key:"security",label:"Security",icon:"🔒"},{key:"mobile",label:"Mobile",icon:"📱"},{key:"links",label:"Links",icon:"🔗"}];export{e as P,l as S};
