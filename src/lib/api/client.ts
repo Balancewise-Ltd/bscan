@@ -639,3 +639,56 @@ export async function reinstateAccount(email: string, password: string): Promise
 }
 
 export { ApiError, API_BASE };
+
+
+// ══════════════════════════════════════════════════════════
+// REPORTS — scheduled client reports (Agency only)
+// ══════════════════════════════════════════════════════════
+
+export interface ReportSchedule {
+	id: string; url: string; recipient_email: string; recipient_name: string;
+	frequency: string; include_ai_fixes: boolean; include_comparison: boolean;
+	branding_company: string; branding_color: string; status: string;
+	last_run_at: string | null; last_score: number | null;
+	next_run_at: string | null; total_sent: number; created_at: string;
+}
+
+export interface ReportHistory {
+	id: string; url: string; recipient_email: string;
+	overall_score: number | null; previous_score: number | null;
+	score_change: number | null; status: string; sent_at: string;
+}
+
+export interface ReportStats {
+	total_schedules: number; active_schedules: number;
+	total_reports_sent: number; reports_this_month: number;
+	avg_client_score: number | null;
+}
+
+export async function getReportSchedules(): Promise<{ schedules: ReportSchedule[]; total: number }> {
+	return request('/api/reports/schedules');
+}
+
+export async function createReportSchedule(data: Record<string, any>): Promise<{ id: string; status: string; next_run_at: string }> {
+	return request('/api/reports/schedules', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateReportSchedule(id: string, data: Record<string, any>): Promise<{ status: string }> {
+	return request('/api/reports/schedules/' + id, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteReportSchedule(id: string): Promise<{ status: string }> {
+	return request('/api/reports/schedules/' + id, { method: 'DELETE' });
+}
+
+export async function sendReportNow(id: string): Promise<{ status: string; message: string }> {
+	return request('/api/reports/schedules/' + id + '/send-now', { method: 'POST' });
+}
+
+export async function getReportHistory(id: string): Promise<{ history: ReportHistory[]; total: number }> {
+	return request('/api/reports/schedules/' + id + '/history');
+}
+
+export async function getReportStats(): Promise<ReportStats> {
+	return request('/api/reports/stats');
+}

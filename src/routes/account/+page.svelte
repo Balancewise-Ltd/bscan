@@ -57,7 +57,7 @@
 	let claimMsg = $state('');
 
 	// ── Dashboard tabs ───────────────────────────────────
-	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding';
+	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding' | 'reports';
 	let activeTab = $state<Tab>('overview');
 
 	// ── Profile state ────────────────────────────────────
@@ -665,6 +665,53 @@
 		deleteLoading = false;
 	}
 
+
+	// ── Report Functions ──────────────────────────────
+	async function loadReports() {
+		reportLoading = true;
+		try {
+			const [sched, stats] = await Promise.all([api.getReportSchedules(), api.getReportStats()]);
+			reportSchedules = sched.schedules;
+			reportStats = stats;
+		} catch (e: any) { reportError = e.message || 'Failed to load'; }
+		reportLoading = false;
+	}
+
+	async function createScheduleReport() {
+		if (!newSched.url || !newSched.recipient_email) { reportError = 'URL and email required'; return; }
+		reportSaving = true; reportError = '';
+		try {
+			await api.createReportSchedule(newSched);
+			reportMsg = 'Schedule created'; showNewSchedule = false;
+			newSched = { url: '', recipient_email: '', recipient_name: '', frequency: 'monthly', branding_company: '', branding_color: '#D4AF37', include_ai_fixes: true, include_comparison: true };
+			await loadReports();
+			setTimeout(() => reportMsg = '', 3000);
+		} catch (e: any) { reportError = e.message || 'Failed'; }
+		reportSaving = false;
+	}
+
+	async function toggleSched(id: string, cur: string) {
+		try { await api.updateReportSchedule(id, { status: cur === 'active' ? 'paused' : 'active' }); await loadReports(); } catch (e: any) { reportError = e.message; }
+	}
+
+	async function deleteSched(id: string) {
+		if (!confirm('Delete this scheduled report?')) return;
+		try { await api.deleteReportSchedule(id); await loadReports(); } catch (e: any) { reportError = e.message; }
+	}
+
+	async function sendReportNow(id: string) {
+		sendingNow = id;
+		try { const r = await api.sendReportNow(id); reportMsg = r.message || 'Queued'; setTimeout(() => reportMsg = '', 5000); } catch (e: any) { reportError = e.message; }
+		sendingNow = null;
+	}
+
+
+
+	function reportInit(node: HTMLElement) {
+		loadReports();
+		return { destroy() {} };
+	}
+
 	const tabs: Array<{ key: Tab; label: string; icon: any; show?: () => boolean }> = [
 		{ key: 'overview', label: 'Overview', icon: LayoutDashboard },
 		{ key: 'profile', label: 'Profile', icon: User },
@@ -672,6 +719,7 @@
 		{ key: 'history', label: 'History', icon: ClipboardList },
 		{ key: 'api-keys', label: 'API Keys', icon: Key, show: () => isPaid },
 		{ key: 'branding', label: 'Branding', icon: Palette, show: () => isAgency },
+		{ key: 'reports', label: 'Reports', icon: Target, show: () => isAgency },
 		{ key: 'security', label: 'Security', icon: ShieldCheck },
 	];
 </script>
@@ -1547,6 +1595,87 @@
 		{/if}
 
 		<!-- ── SECURITY TAB ─────────────────────── -->
+
+		{#if activeTab === 'reports'}
+		<!-- ══════ REPORTS ══════ -->
+		<div class="tab-content animate-fade-up" use:reportInit>
+			<div class="reports-wrap">
+
+				<!-- Stats -->
+				{#if reportStats}
+				<div class="rpt-stats">
+					<div class="rpt-stat"><div class="rpt-stat-val">{reportStats.active_schedules}</div><div class="rpt-stat-lbl">Active</div></div>
+					<div class="rpt-stat"><div class="rpt-stat-val">{reportStats.total_reports_sent}</div><div class="rpt-stat-lbl">Sent</div></div>
+					<div class="rpt-stat"><div class="rpt-stat-val">{reportStats.reports_this_month}</div><div class="rpt-stat-lbl">This Month</div></div>
+					<div class="rpt-stat"><div class="rpt-stat-val">{reportStats.avg_client_score ?? '—'}</div><div class="rpt-stat-lbl">Avg Score</div></div>
+				</div>
+				{/if}
+
+				{#if reportMsg}<div style="padding: 12px 16px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 13px; margin-bottom: 16px;">{reportMsg}</div>{/if}
+				{#if reportError}<div style="padding: 12px 16px; border-radius: var(--radius-sm); background: rgba(239,68,68,0.1); color: var(--clr-danger); font-size: 13px; margin-bottom: 16px;">{reportError} <button style="float:right; background:none; border:none; cursor:pointer; color:inherit;" onclick={() => reportError = ''}>✕</button></div>{/if}
+
+				<!-- Header -->
+				<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+					<h3 class="section-title" style="margin: 0;">Scheduled Reports</h3>
+					<button class="btn btn-gold btn-sm" onclick={() => showNewSchedule = !showNewSchedule}>
+						{showNewSchedule ? 'Cancel' : '+ New Schedule'}
+					</button>
+				</div>
+
+				<!-- New Schedule Form -->
+				{#if showNewSchedule}
+				<div class="card" style="padding: 20px; margin-bottom: 20px; border: 1px solid var(--clr-gold-dim);">
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+						<div><label class="label">Website URL *</label><input class="input" type="url" placeholder="https://client-site.com" bind:value={newSched.url} /></div>
+						<div><label class="label">Recipient Email *</label><input class="input" type="email" placeholder="client@company.com" bind:value={newSched.recipient_email} /></div>
+						<div><label class="label">Recipient Name</label><input class="input" type="text" placeholder="John Smith" bind:value={newSched.recipient_name} /></div>
+						<div><label class="label">Frequency</label><select class="input" bind:value={newSched.frequency}><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option></select></div>
+						<div><label class="label">Brand Name</label><input class="input" type="text" placeholder="Your Company" bind:value={newSched.branding_company} /></div>
+						<div><label class="label">Brand Colour</label><div style="display: flex; gap: 8px; align-items: center;"><input type="color" bind:value={newSched.branding_color} style="width: 40px; height: 36px; border: none; cursor: pointer; border-radius: 6px;" /><input class="input" type="text" bind:value={newSched.branding_color} style="flex: 1; font-family: var(--font-mono);" /></div></div>
+					</div>
+					<div style="display: flex; gap: 16px; margin-top: 16px; align-items: center;">
+						<label style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><input type="checkbox" bind:checked={newSched.include_ai_fixes} /> AI Fixes</label>
+						<label style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><input type="checkbox" bind:checked={newSched.include_comparison} /> Score Comparison</label>
+						<div style="margin-left: auto;"><button class="btn btn-gold" onclick={createScheduleReport} disabled={reportSaving}>{reportSaving ? 'Creating...' : 'Create Schedule'}</button></div>
+					</div>
+				</div>
+				{/if}
+
+				<!-- Schedule Cards -->
+				{#if reportSchedules.length === 0 && !reportLoading}
+					<div style="padding: 48px; text-align: center; background: var(--clr-bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--clr-border);">
+						<div style="font-size: 36px; margin-bottom: 8px;">📊</div>
+						<p style="font-size: 14px; color: var(--clr-text-muted); max-width: 320px; margin: 0 auto;">No scheduled reports yet. Add your first client site to start sending automated reports.</p>
+					</div>
+				{:else}
+					{#each reportSchedules as s}
+					<div class="rpt-card" class:rpt-paused={s.status === 'paused'}>
+						<div class="rpt-card-top">
+							<div style="flex: 1; min-width: 0;">
+								<div class="rpt-url">{s.url.replace('https://', '')}</div>
+								<div class="rpt-recip">{s.recipient_name || s.recipient_email} · {s.frequency}{s.branding_company ? ' · ' + s.branding_company : ''}</div>
+							</div>
+							<div class="rpt-score" style="color: {s.last_score >= 80 ? 'var(--clr-success)' : s.last_score >= 60 ? 'var(--clr-blue)' : s.last_score ? 'var(--clr-warning)' : 'var(--clr-text-muted)'};">{s.last_score ?? '—'}</div>
+						</div>
+						<div class="rpt-card-btm">
+							<div class="rpt-info">
+								<span class="rpt-badge" class:rpt-active={s.status === 'active'} class:rpt-paused-badge={s.status === 'paused'}>{s.status}</span>
+								<span class="text-muted" style="font-size: 11px;">Sent {s.total_sent}x</span>
+								{#if s.next_run_at}<span class="text-muted" style="font-size: 11px;">Next: {new Date(s.next_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>{/if}
+							</div>
+							<div style="display: flex; gap: 6px;">
+								<button class="btn btn-ghost btn-sm" onclick={() => sendReportNow(s.id)} disabled={sendingNow === s.id}>{sendingNow === s.id ? '...' : 'Send Now'}</button>
+								<button class="btn btn-ghost btn-sm" onclick={() => toggleSched(s.id, s.status)}>{s.status === 'active' ? 'Pause' : 'Resume'}</button>
+								<button class="btn btn-ghost btn-sm" style="color: var(--clr-danger);" onclick={() => deleteSched(s.id)}>Delete</button>
+							</div>
+						</div>
+					</div>
+					{/each}
+				{/if}
+			</div>
+		</div>
+		{/if}
+
 		{#if activeTab === 'branding'}
 			<div class="tab-content animate-fade-up">
 				<h3 style="margin-bottom: 20px;">White-Label Branding</h3>
@@ -2073,4 +2202,33 @@
 	/* Email verification banner */
 	.verify-banner { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
 	.verify-banner-inner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+</style>
+
+<style>
+	/* ── Report Scheduling ─────────────────── */
+	.rpt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+	.rpt-stat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 16px; text-align: center; transition: border-color 0.2s; }
+	.rpt-stat:hover { border-color: var(--clr-gold-dim); }
+	.rpt-stat-val { font-size: 28px; font-weight: 800; font-family: var(--font-mono); color: var(--clr-gold); line-height: 1; }
+	.rpt-stat-lbl { font-size: 10px; color: var(--clr-text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 6px; }
+
+	.rpt-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 10px; transition: all 0.2s; }
+	.rpt-card:hover { border-color: var(--clr-gold-dim); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+	.rpt-paused { opacity: 0.55; }
+
+	.rpt-card-top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+	.rpt-url { font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--clr-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.rpt-recip { font-size: 12px; color: var(--clr-text-muted); margin-top: 3px; }
+	.rpt-score { font-size: 22px; font-weight: 800; font-family: var(--font-mono); flex-shrink: 0; }
+
+	.rpt-card-btm { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--clr-border); }
+	.rpt-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+	.rpt-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: var(--radius-full); }
+	.rpt-active { background: rgba(16,185,129,0.12); color: var(--clr-success); }
+	.rpt-paused-badge { background: rgba(245,158,11,0.12); color: var(--clr-warning); }
+
+	@media (max-width: 640px) {
+		.rpt-stats { grid-template-columns: repeat(2, 1fr); }
+		.rpt-card-btm { flex-direction: column; gap: 10px; align-items: flex-start; }
+	}
 </style>
