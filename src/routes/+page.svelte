@@ -316,7 +316,7 @@
 						🕷️ Deep Crawl
 					</a>
 				{:else if $auth.user}
-					<button class="btn btn-outline audit-btn-crawl" style="opacity: 0.6;" onclick={() => { alert('Deep Crawl is available on the Agency plan. Upgrade in your Account dashboard.'); }}>
+					<button class="btn btn-outline audit-btn-crawl" style="opacity: 0.6;" onclick={() => { ui.showPaywall('Agency Feature', 'Deep Crawl is available on the Agency plan — crawl up to 50 pages, render JS apps, and get AI fixes for every issue found.'); }}>
 						🔒 Deep Crawl
 					</button>
 				{:else}
@@ -483,7 +483,7 @@
 													<div class="ai-fix-error">{aiFixes[issue.title].error}</div>
 												{/if}
 											{:else}
-												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { alert('AI Fix Generator requires a Pro or Agency plan. Upgrade in your Account dashboard.'); } }}>
+												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { ui.showPaywall('AI Fix Generator', 'Get AI-generated code fixes for every critical issue — file names, language, and step-by-step implementation. Available on Pro and Agency.'); } }}>
 													🔒 AI Fix
 												</button>
 											{/if}
@@ -529,7 +529,7 @@
 													<div class="ai-fix-error">{aiFixes[issue.title].error}</div>
 												{/if}
 											{:else}
-												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { alert('AI Fix Generator requires a Pro or Agency plan. Upgrade in your Account dashboard.'); } }}>
+												<button class="btn-ai-fix btn-ai-fix-locked" onclick={() => { if (!$auth.user) { window.location.href = '/account'; } else { ui.showPaywall('AI Fix Generator', 'Get AI-generated code fixes for every critical issue — file names, language, and step-by-step implementation. Available on Pro and Agency.'); } }}>
 													🔒 AI Fix
 												</button>
 											{/if}
