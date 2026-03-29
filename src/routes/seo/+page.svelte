@@ -1262,7 +1262,7 @@
 								{/if}
 
 								<div style="text-align: center; padding: 12px 0 4px;">
-									<p class="text-muted" style="font-size: 11px;">Powered by Claude AI with live web search · Domain: {aiVisData.domain}</p>
+									<p class="text-muted" style="font-size: 11px;">Domain: {aiVisData.domain}</p>
 								</div>
 							{/if}
 						{/if}
