@@ -418,7 +418,7 @@
 					/>
 				{/each}
 			</div>
-ttt<p style="text-align: center; font-size: 12px; color: var(--clr-text-muted); margin: 12px 0 4px; font-style: italic; opacity: 0.7;">👆 Click any category above for detailed issues & AI-powered fixes</p>
+			<p style="text-align: center; font-size: 12px; color: var(--clr-text-muted); margin: 12px 0 4px; font-style: italic; opacity: 0.7;">👆 Click any category above for detailed issues & AI-powered fixes</p>
 
 
 			<!-- Intelligence Feature Cards -->
