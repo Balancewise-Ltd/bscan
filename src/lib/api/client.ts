@@ -212,6 +212,10 @@ export async function getCompareHistory(): Promise<any> {
 }
 
 /** SEO history — GET /api/history/seo */
+export async function getAiVisibilityHistory(): Promise<{ items: any[] }> {
+	return request('/api/history/ai-visibility');
+}
+
 export async function getSeoHistory(): Promise<any> {
 	return request('/api/history/seo');
 }

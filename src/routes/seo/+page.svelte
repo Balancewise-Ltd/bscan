@@ -102,8 +102,22 @@
 	async function loadSeoHistory() {
 		histLoading = true;
 		try {
-			const res = await api.getSeoHistory();
-			seoHistory = res.items || res || [];
+			const [res, aiRes] = await Promise.all([
+				api.getSeoHistory(),
+				api.getAiVisibilityHistory().catch(() => ({ items: [] }))
+			]);
+			const aiItems = (aiRes.items || []).map((a: any) => ({
+				type: 'ai',
+				query: a.domain,
+				created_at: a.created_at,
+				visibility_score: a.visibility_score,
+				geo_score: a.geo_score,
+				mentions: a.mentions,
+				queries_tested: a.queries_tested
+			}));
+			const allItems = [...(res.items || res || []), ...aiItems];
+			allItems.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+			seoHistory = allItems;
 		} catch { seoHistory = []; }
 		histLoading = false;
 	}
@@ -1107,8 +1121,12 @@
 						{:else}
 							{#each seoHistory as item}
 								<div class="hist-row">
-									<div class="hist-type">{item.type === 'backlinks' ? 'BL' : 'KW'}</div>
-									<div class="hist-query">{sanitize(item.query || item.keyword || item.domain || '')}</div>
+									<div class="hist-type">{item.type === 'backlinks' ? 'BL' : item.type === 'ai' ? 'AI' : 'KW'}</div>
+									{#if item.type === 'ai'}
+										<div class="hist-query">{item.query} <span style="font-size: 11px; opacity: 0.7;">Score: {item.visibility_score}/100 · GEO: {item.geo_score}%</span></div>
+									{:else}
+										<div class="hist-query">{sanitize(item.query || item.keyword || item.domain || '')}</div>
+									{/if}
 									<div class="hist-date text-muted">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : ''}</div>
 								</div>
 							{/each}
