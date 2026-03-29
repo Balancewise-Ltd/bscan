@@ -112,29 +112,18 @@
 	function blKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchBacklinks(); }
 
 	// ── AI Visibility ────────────────────────────────────
-	let aiVisScanId = $state('');
+	let aiVisUrl = $state('');
 	let aiVisLoading = $state(false);
 	let aiVisData = $state<any>(null);
 	let aiVisError = $state('');
-	let aiVisScans = $state<any[]>([]);
-	let aiVisScansLoading = $state(false);
 
-	async function loadRecentScans() {
-		if (aiVisScans.length > 0) return;
-		aiVisScansLoading = true;
-		try {
-			const res = await api.getScanHistory(undefined, 20);
-			aiVisScans = (res.scans || []).filter((s: any) => s.status === 'complete');
-			if (aiVisScans.length > 0 && !aiVisScanId) aiVisScanId = aiVisScans[0].id;
-		} catch { aiVisScans = []; }
-		aiVisScansLoading = false;
-	}
+
 
 	async function runAiVisibility() {
-		if (!aiVisScanId) { aiVisError = 'Select a scan first.'; return; }
+		if (!aiVisUrl.trim()) { aiVisError = 'Enter a URL first.'; return; }
 		aiVisError = ''; aiVisLoading = true; aiVisData = null;
 		try {
-			aiVisData = await api.checkAiVisibility(aiVisScanId);
+			aiVisData = await api.checkAiVisibility(aiVisUrl.trim());
 		} catch (err: any) {
 			aiVisError = err?.detail || err?.message || 'AI Visibility check failed. Pro/Agency plan required.';
 		}
@@ -310,7 +299,7 @@
 			<button class="seo-tab" class:active={activeTab === 'backlinks'} onclick={() => activeTab = 'backlinks'}><Link2 size={14} strokeWidth={2} /> Backlinks</button>
 			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}><TrendingUp size={14} strokeWidth={2} /> Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
 			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}><ClipboardList size={14} strokeWidth={2} /> History</button>
-			<button class="seo-tab" class:active={activeTab === 'ai-visibility'} onclick={() => { activeTab = 'ai-visibility'; loadRecentScans(); }}><Eye size={14} strokeWidth={2} /> AI Visibility {#if !isPaid}<span class="badge badge-gold" style="margin-left:4px;font-size:9px;">PRO</span>{/if}</button>
+			<button class="seo-tab" class:active={activeTab === 'ai-visibility'} onclick={() => { activeTab = 'ai-visibility'; }}><Eye size={14} strokeWidth={2} /> AI Visibility {#if !isPaid}<span class="badge badge-gold" style="margin-left:4px;font-size:9px;">PRO</span>{/if}</button>
 		</div>
 
 		<!-- ════ KEYWORDS ════ -->
@@ -1131,17 +1120,8 @@
 							</div>
 						{:else}
 							<div class="search-row" style="margin-bottom: 16px;">
-								{#if aiVisScansLoading}
-									<Skeleton lines={1} />
-								{:else}
-									<select bind:value={aiVisScanId} class="input" style="flex: 1;">
-										<option value="">Select a scan...</option>
-										{#each aiVisScans as s}
-											<option value={s.id}>{s.url} — {s.overall_score}/100 ({new Date(s.created_at).toLocaleDateString('en-GB')})</option>
-										{/each}
-									</select>
-								{/if}
-								<button class="btn btn-gold" onclick={runAiVisibility} disabled={aiVisLoading || !aiVisScanId}>
+									<input bind:value={aiVisUrl} class="input" style="flex: 1; font-size: 16px;" type="url" placeholder="Enter website URL (e.g. shopbalancewise.com)" />
+								<button class="btn btn-gold" onclick={runAiVisibility} disabled={aiVisLoading || !aiVisUrl.trim()}>
 									{#if aiVisLoading}Checking…{:else}<Eye size={14} /> Check Visibility{/if}
 								</button>
 							</div>
