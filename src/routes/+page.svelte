@@ -418,11 +418,8 @@
 					/>
 				{/each}
 			</div>
+ttt<p style="text-align: center; font-size: 12px; color: var(--clr-text-muted); margin: 12px 0 4px; font-style: italic; opacity: 0.7;">👆 Click any category above for detailed issues & AI-powered fixes</p>
 
-			<!-- Achievement Badges & Challenge Sharing (shown immediately after scores) -->
-			{#if r.id}
-				<Badges scanId={r.id} overallScore={overallScore} />
-			{/if}
 
 			<!-- Intelligence Feature Cards -->
 			<FeatureCards scanData={r} {isPaid} />
@@ -566,6 +563,11 @@
 			<!-- Enrichment Section (Tech Stack, SSL, WHOIS, etc.) -->
 			{#if r.enrichment}
 				<Enrichment enrichment={r.enrichment} {isPaid} />
+			{/if}
+
+			<!-- Achievement Badges & Challenge Sharing (shown immediately after scores) -->
+			{#if r.id}
+				<Badges scanId={r.id} overallScore={overallScore} />
 			{/if}
 
 			<!-- CTA Banner -->
