@@ -1224,7 +1224,7 @@
 													<div class="rec-detail">{rec.description}</div>
 												</div>
 												<button class="btn-ai-fix" onclick={() => getAiVisFix(rec)} disabled={aiVisFixLoading === rec.title}>
-													{#if aiVisFixLoading === rec.title}Generating…{:else}✨ AI Fix{/if}
+													{#if aiVisFixLoading === rec.title}⏳ Generating...{:else}🤖 AI Fix{/if}
 												</button>
 											</div>
 										{/each}
