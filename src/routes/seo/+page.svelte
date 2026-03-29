@@ -118,6 +118,7 @@
 	let aiVisError = $state('');
 	let aiVisFixLoading = $state('');
 	let aiVisFixData = $state<any>(null);
+	let aiVisFixFor = $state('');
 
 
 
@@ -134,6 +135,7 @@
 
 	async function getAiVisFix(rec: any) {
 		aiVisFixLoading = rec.title;
+		aiVisFixFor = rec.title;
 		aiVisFixData = null;
 		try {
 			aiVisFixData = await api.getAiFix({
@@ -1227,12 +1229,10 @@
 													{#if aiVisFixLoading === rec.title}⏳ Generating...{:else}🤖 AI Fix{/if}
 												</button>
 											</div>
-										{/each}
-
-										{#if aiVisFixData}
+										{#if aiVisFixData && aiVisFixFor === rec.title}
 											<div class="vis-fix-panel">
 												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-													<h4 style="font-size: 14px; font-weight: 700;">✨ AI Fix</h4>
+													<h4 style="font-size: 14px; font-weight: 700;">🤖 AI Fix — {rec.title}</h4>
 													<button class="btn-close" onclick={() => aiVisFixData = null}>✕</button>
 												</div>
 												{#if aiVisFixData.error}
@@ -1258,6 +1258,8 @@
 												{/if}
 											</div>
 										{/if}
+										{/each}
+
 									</div>
 								{/if}
 
