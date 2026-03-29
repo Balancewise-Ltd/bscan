@@ -116,6 +116,8 @@
 	let aiVisLoading = $state(false);
 	let aiVisData = $state<any>(null);
 	let aiVisError = $state('');
+	let aiVisFixLoading = $state('');
+	let aiVisFixData = $state<any>(null);
 
 
 
@@ -128,6 +130,23 @@
 			aiVisError = err?.detail || err?.message || 'AI Visibility check failed. Pro/Agency plan required.';
 		}
 		aiVisLoading = false;
+	}
+
+	async function getAiVisFix(rec: any) {
+		aiVisFixLoading = rec.title;
+		aiVisFixData = null;
+		try {
+			aiVisFixData = await api.getAiFix({
+				issue_title: rec.title,
+				issue_description: rec.description,
+				issue_category: 'accessibility',
+				issue_severity: rec.impact === 'high' ? 'critical' : 'warning',
+				url: aiVisUrl.trim(),
+			});
+		} catch (err: any) {
+			aiVisFixData = { error: err?.message || 'Failed to generate fix' };
+		}
+		aiVisFixLoading = '';
 	}
 
 	function visScoreColor(score: number): string {
@@ -1449,4 +1468,16 @@
 	.vis-snippet { font-size: 12px; color: var(--clr-text-muted); line-height: 1.6; padding: 8px 0 0; }
 	.vis-spinner { width: 32px; height: 32px; border: 3px solid var(--clr-border); border-top-color: var(--clr-gold); border-radius: 50%; animation: vis-spin 0.8s linear infinite; margin: 0 auto; }
 	@keyframes vis-spin { to { transform: rotate(360deg); } }
+
+  /* ── AI Visibility Fix Panel ────────── */
+  .vis-fix-panel { margin-top: 16px; padding: 16px; background: var(--clr-bg-deep); border: 1px solid var(--clr-border); border-radius: var(--radius-md); }
+  .vis-fix-snippet { margin-bottom: 16px; padding: 12px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); }
+  .vis-fix-code { font-family: var(--font-mono); font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow-x: auto; color: var(--clr-text-primary); }
+  .btn-copy { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-full); border: 1px solid var(--clr-border); background: var(--clr-bg-card); color: var(--clr-text-secondary); cursor: pointer; font-family: var(--font-mono); }
+  .btn-copy:hover { border-color: var(--clr-blue); color: var(--clr-blue); }
+  .btn-close { background: none; border: 1px solid var(--clr-border); color: var(--clr-text-muted); width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+  .btn-close:hover { border-color: var(--clr-danger); color: var(--clr-danger); }
+  .btn-ai-fix { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; font-size: 11px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.03em; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: var(--clr-blue); border-radius: var(--radius-full); cursor: pointer; transition: all 0.15s; }
+  .btn-ai-fix:hover { background: rgba(59,130,246,0.15); border-color: var(--clr-blue); }
+  .btn-ai-fix:disabled { opacity: 0.5; cursor: wait; }
 </style>
