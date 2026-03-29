@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale, ExternalLink } from '@lucide/svelte';
+	import { BarChart3, Search, Link2, TrendingUp, ClipboardList, Target, Scale, ExternalLink, Eye, CheckCircle, XCircle, AlertTriangle, Sparkles } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import { sanitize, safeRedirect, safeGetStorage } from '$lib/utils/security';
@@ -110,6 +110,50 @@
 
 	function kwKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchKeywords(); }
 	function blKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchBacklinks(); }
+
+	// ── AI Visibility ────────────────────────────────────
+	let aiVisScanId = $state('');
+	let aiVisLoading = $state(false);
+	let aiVisData = $state<any>(null);
+	let aiVisError = $state('');
+	let aiVisScans = $state<any[]>([]);
+	let aiVisScansLoading = $state(false);
+
+	async function loadRecentScans() {
+		if (aiVisScans.length > 0) return;
+		aiVisScansLoading = true;
+		try {
+			const res = await api.getScanHistory(undefined, 20);
+			aiVisScans = (res.scans || []).filter((s: any) => s.status === 'complete');
+			if (aiVisScans.length > 0 && !aiVisScanId) aiVisScanId = aiVisScans[0].id;
+		} catch { aiVisScans = []; }
+		aiVisScansLoading = false;
+	}
+
+	async function runAiVisibility() {
+		if (!aiVisScanId) { aiVisError = 'Select a scan first.'; return; }
+		aiVisError = ''; aiVisLoading = true; aiVisData = null;
+		try {
+			aiVisData = await api.checkAiVisibility(aiVisScanId);
+		} catch (err: any) {
+			aiVisError = err?.detail || err?.message || 'AI Visibility check failed. Pro/Agency plan required.';
+		}
+		aiVisLoading = false;
+	}
+
+	function visScoreColor(score: number): string {
+		if (score >= 70) return 'var(--clr-success)';
+		if (score >= 40) return 'var(--clr-warning)';
+		return 'var(--clr-danger)';
+	}
+
+	function visScoreGrade(score: number): string {
+		if (score >= 80) return 'Excellent';
+		if (score >= 60) return 'Good';
+		if (score >= 40) return 'Fair';
+		if (score >= 20) return 'Low';
+		return 'Not Visible';
+	}
 
 	// ── GSC State ────────────────────────────────────────
 	let gscConnected = $state(false);
@@ -266,6 +310,7 @@
 			<button class="seo-tab" class:active={activeTab === 'backlinks'} onclick={() => activeTab = 'backlinks'}><Link2 size={14} strokeWidth={2} /> Backlinks</button>
 			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}><TrendingUp size={14} strokeWidth={2} /> Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
 			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}><ClipboardList size={14} strokeWidth={2} /> History</button>
+			<button class="seo-tab" class:active={activeTab === 'ai-visibility'} onclick={() => { activeTab = 'ai-visibility'; loadRecentScans(); }}><Eye size={14} strokeWidth={2} /> AI Visibility {#if !isPaid}<span class="badge badge-gold" style="margin-left:4px;font-size:9px;">PRO</span>{/if}</button>
 		</div>
 
 		<!-- ════ KEYWORDS ════ -->
@@ -1062,6 +1107,137 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- ════ AI VISIBILITY ════ -->
+		{#if activeTab === 'ai-visibility'}
+			<div class="tab-panel animate-fade-up">
+				<div class="card">
+					<div class="card-header">
+						<span><Eye size={14} strokeWidth={2} /></span>
+						<span style="font-weight: 700;">AI Visibility Check</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Pro</span>
+					</div>
+					<div class="card-body">
+						<p class="text-secondary" style="font-size: 13px; margin-bottom: 16px;">
+							Check if your site appears in AI recommendations (ChatGPT, Claude, Perplexity) and get a GEO (Generative Engine Optimisation) readiness score.
+						</p>
+
+						{#if !isPaid}
+							<div class="upgrade-gate">
+								<div style="font-size: 32px; margin-bottom: 12px;">🤖</div>
+								<h3>AI Visibility is a Pro feature</h3>
+								<p class="text-secondary" style="margin: 8px 0 20px; font-size: 13px;">Upgrade to Pro or Agency to check if AI systems recommend your site.</p>
+								<a href="/pricing" class="btn btn-gold">Upgrade to Pro</a>
+							</div>
+						{:else}
+							<div class="search-row" style="margin-bottom: 16px;">
+								{#if aiVisScansLoading}
+									<Skeleton lines={1} />
+								{:else}
+									<select bind:value={aiVisScanId} class="input" style="flex: 1;">
+										<option value="">Select a scan...</option>
+										{#each aiVisScans as s}
+											<option value={s.id}>{s.url} — {s.overall_score}/100 ({new Date(s.created_at).toLocaleDateString('en-GB')})</option>
+										{/each}
+									</select>
+								{/if}
+								<button class="btn btn-gold" onclick={runAiVisibility} disabled={aiVisLoading || !aiVisScanId}>
+									{#if aiVisLoading}Checking…{:else}<Eye size={14} /> Check Visibility{/if}
+								</button>
+							</div>
+
+							{#if aiVisError}
+								<div class="msg-error">{aiVisError}</div>
+							{/if}
+
+							{#if aiVisLoading}
+								<div style="text-align: center; padding: 48px;">
+									<div class="vis-spinner"></div>
+									<p class="text-muted" style="margin-top: 16px; font-size: 13px;">Querying AI systems with web search... this takes 30–60 seconds.</p>
+								</div>
+							{/if}
+
+							{#if aiVisData}
+								<div class="vis-scores-grid">
+									<div class="vis-score-main">
+										<svg viewBox="0 0 120 120" class="vis-ring">
+											<circle cx="60" cy="60" r="52" fill="none" stroke="var(--clr-border)" stroke-width="8" />
+											<circle cx="60" cy="60" r="52" fill="none" stroke={visScoreColor(aiVisData.visibility_score)} stroke-width="8" stroke-dasharray={`${aiVisData.visibility_score * 3.27} 327`} stroke-linecap="round" transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s;" />
+										</svg>
+										<div class="vis-ring-text">
+											<div class="vis-ring-number" style="color: {visScoreColor(aiVisData.visibility_score)}">{aiVisData.visibility_score}</div>
+											<div class="vis-ring-label">{visScoreGrade(aiVisData.visibility_score)}</div>
+										</div>
+									</div>
+									<div class="vis-score-cards">
+										<div class="vis-card">
+											<div class="vis-card-label">GEO Score</div>
+											<div class="vis-card-value" style="color: {visScoreColor(aiVisData.geo_score)}">{aiVisData.geo_score}<span class="vis-card-unit">/100</span></div>
+											<div class="vis-card-sub">Technical readiness</div>
+										</div>
+										<div class="vis-card">
+											<div class="vis-card-label">Mention Score</div>
+											<div class="vis-card-value" style="color: {visScoreColor(aiVisData.mention_score)}">{aiVisData.mention_score}<span class="vis-card-unit">/100</span></div>
+											<div class="vis-card-sub">{aiVisData.mentions}/{aiVisData.queries_tested} queries</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="vis-section">
+									<h4 class="vis-section-title"><Sparkles size={14} /> GEO Readiness Checklist</h4>
+									<div class="vis-checklist">
+										{#each aiVisData.geo_details.passed as item}
+											<div class="vis-check-item vis-check-pass"><CheckCircle size={14} strokeWidth={2.5} /><span>{item}</span></div>
+										{/each}
+										{#each aiVisData.geo_details.gaps as item}
+											<div class="vis-check-item vis-check-fail"><XCircle size={14} strokeWidth={2.5} /><span>{item}</span></div>
+										{/each}
+									</div>
+								</div>
+
+								<div class="vis-section">
+									<h4 class="vis-section-title"><Search size={14} /> Live AI Query Results</h4>
+									{#each aiVisData.ai_results as result}
+										<div class="vis-query-row">
+											<div class="vis-query-header">
+												<span class="vis-query-text">"{result.query}"</span>
+												{#if result.mentioned}
+													<span class="vis-mention-badge vis-mentioned"><CheckCircle size={12} /> Mentioned</span>
+												{:else}
+													<span class="vis-mention-badge vis-not-mentioned"><XCircle size={12} /> Not found</span>
+												{/if}
+											</div>
+											{#if result.snippet && result.snippet !== 'Query failed'}
+												<div class="vis-snippet">{result.snippet.slice(0, 200)}…</div>
+											{/if}
+										</div>
+									{/each}
+								</div>
+
+								{#if aiVisData.recommendations && aiVisData.recommendations.length > 0}
+									<div class="vis-section">
+										<h4 class="vis-section-title"><AlertTriangle size={14} /> Recommendations</h4>
+										{#each aiVisData.recommendations as rec}
+											<div class="rec-item" class:rec-warning={rec.impact === 'high'} class:rec-info={rec.impact === 'medium' || rec.impact === 'low'}>
+												<span class="rec-severity">{rec.impact}</span>
+												<div class="rec-content">
+													<div class="rec-title">{rec.title}</div>
+													<div class="rec-detail">{rec.description}</div>
+												</div>
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								<div style="text-align: center; padding: 12px 0 4px;">
+									<p class="text-muted" style="font-size: 11px;">Powered by Claude AI with live web search · Domain: {aiVisData.domain}</p>
+								</div>
+							{/if}
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -1260,5 +1436,37 @@
 		.gsc-table-row .gsc-td:nth-child(3),
 		.gsc-table-row .gsc-td:nth-child(4) { display: none; }
 		.gsc-site-row { flex-direction: column; align-items: stretch; }
+		.vis-scores-grid { grid-template-columns: 1fr; }
+		.vis-score-cards { grid-template-columns: 1fr 1fr; }
 	}
+
+	/* ── AI Visibility ────────────────── */
+	.vis-scores-grid { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; margin-bottom: 24px; padding: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); }
+	.vis-score-main { position: relative; width: 120px; height: 120px; }
+	.vis-ring { width: 120px; height: 120px; }
+	.vis-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+	.vis-ring-number { font-size: 32px; font-weight: 800; line-height: 1; }
+	.vis-ring-label { font-size: 11px; color: var(--clr-text-muted); font-weight: 600; margin-top: 2px; }
+	.vis-score-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.vis-card { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 16px; text-align: center; }
+	.vis-card-label { font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+	.vis-card-value { font-size: 28px; font-weight: 800; line-height: 1.2; }
+	.vis-card-unit { font-size: 14px; font-weight: 600; opacity: 0.5; }
+	.vis-card-sub { font-size: 11px; color: var(--clr-text-muted); margin-top: 2px; }
+	.vis-section { margin-bottom: 20px; }
+	.vis-section-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--clr-border); }
+	.vis-checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+	.vis-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; }
+	.vis-check-pass { color: var(--clr-success); background: rgba(16,185,129,0.06); }
+	.vis-check-fail { color: var(--clr-danger); background: rgba(239,68,68,0.06); }
+	.vis-query-row { padding: 14px 16px; border-bottom: 1px solid var(--clr-border); }
+	.vis-query-row:last-child { border-bottom: none; }
+	.vis-query-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+	.vis-query-text { font-size: 13px; font-weight: 600; font-style: italic; color: var(--clr-text-secondary); }
+	.vis-mention-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-full); white-space: nowrap; }
+	.vis-mentioned { background: rgba(16,185,129,0.1); color: var(--clr-success); }
+	.vis-not-mentioned { background: rgba(239,68,68,0.08); color: var(--clr-danger); }
+	.vis-snippet { font-size: 12px; color: var(--clr-text-muted); line-height: 1.6; padding: 8px 0 0; }
+	.vis-spinner { width: 32px; height: 32px; border: 3px solid var(--clr-border); border-top-color: var(--clr-gold); border-radius: 50%; animation: vis-spin 0.8s linear infinite; margin: 0 auto; }
+	@keyframes vis-spin { to { transform: rotate(360deg); } }
 </style>

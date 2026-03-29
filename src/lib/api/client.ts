@@ -409,6 +409,17 @@ export async function getAiFixesForScan(scanId: string): Promise<{
 }
 
 // ══════════════════════════════════════════════════════════
+// AI VISIBILITY — matches /api/seo/ai-visibility
+// ══════════════════════════════════════════════════════════
+
+export async function checkAiVisibility(scanId: string): Promise<any> {
+	return request('/api/seo/ai-visibility', {
+		method: 'POST',
+		body: JSON.stringify({ scan_id: scanId }),
+	});
+}
+
+// ══════════════════════════════════════════════════════════
 // DEEP CRAWL & BULK SCAN — matches /api/crawl/*
 // ══════════════════════════════════════════════════════════
 
