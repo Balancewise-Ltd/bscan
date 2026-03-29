@@ -1223,8 +1223,41 @@
 													<div class="rec-title">{rec.title}</div>
 													<div class="rec-detail">{rec.description}</div>
 												</div>
+												<button class="btn-ai-fix" onclick={() => getAiVisFix(rec)} disabled={aiVisFixLoading === rec.title}>
+													{#if aiVisFixLoading === rec.title}Generating…{:else}✨ AI Fix{/if}
+												</button>
 											</div>
 										{/each}
+
+										{#if aiVisFixData}
+											<div class="vis-fix-panel">
+												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+													<h4 style="font-size: 14px; font-weight: 700;">✨ AI Fix</h4>
+													<button class="btn-close" onclick={() => aiVisFixData = null}>✕</button>
+												</div>
+												{#if aiVisFixData.error}
+													<div class="msg-error">{aiVisFixData.error}</div>
+												{:else}
+													<p style="font-size: 13px; margin-bottom: 12px; color: var(--clr-text-secondary);">{aiVisFixData.fix_summary}</p>
+													{#if aiVisFixData.priority}
+														<div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 11px;">
+															<span style="padding: 3px 10px; border-radius: 99px; background: var(--clr-bg-deep); border: 1px solid var(--clr-border);">Priority: {aiVisFixData.priority}</span>
+															<span style="padding: 3px 10px; border-radius: 99px; background: var(--clr-bg-deep); border: 1px solid var(--clr-border);">Effort: {aiVisFixData.effort}</span>
+														</div>
+													{/if}
+													{#each aiVisFixData.code_snippets || [] as snippet}
+														<div class="vis-fix-snippet">
+															<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+																<span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--clr-text-muted); font-family: var(--font-mono);">{snippet.language} — {snippet.filename}</span>
+																<button class="btn-copy" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
+															</div>
+															<pre class="vis-fix-code">{snippet.code}</pre>
+															<p style="font-size: 12px; color: var(--clr-text-secondary); margin-top: 6px;">{snippet.explanation}</p>
+														</div>
+													{/each}
+												{/if}
+											</div>
+										{/if}
 									</div>
 								{/if}
 
