@@ -24,6 +24,7 @@ export interface User {
 	id: string;
 	email: string;
 	name?: string;
+	username?: string;
 	plan: Plan;
 	scans_this_month: number;
 	created_at: string;
@@ -236,6 +237,7 @@ export interface TeamMember {
 	id: string;
 	email: string;
 	name?: string;
+	username?: string;
 	role: 'owner' | 'admin' | 'member';
 	status: 'active' | 'pending';
 	joined_at?: string;
