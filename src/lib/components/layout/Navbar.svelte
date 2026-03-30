@@ -5,21 +5,20 @@
 	import { Search, BellDot, Users, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
 
 	import { onMount } from 'svelte';
-  import * as api from '$lib/api/client';
-  import { auth } from '$lib/stores/auth';
+	import { getNotificationCount } from '$lib/api/client';
 
-  let notifCount = $state(0);
+	let notifCount = $state(0);
 
-  onMount(() => {
-    if ($auth.token) {
-      api.getNotificationCount().then(r => notifCount = r.count).catch(() => {});
-      setInterval(() => {
-        if ($auth.token) api.getNotificationCount().then(r => notifCount = r.count).catch(() => {});
-      }, 30000);
-    }
-  });
+	onMount(() => {
+		if ($auth.token) {
+			getNotificationCount().then(r => notifCount = r.count).catch(() => {});
+			setInterval(() => {
+				if ($auth.token) getNotificationCount().then(r => notifCount = r.count).catch(() => {});
+			}, 30000);
+		}
+	});
 
-  const links = [
+	const links = [
 		{ href: '/', label: 'Scanner', key: '/', icon: Search },
 		{ href: '/leaderboard', label: 'Leaderboard', key: '/leaderboard', icon: Trophy },
 		{ href: '/seo', label: 'SEO', key: '/seo', icon: BarChart3 },
@@ -57,6 +56,11 @@
 		{/each}
 
 		<a href="https://balancewises.io/#contact" class="btn btn-blue btn-sm nav-cta">Get a Quote</a>
+
+		<a href="/notifications" class="nav-link nav-notif" title="Notifications">
+			<BellDot size={15} strokeWidth={2} />
+			{#if notifCount > 0}<span class="notif-badge">{notifCount}</span>{/if}
+		</a>
 
 		<a href="/account" class="nav-link nav-account" title="My Account">
 			{#if $auth.user}
@@ -163,6 +167,9 @@
 		color: var(--clr-blue);
 		background: var(--clr-blue-dim);
 	}
+
+	.nav-notif { position: relative; }
+	.notif-badge { position: absolute; top: 2px; right: 2px; font-size: 9px; font-weight: 800; background: var(--clr-gold); color: #000; padding: 0 4px; border-radius: 99px; min-width: 14px; text-align: center; line-height: 14px; }
 
 	.nav-account {
 		color: var(--clr-gold) !important;
