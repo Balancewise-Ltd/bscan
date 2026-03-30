@@ -25,7 +25,7 @@
   onMount(async () => {
     // Load theme preference
     const saved = localStorage.getItem('wisers-theme');
-    if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
+    if (saved === 'light') { theme = 'light'; if (typeof document !== 'undefined') document.documentElement.setAttribute('data-wisers-theme', 'light'); }
 
     await loadFeed();
     loadUsers();
@@ -43,16 +43,16 @@
       } catch {}
     }
     loading = false;
-    document.body.classList.add('wisers-page');
+    if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
   });
 
   function toggleTheme() {
     theme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-wisers-theme', theme);
+    if (typeof document !== 'undefined') document.documentElement.setAttribute('data-wisers-theme', theme);
     localStorage.setItem('wisers-theme', theme);
   }
 
-  onDestroy(() => { document.body.classList.remove('wisers-page'); });
+  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); });
 
   async function loadFeed() {
     try {
