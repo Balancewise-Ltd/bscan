@@ -99,7 +99,10 @@
     if (s.has(postId)) { s.delete(postId); } else {
       s.add(postId);
       if (!postComments[postId]) {
-        try { postComments = { ...postComments, [postId]: (await api.getPost(postId)).comments || [] }; } catch {}
+        try {
+          const res = await api.getPost(postId);
+          postComments = { ...postComments, [postId]: res.comments || [] };
+        } catch (e) { console.error('Failed to load comments', e); postComments = { ...postComments, [postId]: [] }; }
       }
     }
     expandedComments = s;

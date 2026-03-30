@@ -4,6 +4,8 @@
   import { auth } from '$lib/stores/auth';
 
   let conversations = $state<any[]>([]);
+  let friendsList = $state<any[]>([]);
+  let showNewChat = $state(false);
   let activeConv = $state<number | null>(null);
   let messages = $state<any[]>([]);
   let newMsg = $state('');
@@ -70,6 +72,7 @@
 
   async function loadConversations() {
     try { conversations = (await api.getConversations()).conversations || []; } catch {}
+    try { friendsList = (await api.getFriends()).friends || []; } catch {}
   }
 
   async function loadMessages(convId: number) {
@@ -126,6 +129,20 @@
 
   function initial(name: string) { return (name || '?')[0].toUpperCase(); }
   function getActiveConv() { return conversations.find(c => c.id === activeConv); }
+
+  async function startChatWith(username: string) {
+    try {
+      await api.sendMessage(username, 'Hey! 👋');
+      // Reload conversations
+      conversations = (await api.getConversations()).conversations || [];
+      // Select the new conversation
+      if (conversations.length > 0) {
+        selectedConv = conversations[0];
+      }
+    } catch (e) {
+      console.error('Failed to start chat', e);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -177,6 +194,16 @@
           <div class="m-empty-conv">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <p>No conversations yet</p>
+          {#if friendsList.length > 0}
+            <p style="font-size: 13px; margin-top: 8px;">Start chatting with a friend:</p>
+            {#each friendsList as f}
+              <button class="m-friend-btn" onclick={() => { startChatWith(f.username); showNewChat = false; }}>
+                <span class="m-friend-avatar">{(f.display_name || f.username || '?')[0].toUpperCase()}</span>
+                <span>{f.display_name || f.username}</span>
+              </button>
+            {/each}
+          {/if}
+          <p style="display:none"></p>
             <p class="m-empty-sub">Message a friend to get started</p>
           </div>
         {:else}
@@ -343,4 +370,7 @@
     .m-chat { display: none; }
     .m-convos:has(+ .m-chat .m-chat-header) { display: none; }
   }
+  .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--wt, #e8e6e3); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 13px; }
+  .m-friend-btn:hover { background: rgba(245,166,35,0.1); border-color: rgba(245,166,35,0.3); }
+  .m-friend-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e8941a); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; flex-shrink: 0; }
 </style>
