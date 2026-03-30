@@ -141,8 +141,7 @@
 					<a href="/wisers/{conv.other_username}" class="chat-name">@{conv.other_username}</a>
 					<span class="chat-realname">{conv.other_display_name || conv.other_name}</span>
 				{/if}
-			</div>
-
+			
 			<div class="msg-list" id="msg-list">
 				{#each messages as msg (msg.id)}
 					<div class="msg" class:msg-mine={msg.sender_id === $auth.user?.id}>
