@@ -90,7 +90,7 @@
     </a>
 
     <!-- Get a Quote -->
-    <a href="https://balancewises.io/#contact" class="btn btn-blue btn-sm nav-cta">Get a Quote</a>
+    
 
     <!-- Account -->
     <a href="/account" class="nav-link nav-account" title="My Account">
@@ -209,7 +209,7 @@
     color: var(--clr-gold); align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700;
   }
-  .nav-cta { margin-left: 4px; }
+  
 
   .mobile-toggle {
     display: none; background: none; border: 1px solid var(--clr-border);

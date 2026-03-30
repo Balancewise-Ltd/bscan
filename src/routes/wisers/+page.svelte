@@ -264,7 +264,7 @@
                 <span class="w-post-handle">@{post.username}</span>
                 <span class="w-post-dot">·</span>
                 <span class="w-post-time">{timeAgo(post.created_at)}</span>
-                {#if post.plan !== 'free'}<span class="w-plan-badge">{post.plan}</span>{/if}
+                <span class="w-plan-dot" class:dot-pro={post.plan === 'pro'} class:dot-agency={post.plan === 'agency'}></span>
               </div>
               <div class="w-post-body">{post.content}</div>
               {#if post.post_type === 'scan_share' && post.scan_url}
@@ -321,7 +321,7 @@
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
                 <div class="w-user-foot">
-                  <span class="w-plan-badge">{u.plan}</span>
+                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}</span>
                   {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
                 </div>
               </div>
@@ -336,7 +336,7 @@
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
                 <div class="w-user-foot">
-                  <span class="w-plan-badge">{u.plan}</span>
+                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}</span>
                   {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
                 </div>
               </div>
@@ -494,6 +494,9 @@
   .w-post-handle { font-size: 13px; color: var(--wt2); }
   .w-post-dot { color: var(--wt3); }
   .w-post-time { font-size: 12px; color: var(--wt3); }
+  .w-plan-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
+  .dot-pro { background: #3b82f6; }
+  .dot-agency { background: #f5a623; }
   .w-plan-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--wgold); }
   .w-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .w-scan-card { margin-top: 10px; padding: 12px; border-radius: 8px; background: var(--wc); border: 1px solid var(--wbd); display: flex; justify-content: space-between; align-items: center; }
