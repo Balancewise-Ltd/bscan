@@ -31,13 +31,13 @@
   }
 
   function icon(type: string) {
-    if (type === 'friend_request') return '\U0001f44b';
-    if (type === 'friend_accepted') return '\U0001f91d';
-    if (type === 'like') return '\u2764\ufe0f';
-    if (type === 'comment') return '\U0001f4ac';
-    if (type === 'message') return '\u2709\ufe0f';
-    if (type === 'support') return '\U0001f6e0\ufe0f';
-    return '\U0001f514';
+    if (type === 'friend_request') return '👋';
+    if (type === 'friend_accepted') return '🤝';
+    if (type === 'like') return '❤️';
+    if (type === 'comment') return '💬';
+    if (type === 'message') return '✉️';
+    if (type === 'support') return '🛠️';
+    return '🔔';
   }
 </script>
 
