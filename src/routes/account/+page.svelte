@@ -17,6 +17,8 @@
 	let authName = $state('');
 	let authError = $state('');
 	let authPassword2 = $state('');
+	let agreedTerms = $state(false);
+	let agreedMarketing = $state(false);
 	let authLoading = $state(false);
 	let showReinstate = $state(false);
 	let reinstateLoading = $state(false);
@@ -826,7 +828,20 @@
 
 		{#if authError}<div class="msg-error">{authError}</div>{/if}
 
-		<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={authLoading} onclick={handleAuth}>
+		{#if isRegister}
+		<div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+			<label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 12px; color: var(--clr-text-secondary); line-height: 1.4;">
+				<input type="checkbox" bind:checked={agreedTerms} style="margin-top: 2px; accent-color: var(--clr-gold);" />
+				<span>I agree to the <a href="https://balancewises.io/terms" target="_blank" style="color: var(--clr-gold); text-decoration: underline;">Terms & Conditions</a> and <a href="https://balancewises.io/privacy" target="_blank" style="color: var(--clr-gold); text-decoration: underline;">Privacy Policy</a> *</span>
+			</label>
+			<label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 12px; color: var(--clr-text-secondary); line-height: 1.4;">
+				<input type="checkbox" bind:checked={agreedMarketing} style="margin-top: 2px; accent-color: var(--clr-gold);" />
+				<span>I'd like to receive product updates, tips, and offers from Balancewise Technologies</span>
+			</label>
+		</div>
+		{/if}
+
+		<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={authLoading || (isRegister && !agreedTerms)} onclick={handleAuth}>
 			{#if authLoading}<span class="spinner spinner-sm"></span>{/if}
 			{isRegister ? 'Create Account' : 'Sign In'}
 		</button>
