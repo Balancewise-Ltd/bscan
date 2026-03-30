@@ -737,3 +737,31 @@ export async function getFriendshipStatus(username: string): Promise<{ status: s
 	return request(`/api/community/friendship-status/\${username}`);
 }
 
+// ── Community Feed ──
+export async function getCommunityFeed(page: number = 1): Promise<any> {
+	return request(`/api/community/feed?page=${page}`);
+}
+export async function getFriendsFeed(page: number = 1): Promise<any> {
+	return request(`/api/community/feed/friends?page=${page}`);
+}
+export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0): Promise<any> {
+	return request('/api/community/posts', { method: 'POST', body: JSON.stringify({ content, post_type: postType, scan_url: scanUrl, scan_score: scanScore }) });
+}
+export async function deletePost(id: number): Promise<any> {
+	return request(`/api/community/posts/${id}`, { method: 'DELETE' });
+}
+export async function getPost(id: number): Promise<any> {
+	return request(`/api/community/posts/${id}`);
+}
+export async function likePost(id: number): Promise<any> {
+	return request(`/api/community/posts/${id}/like`, { method: 'POST' });
+}
+export async function addComment(postId: number, content: string): Promise<any> {
+	return request(`/api/community/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+}
+export async function deleteComment(id: number): Promise<any> {
+	return request(`/api/community/comments/${id}`, { method: 'DELETE' });
+}
+export async function getUserPosts(username: string, page: number = 1): Promise<any> {
+	return request(`/api/community/user/${username}/posts?page=${page}`);
+}
