@@ -2,9 +2,24 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
-	import { Search, Users, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
+	import { Search, BellDot, Users, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
 
-	const links = [
+	import { onMount } from 'svelte';
+  import * as api from '$lib/api/client';
+  import { auth } from '$lib/stores/auth';
+
+  let notifCount = $state(0);
+
+  onMount(() => {
+    if ($auth.token) {
+      api.getNotificationCount().then(r => notifCount = r.count).catch(() => {});
+      setInterval(() => {
+        if ($auth.token) api.getNotificationCount().then(r => notifCount = r.count).catch(() => {});
+      }, 30000);
+    }
+  });
+
+  const links = [
 		{ href: '/', label: 'Scanner', key: '/', icon: Search },
 		{ href: '/leaderboard', label: 'Leaderboard', key: '/leaderboard', icon: Trophy },
 		{ href: '/seo', label: 'SEO', key: '/seo', icon: BarChart3 },

@@ -779,3 +779,17 @@ export async function sendMessage(username: string, content: string): Promise<an
 export async function getUnreadCount(): Promise<{ unread: number }> {
 	return request('/api/community/unread-count');
 }
+
+// ── Notifications ──
+export async function getNotifications(): Promise<any> {
+  return request('/api/community/notifications');
+}
+export async function getNotificationCount(): Promise<{ count: number }> {
+  return request('/api/community/notifications/unread-count');
+}
+export async function markAllNotificationsRead(): Promise<any> {
+  return request('/api/community/notifications/read-all', { method: 'POST' });
+}
+export async function markNotificationRead(id: number): Promise<any> {
+  return request(`/api/community/notifications/${id}/read`, { method: 'POST' });
+}
