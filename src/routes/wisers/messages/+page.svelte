@@ -12,17 +12,75 @@
   let pollInterval: any;
   let newConvUser = $state('');
   let showNewConv = $state(false);
+  let ws: WebSocket | null = null;
+  let wsConnected = $state(false);
 
   onMount(async () => {
     await loadConversations();
     loading = false;
+    connectWebSocket();
+    // Polling fallback (less frequent when WS connected)
     pollInterval = setInterval(async () => {
       await loadConversations();
-      if (activeConv) await loadMessages(activeConv);
-    }, 5000);
+      if (activeConv && !wsConnected) await loadMessages(activeConv);
+    }, wsConnected ? 30000 : 5000);
   });
 
-  onDestroy(() => { if (pollInterval) clearInterval(pollInterval); });
+  onDestroy(() => {
+    if (pollInterval) clearInterval(pollInterval);
+    if (ws) { ws.close(); ws = null; }
+  });
+
+  function connectWebSocket() {
+    if (!$auth.token) return;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = 'api-bscan.balancewises.io';
+    const url = `${protocol}//${host}/api/community/ws?token=${$auth.token}`;
+
+    try {
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        wsConnected = true;
+        // Send ping every 25s to keep alive
+        const ping = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'ping' }));
+          } else {
+            clearInterval(ping);
+          }
+        }, 25000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.action === 'new_message') {
+            // Refresh conversations
+            loadConversations();
+            // If we're in the right conversation, load messages
+            if (activeConv === data.conversation_id) {
+              loadMessages(activeConv);
+              setTimeout(() => {
+                const el = document.getElementById('msg-list');
+                if (el) el.scrollTop = el.scrollHeight;
+              }, 200);
+            }
+          }
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        wsConnected = false;
+        // Reconnect after 3 seconds
+        setTimeout(() => connectWebSocket(), 3000);
+      };
+
+      ws.onerror = () => { wsConnected = false; };
+    } catch {
+      wsConnected = false;
+    }
+  }
 
   async function loadConversations() {
     try { conversations = (await api.getConversations()).conversations || []; } catch {}
@@ -92,7 +150,10 @@
   <div class="dm-sidebar">
     <div class="dm-sidebar-header">
       <h2>Messages</h2>
-      <button class="btn-new" onclick={() => showNewConv = !showNewConv}>+</button>
+      <div class="header-right">
+        {#if wsConnected}<span class="ws-dot" title="Real-time connected"></span>{/if}
+        <button class="btn-new" onclick={() => showNewConv = !showNewConv}>+</button>
+      </div>
     </div>
     {#if showNewConv}
       <div class="new-conv">
@@ -156,6 +217,8 @@
   .dm-sidebar { width: 300px; border-right: 1px solid var(--clr-border); background: var(--clr-bg-card, #1a1a2e); overflow-y: auto; flex-shrink: 0; }
   .dm-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--clr-border); }
   .dm-sidebar-header h2 { font-size: 16px; font-weight: 700; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; }
   .btn-new { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--clr-gold, #f5a623); color: #000; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .new-conv { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--clr-border); }
   .new-conv input { flex: 1; padding: 6px 10px; border: 1px solid var(--clr-border); border-radius: 6px; background: var(--clr-bg-deep); color: var(--clr-text); font-size: 12px; outline: none; }
