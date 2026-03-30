@@ -9,6 +9,8 @@
   let newMsg = $state('');
   let loading = $state(true);
   let sending = $state(false);
+  let showEmoji = $state(false);
+  const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','🛠️','💻','🌐','🤖','🧠','💭','✨','🙏','🤝','👋','✌️','🤞'];
   let pollInterval: any;
   let newConvUser = $state('');
   let showNewConv = $state(false);
@@ -236,7 +238,17 @@
 
         <!-- Input -->
         <div class="m-input-bar">
-          <input type="text" class="m-input" bind:value={newMsg} placeholder="Type a message..."
+          <div class="m-emoji-wrap">
+          <button class="m-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
+          {#if showEmoji}
+            <div class="m-emoji-picker">
+              {#each emojis as e}
+                <button class="m-emoji-item" onclick={() => { newMsg += e; showEmoji = false; }} type="button">{e}</button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        <input type="text" class="m-input" bind:value={newMsg} placeholder="Type a message..."
             onkeydown={(e) => e.key === 'Enter' && send()} />
           <button class="m-send" onclick={send} disabled={sending || !newMsg.trim()}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -313,6 +325,12 @@
   .m-msg.mine .m-msg-time { text-align: right; }
 
   .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); }
+  .m-emoji-wrap { position: relative; }
+  .m-emoji-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .m-emoji-btn:hover { background: var(--mhover); }
+  .m-emoji-picker { position: absolute; bottom: 44px; left: 0; background: var(--mcard); border: 1px solid var(--mbd); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+  .m-emoji-item { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 6px; text-align: center; }
+  .m-emoji-item:hover { background: var(--mhover); }
   .m-input { flex: 1; padding: 12px 18px; border-radius: 24px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 14px; outline: none; font-family: inherit; }
   .m-input:focus { border-color: var(--mgold); }
   .m-input::placeholder { color: var(--mt3); }

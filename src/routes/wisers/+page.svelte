@@ -16,6 +16,8 @@
   let loading = $state(true);
   let newPost = $state('');
   let posting = $state(false);
+  let showEmoji = $state(false);
+  const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','📈','📉','🛠️','💻','🌐','🔍','📱','🤖','🧠','💭','📌','📎','✨','🙏','🤝','👋','✌️','🤞','💀','🤡','👑','🦾'];
   let commentInputs = $state<Record<number, string>>({});
   let expandedComments = $state<Set<number>>(new Set());
   let postComments = $state<Record<number, any[]>>({});
@@ -252,7 +254,17 @@
                 <button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>Everyone</button>
                 <button class:active={feedType === 'friends'} onclick={() => { feedType = 'friends'; loadFeed(); }}>Friends</button>
               </div>
-              <span class="w-char">{newPost.length}/2000</span>
+              <div class="w-emoji-wrap">
+              <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
+              {#if showEmoji}
+                <div class="w-emoji-picker">
+                  {#each emojis as e}
+                    <button class="w-emoji-item" onclick={() => { newPost += e; showEmoji = false; }} type="button">{e}</button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+            <span class="w-char">{newPost.length}/2000</span>
               <button class="w-post-btn" onclick={submitPost} disabled={posting || !newPost.trim()}>{posting ? 'Posting...' : 'Post'}</button>
             </div>
           </div>
@@ -504,6 +516,12 @@
   .w-feed-tabs { display: flex; gap: 2px; }
   .w-feed-tabs button { padding: 5px 12px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; }
   .w-feed-tabs button.active { background: var(--wgold); color: #000; border-color: var(--wgold); }
+  .w-emoji-wrap { position: relative; }
+  .w-emoji-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; }
+  .w-emoji-btn:hover { background: var(--whover); }
+  .w-emoji-picker { position: absolute; bottom: 40px; left: 0; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+  .w-emoji-item { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 6px; text-align: center; }
+  .w-emoji-item:hover { background: var(--whover); }
   .w-char { font-size: 11px; color: var(--wt3); }
   .w-post-btn { padding: 7px 20px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
   .w-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
