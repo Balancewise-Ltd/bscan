@@ -321,7 +321,7 @@
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
                 <div class="w-user-foot">
-                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}</span>
+                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}></span>
                   {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
                 </div>
               </div>
@@ -336,7 +336,7 @@
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
                 <div class="w-user-foot">
-                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}</span>
+                  <span class="w-plan-dot" class:dot-pro={u.plan === 'pro'} class:dot-agency={u.plan === 'agency'}></span>
                   {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
                 </div>
               </div>
