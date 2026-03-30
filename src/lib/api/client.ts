@@ -765,3 +765,17 @@ export async function deleteComment(id: number): Promise<any> {
 export async function getUserPosts(username: string, page: number = 1): Promise<any> {
 	return request(`/api/community/user/${username}/posts?page=${page}`);
 }
+
+// ── Direct Messages ──
+export async function getConversations(): Promise<any> {
+	return request('/api/community/conversations');
+}
+export async function getMessages(convId: number): Promise<any> {
+	return request(`/api/community/conversations/${convId}/messages`);
+}
+export async function sendMessage(username: string, content: string): Promise<any> {
+	return request(`/api/community/messages/${username}`, { method: 'POST', body: JSON.stringify({ content }) });
+}
+export async function getUnreadCount(): Promise<{ unread: number }> {
+	return request('/api/community/unread-count');
+}

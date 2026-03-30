@@ -2,14 +2,15 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
-	import { Search, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
+	import { Search, Users, Trophy, BarChart3, Scale, Bell, User, Wrench, MessageCircle } from '@lucide/svelte';
 
 	const links = [
 		{ href: '/', label: 'Scanner', key: '/', icon: Search },
 		{ href: '/leaderboard', label: 'Leaderboard', key: '/leaderboard', icon: Trophy },
 		{ href: '/seo', label: 'SEO', key: '/seo', icon: BarChart3 },
 		{ href: '/compare', label: 'Compare', key: '/compare', icon: Scale },
-		{ href: '/monitoring', label: 'Monitor', key: '/monitoring', icon: Bell }
+		{ href: '/monitoring', label: 'Monitor', key: '/monitoring', icon: Bell },
+		{ href: '/wisers', label: 'Wisers', key: '/wisers', icon: Users }
 	];
 
 	const mobileLinks = [
@@ -18,7 +19,8 @@
 		{ href: '/seo', label: 'SEO Dashboard', icon: BarChart3 },
 		{ href: '/compare', label: 'Compare', icon: Scale },
 		{ href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-		{ href: '/', label: 'Scanner', icon: Search }
+		{ href: '/', label: 'Scanner', icon: Search },
+		{ href: '/wisers', label: 'Wisers', icon: Users }
 	];
 </script>
 

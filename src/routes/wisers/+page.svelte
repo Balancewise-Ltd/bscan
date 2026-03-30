@@ -156,6 +156,7 @@
 	<div class="wisers-header">
 		<h1>Wisers</h1>
 		<p class="text-secondary">The BSCAN community</p>
+		<a href="/wisers/messages" class="dm-link">Messages</a>
 	</div>
 
 	<!-- Tabs -->
@@ -320,6 +321,8 @@
 	.wisers-header { text-align: center; margin-bottom: 24px; }
 	.wisers-header h1 { font-size: 28px; font-weight: 800; color: var(--clr-gold, #f5a623); }
 	.wisers-header p { font-size: 13px; margin-top: 4px; }
+	.dm-link { display: inline-block; margin-top: 10px; padding: 8px 20px; border-radius: 8px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); color: var(--clr-gold); font-size: 12px; font-weight: 700; text-decoration: none; }
+	.dm-link:hover { border-color: var(--clr-gold); }
 	.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--clr-border, #2a2a3e); padding-bottom: 8px; }
 	.tabs button { padding: 8px 16px; border: none; background: none; color: var(--clr-text-muted, #888); font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; }
 	.tabs button.active { color: var(--clr-gold, #f5a623); border-bottom: 2px solid var(--clr-gold); }

@@ -98,6 +98,7 @@
 			{#if $auth.token && status !== 'self'}
 				<div class="profile-action">
 					{#if status === 'friends'}
+						<a href="/wisers/messages" class="btn-msg">Message</a>
 						<button class="btn-friends" onclick={removeFriend}>Friends ✓</button>
 					{:else if status === 'request_sent'}
 						<button class="btn-pending" disabled>Request Sent</button>
@@ -147,6 +148,8 @@
 	.stat-label { font-size: 11px; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 	.profile-action { text-align: center; margin-top: 20px; }
 	.btn-add, .btn-accept-profile { padding: 10px 28px; border-radius: 10px; border: none; background: var(--clr-gold); color: #000; font-weight: 700; cursor: pointer; font-size: 13px; }
+	.btn-msg { display: inline-block; padding: 10px 28px; border-radius: 10px; border: 1px solid var(--clr-border); background: transparent; color: var(--clr-text); font-weight: 600; font-size: 13px; text-decoration: none; margin-right: 8px; }
+	.btn-msg:hover { border-color: var(--clr-gold); color: var(--clr-gold); }
 	.btn-friends { padding: 10px 28px; border-radius: 10px; border: 1px solid var(--clr-success); background: transparent; color: var(--clr-success); font-weight: 700; cursor: pointer; font-size: 13px; }
 	.btn-pending { padding: 10px 28px; border-radius: 10px; border: 1px solid var(--clr-border); background: transparent; color: var(--clr-text-muted); font-weight: 600; font-size: 13px; }
 	.action-msg { display: block; margin-top: 8px; font-size: 12px; color: var(--clr-success); }
