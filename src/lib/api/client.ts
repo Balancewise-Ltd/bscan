@@ -814,3 +814,11 @@ export async function sendSupportMessage(content: string): Promise<any> {
 export async function reportContent(type: string, id: number, reason: string): Promise<any> {
   return request('/api/community/report', { method: 'POST', body: JSON.stringify({ type, id, reason }) });
 }
+
+// ── Rockets & Reposts ──
+export async function toggleRocket(postId: number): Promise<any> {
+  return request('/api/community/toggle-rocket/' + postId, { method: 'POST' });
+}
+export async function toggleRepost(postId: number): Promise<any> {
+  return request('/api/community/repost/' + postId, { method: 'POST' });
+}

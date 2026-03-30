@@ -149,6 +149,47 @@
     return Math.floor(s/86400) + 'd';
   }
 
+  function launchRockets() {
+    if (typeof document === 'undefined') return;
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden;';
+    document.body.appendChild(container);
+    const rockets = ['🚀','🚀','🚀','🚀','🚀','🚀','🚀','🚀','🚀','🚀','🚀','🚀','✨','⭐','💫','🌟'];
+    for (let i = 0; i < 20; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        const x = Math.random() * 100;
+        const size = 20 + Math.random() * 24;
+        const dur = 1.2 + Math.random() * 1.5;
+        const rot = -30 + Math.random() * 60;
+        el.textContent = rockets[Math.floor(Math.random() * rockets.length)];
+        el.style.cssText = 'position:absolute;bottom:-60px;left:' + x + '%;font-size:' + size + 'px;animation:rocketUp ' + dur + 's ease-out forwards;transform:rotate(' + rot + 'deg);';
+        container.appendChild(el);
+      }, i * 80);
+    }
+    setTimeout(() => container.remove(), 4000);
+  }
+
+  async function handleRocket(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.toggleRocket(post.id);
+      post.rockets_count = (post.rockets_count || 0) + (res.rocketed ? 1 : -1);
+      post.my_rocket = res.rocketed;
+      if (res.rocketed) launchRockets();
+    } catch {}
+  }
+
+  async function handleRepost(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.toggleRepost(post.id);
+      post.reposts_count = (post.reposts_count || 0) + (res.reposted ? 1 : -1);
+      post.my_repost = res.reposted;
+      if (res.reposted) launchRockets();
+    } catch {}
+  }
+
   function initial(name: string) { return (name || '?')[0].toUpperCase(); }
 
   function avatarSrc(url: string | null | undefined): string | null {
@@ -607,4 +648,16 @@
     .w-topbar-inner { padding: 0 8px; }
     .w-search-wrap { max-width: 200px; }
   }
+
+  @keyframes rocketUp {
+    0% { transform: translateY(0) rotate(var(--rot, -20deg)); opacity: 1; }
+    60% { opacity: 1; }
+    100% { transform: translateY(-110vh) rotate(var(--rot, -20deg)); opacity: 0; }
+  }
+  .w-reactions { display: flex; gap: 4px; margin-top: 8px; align-items: center; }
+  .w-react-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 16px; border: none; background: transparent; color: var(--wt2); font-size: 13px; cursor: pointer; font-family: inherit; }
+  .w-react-btn:hover { background: var(--whover); }
+  .w-react-btn.active { color: var(--wgold); }
+  .w-react-btn.active-rocket { color: #f97316; }
+  .w-react-btn.active-repost { color: #10b981; }
 </style>
