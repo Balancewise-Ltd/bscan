@@ -57,4 +57,7 @@
 	.skip-link:focus {
 		top: 8px;
 	}
+
+	/* Hide third-party chat widget on Wisers pages */
+	:global(body.wisers-page #crisp-chatbox, body.wisers-page .tawk-min-container, body.wisers-page [class*="chat-widget"], body.wisers-page iframe[title*="chat"]) { display: none !important; }
 </style>

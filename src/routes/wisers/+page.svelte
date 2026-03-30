@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
 
@@ -43,6 +43,7 @@
       } catch {}
     }
     loading = false;
+    document.body.classList.add('wisers-page');
   });
 
   function toggleTheme() {
@@ -50,6 +51,8 @@
     document.documentElement.setAttribute('data-wisers-theme', theme);
     localStorage.setItem('wisers-theme', theme);
   }
+
+  onDestroy(() => { document.body.classList.remove('wisers-page'); });
 
   async function loadFeed() {
     try {
@@ -150,6 +153,12 @@
 <svelte:head>
   <title>Wisers — BSCAN Community</title>
   <meta name="description" content="Join the BSCAN Wisers community. Connect with web professionals, share insights, and grow together." />
+  <meta property="og:title" content="Wisers — BSCAN Community" />
+  <meta property="og:description" content="Connect with web professionals, share insights, and grow your web presence together." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://bscan.balancewises.io/wisers" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="robots" content="index, follow" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </svelte:head>
 
@@ -311,6 +320,9 @@
 
       <!-- EXPLORE VIEW -->
       {:else if activeView === 'explore'}
+        {#if !$auth.token}
+          <div class="w-join-cta"><h2>Sign in to explore</h2><p>Discover and connect with web professionals.</p><a href="/account" class="w-join-btn">Join Wisers</a></div>
+        {:else}
         <h2 class="w-section-title">Discover Wisers</h2>
         {#if searchResults.length > 0}
           <div class="w-user-grid">
@@ -345,6 +357,8 @@
         {/if}
 
       <!-- FRIENDS VIEW -->
+      {/if}
+
       {:else if activeView === 'friends'}
         {#if incoming.length > 0}
           <h2 class="w-section-title">Friend Requests ({incoming.length})</h2>
@@ -415,7 +429,7 @@
         </div>
       {/if}
       <div class="w-widget w-footer">
-        <a href="/">BSCAN Scanner</a> · <a href="/seo">SEO</a> · <a href="/compare">Compare</a>
+        <a href="/">Scanner</a> · <a href="/seo">SEO</a> · <a href="/compare">Compare</a> · <a href="/support">Support</a>
         <div class="w-copyright">Balancewise Technologies &copy; 2026</div>
       </div>
     </aside>
