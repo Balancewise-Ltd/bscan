@@ -11,6 +11,11 @@
   let error = $state('');
   let actionMsg = $state('');
   let activeTab = $state('posts');
+  let editing = $state(false);
+  let editBio = $state('');
+  let editCompany = $state('');
+  let editWebsite = $state('');
+  let saving = $state(false);
 
   $effect(() => {
     const username = $page.params.username;
@@ -56,6 +61,27 @@
     const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
     if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm';
     if (s < 86400) return Math.floor(s/3600) + 'h'; return Math.floor(s/86400) + 'd';
+  }
+
+  async function saveProfile() {
+    saving = true;
+    try {
+      await api.updateProfile({ bio: editBio, company: editCompany, website: editWebsite });
+      profile.bio = editBio;
+      profile.company = editCompany;
+      profile.website = editWebsite;
+      editing = false;
+      actionMsg = 'Profile updated';
+      setTimeout(() => actionMsg = '', 3000);
+    } catch (e: any) { actionMsg = 'Failed to save'; }
+    saving = false;
+  }
+
+  function startEdit() {
+    editBio = profile.bio || '';
+    editCompany = profile.company || '';
+    editWebsite = profile.website || '';
+    editing = true;
   }
 
   function planLabel(p: string) {
@@ -112,7 +138,12 @@
         </div>
 
         <div class="pr-header-right">
-          {#if $auth.token && status !== 'self'}
+          {#if $auth.token && status === 'self'}
+            <div class="pr-actions">
+              <button class="pr-btn pr-btn-outline" onclick={startEdit}>Edit profile</button>
+              <a href="/account" class="pr-btn pr-btn-outline">Settings</a>
+            </div>
+          {:else if $auth.token}
             <div class="pr-actions">
               {#if status === 'friends'}
                 <a href="/wisers/messages" class="pr-btn pr-btn-outline">Message</a>
@@ -135,7 +166,20 @@
           <span class="pr-verify" style="fill: {planColor(profile.plan)};">{@html verifySvg}</span>
         </div>
         <div class="pr-handle">@{profile.username}</div>
-        {#if profile.bio}
+        {#if editing}
+          <div class="pr-edit-form">
+            <label class="pr-edit-label">Bio</label>
+            <textarea class="pr-edit-input" bind:value={editBio} rows="3" maxlength="300" placeholder="Tell people about yourself..."></textarea>
+            <label class="pr-edit-label">Company</label>
+            <input class="pr-edit-input" type="text" bind:value={editCompany} placeholder="Where you work" />
+            <label class="pr-edit-label">Website</label>
+            <input class="pr-edit-input" type="url" bind:value={editWebsite} placeholder="https://yoursite.com" />
+            <div class="pr-edit-actions">
+              <button class="pr-btn pr-btn-primary" onclick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+              <button class="pr-btn pr-btn-outline" onclick={() => editing = false}>Cancel</button>
+            </div>
+          </div>
+        {:else if profile.bio}
           <p class="pr-bio">{profile.bio}</p>
         {/if}
         <div class="pr-meta-row">
@@ -258,6 +302,11 @@
   .pr-meta-item { display: inline-flex; align-items: center; gap: 4px; }
   .pr-meta-link { color: var(--gold); text-decoration: none; }
   .pr-meta-link:hover { text-decoration: underline; }
+  .pr-edit-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .pr-edit-label { font-size: 11px; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .pr-edit-input { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--bd); background: var(--bg); color: var(--t1); font-size: 14px; font-family: inherit; outline: none; resize: vertical; }
+  .pr-edit-input:focus { border-color: var(--gold); }
+  .pr-edit-actions { display: flex; gap: 8px; margin-top: 4px; }
   .pr-toast { margin-top: 8px; font-size: 12px; color: #10b981; }
 
   /* Stats */
