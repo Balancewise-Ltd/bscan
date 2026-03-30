@@ -1,385 +1,559 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import * as api from '$lib/api/client';
-	import { auth } from '$lib/stores/auth';
+  import { onMount } from 'svelte';
+  import * as api from '$lib/api/client';
+  import { auth } from '$lib/stores/auth';
 
-	let activeTab = $state<'feed' | 'friends' | 'requests'>('feed');
-	let friends = $state<any[]>([]);
-	let incoming = $state<any[]>([]);
-	let outgoing = $state<any[]>([]);
-	let posts = $state<any[]>([]);
-	let feedPage = $state(1);
-	let feedType = $state<'all' | 'friends'>('all');
-	let searchQuery = $state('');
-	let searchResults = $state<any[]>([]);
-	let searching = $state(false);
-	let loading = $state(true);
-	let actionMsg = $state('');
-	let newPost = $state('');
-	let posting = $state(false);
-	let commentInputs = $state<Record<number, string>>({});
-	let expandedComments = $state<Set<number>>(new Set());
-	let postComments = $state<Record<number, any[]>>({});
+  let activeView = $state<'feed' | 'explore' | 'friends' | 'messages'>('feed');
+  let friends = $state<any[]>([]);
+  let incoming = $state<any[]>([]);
+  let outgoing = $state<any[]>([]);
+  let posts = $state<any[]>([]);
+  let allUsers = $state<any[]>([]);
+  let suggested = $state<any[]>([]);
+  let feedType = $state<'all' | 'friends'>('all');
+  let searchQuery = $state('');
+  let searchResults = $state<any[]>([]);
+  let loading = $state(true);
+  let newPost = $state('');
+  let posting = $state(false);
+  let commentInputs = $state<Record<number, string>>({});
+  let expandedComments = $state<Set<number>>(new Set());
+  let postComments = $state<Record<number, any[]>>({});
+  let actionMsg = $state('');
+  let theme = $state<'dark' | 'light'>('dark');
 
-	onMount(async () => {
-		await loadFeed();
-		if ($auth.token) {
-			try {
-				const [fr, req] = await Promise.all([
-					api.getFriends().catch(() => ({ friends: [] })),
-					api.getFriendRequests().catch(() => ({ incoming: [], outgoing: [] }))
-				]);
-				friends = fr.friends || [];
-				incoming = req.incoming || [];
-				outgoing = req.outgoing || [];
-			} catch {}
-		}
-		loading = false;
-	});
+  onMount(async () => {
+    // Load theme preference
+    const saved = localStorage.getItem('wisers-theme');
+    if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
 
-	async function loadFeed() {
-		try {
-			const res = feedType === 'friends' && $auth.token
-				? await api.getFriendsFeed(feedPage)
-				: await api.getCommunityFeed(feedPage);
-			posts = res.posts || [];
-		} catch {}
-	}
+    await loadFeed();
+    loadUsers();
+    if ($auth.token) {
+      try {
+        const [fr, req, sg] = await Promise.all([
+          api.getFriends().catch(() => ({ friends: [] })),
+          api.getFriendRequests().catch(() => ({ incoming: [], outgoing: [] })),
+          api.getSuggestedUsers().catch(() => ({ users: [] }))
+        ]);
+        friends = fr.friends || [];
+        incoming = req.incoming || [];
+        outgoing = req.outgoing || [];
+        suggested = sg.users || [];
+      } catch {}
+    }
+    loading = false;
+  });
 
-	async function submitPost() {
-		if (!newPost.trim() || posting) return;
-		posting = true;
-		try {
-			await api.createPost(newPost.trim());
-			newPost = '';
-			await loadFeed();
-		} catch (e: any) { actionMsg = e.message || 'Error'; }
-		posting = false;
-	}
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-wisers-theme', theme);
+    localStorage.setItem('wisers-theme', theme);
+  }
 
-	async function toggleLike(postId: number) {
-		if (!$auth.token) return;
-		try {
-			const res = await api.likePost(postId);
-			posts = posts.map(p => p.id === postId ? {
-				...p,
-				likes_count: res.liked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1),
-				_liked: res.liked
-			} : p);
-		} catch {}
-	}
+  async function loadFeed() {
+    try {
+      const res = feedType === 'friends' && $auth.token
+        ? await api.getFriendsFeed(1)
+        : await api.getCommunityFeed(1);
+      posts = res.posts || [];
+    } catch {}
+  }
 
-	async function toggleComments(postId: number) {
-		const s = new Set(expandedComments);
-		if (s.has(postId)) {
-			s.delete(postId);
-		} else {
-			s.add(postId);
-			if (!postComments[postId]) {
-				try {
-					const res = await api.getPost(postId);
-					postComments = { ...postComments, [postId]: res.comments || [] };
-				} catch {}
-			}
-		}
-		expandedComments = s;
-	}
+  async function loadUsers() {
+    try { allUsers = (await api.getAllUsers(1)).users || []; } catch {}
+  }
 
-	async function submitComment(postId: number) {
-		const text = (commentInputs[postId] || '').trim();
-		if (!text) return;
-		try {
-			await api.addComment(postId, text);
-			commentInputs = { ...commentInputs, [postId]: '' };
-			const res = await api.getPost(postId);
-			postComments = { ...postComments, [postId]: res.comments || [] };
-			posts = posts.map(p => p.id === postId ? { ...p, comments_count: (res.comments || []).length } : p);
-		} catch {}
-	}
+  async function submitPost() {
+    if (!newPost.trim() || posting) return;
+    posting = true;
+    try { await api.createPost(newPost.trim()); newPost = ''; await loadFeed(); } catch {}
+    posting = false;
+  }
 
-	async function removePost(id: number) {
-		if (!confirm('Delete this post?')) return;
-		try { await api.deletePost(id); await loadFeed(); } catch {}
-	}
+  async function toggleLike(postId: number) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.likePost(postId);
+      posts = posts.map(p => p.id === postId ? { ...p, likes_count: res.liked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1), _liked: res.liked } : p);
+    } catch {}
+  }
 
-	async function search() {
-		if (searchQuery.length < 2) return;
-		searching = true;
-		try { searchResults = (await api.searchWisers(searchQuery)).users || []; } catch {}
-		searching = false;
-	}
+  async function toggleComments(postId: number) {
+    const s = new Set(expandedComments);
+    if (s.has(postId)) { s.delete(postId); } else {
+      s.add(postId);
+      if (!postComments[postId]) {
+        try { postComments = { ...postComments, [postId]: (await api.getPost(postId)).comments || [] }; } catch {}
+      }
+    }
+    expandedComments = s;
+  }
 
-	async function sendRequest(username: string) {
-		try {
-			const res = await api.sendFriendRequest(username);
-			actionMsg = res.message || 'Sent!';
-			setTimeout(() => actionMsg = '', 3000);
-			const req = await api.getFriendRequests();
-			incoming = req.incoming || []; outgoing = req.outgoing || [];
-			if (res.status === 'accepted') { friends = (await api.getFriends()).friends || []; }
-		} catch (e: any) { actionMsg = e.message || 'Error'; }
-	}
+  async function submitComment(postId: number) {
+    const t = (commentInputs[postId] || '').trim();
+    if (!t) return;
+    try {
+      await api.addComment(postId, t);
+      commentInputs = { ...commentInputs, [postId]: '' };
+      const res = await api.getPost(postId);
+      postComments = { ...postComments, [postId]: res.comments || [] };
+      posts = posts.map(p => p.id === postId ? { ...p, comments_count: (res.comments || []).length } : p);
+    } catch {}
+  }
 
-	async function accept(id: number) {
-		try { await api.acceptFriendRequest(id);
-			friends = (await api.getFriends()).friends || [];
-			incoming = (await api.getFriendRequests()).incoming || [];
-		} catch {}
-	}
+  async function removePost(id: number) {
+    if (!confirm('Delete this post?')) return;
+    try { await api.deletePost(id); await loadFeed(); } catch {}
+  }
 
-	async function decline(id: number) {
-		try { await api.declineFriendRequest(id);
-			incoming = (await api.getFriendRequests()).incoming || [];
-		} catch {}
-	}
+  async function search() {
+    if (searchQuery.length < 2) return;
+    try { searchResults = (await api.searchWisers(searchQuery)).users || []; } catch {}
+  }
 
-	async function removeFriend(username: string) {
-		if (!confirm('Unfriend @' + username + '?')) return;
-		try { await api.unfriend(username); friends = (await api.getFriends()).friends || []; } catch {}
-	}
+  async function sendRequest(username: string) {
+    try {
+      const res = await api.sendFriendRequest(username);
+      actionMsg = res.message || 'Sent!';
+      setTimeout(() => actionMsg = '', 3000);
+      if ($auth.token) {
+        const [fr, req] = await Promise.all([api.getFriends(), api.getFriendRequests()]);
+        friends = fr.friends || []; incoming = req.incoming || []; outgoing = req.outgoing || [];
+        suggested = suggested.filter(u => u.username !== username);
+      }
+    } catch (e: any) { actionMsg = e.message || 'Error'; setTimeout(() => actionMsg = '', 3000); }
+  }
 
-	function timeAgo(d: string) {
-		const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-		if (s < 60) return 'just now';
-		if (s < 3600) return Math.floor(s/60) + 'm ago';
-		if (s < 86400) return Math.floor(s/3600) + 'h ago';
-		return Math.floor(s/86400) + 'd ago';
-	}
+  async function accept(id: number) {
+    try { await api.acceptFriendRequest(id); friends = (await api.getFriends()).friends || []; incoming = (await api.getFriendRequests()).incoming || []; } catch {}
+  }
+  async function decline(id: number) {
+    try { await api.declineFriendRequest(id); incoming = (await api.getFriendRequests()).incoming || []; } catch {}
+  }
+  async function removeFriend(username: string) {
+    if (!confirm('Unfriend @' + username + '?')) return;
+    try { await api.unfriend(username); friends = (await api.getFriends()).friends || []; } catch {}
+  }
+
+  function timeAgo(d: string) {
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm';
+    if (s < 86400) return Math.floor(s/3600) + 'h';
+    return Math.floor(s/86400) + 'd';
+  }
+
+  function initial(name: string) { return (name || '?')[0].toUpperCase(); }
 </script>
 
 <svelte:head>
-	<title>Wisers Community — BSCAN</title>
-	<meta name="description" content="Connect with web professionals in the BSCAN community." />
+  <title>Wisers — BSCAN Community</title>
+  <meta name="description" content="Join the BSCAN Wisers community. Connect with web professionals, share insights, and grow together." />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </svelte:head>
 
-<div class="wisers">
-	<div class="wisers-header">
-		<h1>Wisers</h1>
-		<p class="text-secondary">The BSCAN community</p>
-		<a href="/wisers/messages" class="dm-link">Messages</a>
-	</div>
+<div class="w" class:light={theme === 'light'}>
+  <!-- TOP BAR -->
+  <header class="w-topbar">
+    <div class="w-topbar-inner">
+      <a href="/wisers" class="w-logo">W<span>isers</span></a>
+      <div class="w-search-wrap">
+        <input type="text" class="w-search" placeholder="Search wisers..." bind:value={searchQuery} onkeydown={(e) => e.key === 'Enter' && search()} />
+      </div>
+      <div class="w-topbar-right">
+        <a href="/wisers/messages" class="w-topbar-btn" title="Messages">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </a>
+        <a href="/notifications" class="w-topbar-btn" title="Notifications">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </a>
+        <button class="w-topbar-btn" onclick={toggleTheme} title="Toggle theme">
+          {#if theme === 'dark'}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          {:else}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          {/if}
+        </button>
+        {#if $auth.user}
+          <a href="/wisers/{$auth.user.username || 'me'}" class="w-avatar-sm">{initial($auth.user.name || $auth.user.email)}</a>
+        {:else}
+          <a href="/account" class="w-login-btn">Join Wisers</a>
+        {/if}
+      </div>
+    </div>
+  </header>
 
-	<!-- Tabs -->
-	<div class="tabs">
-		<button class:active={activeTab === 'feed'} onclick={() => activeTab = 'feed'}>Feed</button>
-		<button class:active={activeTab === 'friends'} onclick={() => activeTab = 'friends'}>Friends ({friends.length})</button>
-		{#if incoming.length > 0}
-			<button class:active={activeTab === 'requests'} onclick={() => activeTab = 'requests'}>Requests ({incoming.length})</button>
-		{/if}
-	</div>
+  <div class="w-body">
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-sidebar-left">
+      {#if $auth.user}
+        <a href="/wisers/{$auth.user.username || 'me'}" class="w-profile-card">
+          <div class="w-avatar-lg">{initial($auth.user.name || $auth.user.email)}</div>
+          <div class="w-profile-name">{$auth.user.name}</div>
+          <div class="w-profile-handle">@{$auth.user.username || 'you'}</div>
+        </a>
+      {/if}
+      <nav class="w-sidebar-nav">
+        <button class:active={activeView === 'feed'} onclick={() => { activeView = 'feed'; loadFeed(); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          Feed
+        </button>
+        <button class:active={activeView === 'explore'} onclick={() => activeView = 'explore'}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Explore
+        </button>
+        <button class:active={activeView === 'friends'} onclick={() => activeView = 'friends'}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Friends <span class="w-count">{friends.length}</span>
+        </button>
+        <a href="/wisers/messages" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Messages
+        </a>
+        <a href="/notifications" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+          Notifications
+        </a>
+      </nav>
+      <div class="w-sidebar-divider"></div>
+      <a href="/" class="w-sidebar-back">Back to BSCAN Scanner</a>
+    </aside>
 
-	{#if actionMsg}<div class="action-msg">{actionMsg}</div>{/if}
+    <!-- MAIN CONTENT -->
+    <main class="w-main">
+      {#if actionMsg}<div class="w-toast">{actionMsg}</div>{/if}
 
-	<!-- FEED TAB -->
-	{#if activeTab === 'feed'}
-		<!-- Post Composer -->
-		{#if $auth.token}
-			<div class="composer">
-				<textarea bind:value={newPost} placeholder="Share something with the community..." maxlength="2000" rows="3"></textarea>
-				<div class="composer-footer">
-					<span class="char-count">{newPost.length}/2000</span>
-					<div class="feed-toggle">
-						<button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>All</button>
-						<button class:active={feedType === 'friends'} onclick={() => { feedType = 'friends'; loadFeed(); }}>Friends</button>
-					</div>
-					<button class="btn-post" onclick={submitPost} disabled={posting || !newPost.trim()}>
-						{posting ? 'Posting...' : 'Post'}
-					</button>
-				</div>
-			</div>
-		{/if}
+      <!-- FEED VIEW -->
+      {#if activeView === 'feed'}
+        {#if $auth.token}
+          <div class="w-composer">
+            <div class="w-composer-top">
+              <div class="w-avatar-sm w-avatar-gold">{initial($auth.user?.name || '')}</div>
+              <textarea bind:value={newPost} placeholder="What's on your mind?" maxlength="2000" rows="2"></textarea>
+            </div>
+            <div class="w-composer-bottom">
+              <div class="w-feed-tabs">
+                <button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>Everyone</button>
+                <button class:active={feedType === 'friends'} onclick={() => { feedType = 'friends'; loadFeed(); }}>Friends</button>
+              </div>
+              <span class="w-char">{newPost.length}/2000</span>
+              <button class="w-post-btn" onclick={submitPost} disabled={posting || !newPost.trim()}>{posting ? 'Posting...' : 'Post'}</button>
+            </div>
+          </div>
+        {:else}
+          <div class="w-join-cta">
+            <h2>Join the conversation</h2>
+            <p>Create an account to post, like, comment, and connect with other wisers.</p>
+            <a href="/account" class="w-join-btn">Join Wisers</a>
+          </div>
+        {/if}
 
-		<!-- Posts -->
-		{#if posts.length === 0}
-			<div class="empty">No posts yet. Be the first to share something!</div>
-		{/if}
-		{#each posts as post (post.id)}
-			<div class="post-card">
-				<div class="post-header">
-					<a href="/wisers/{post.username}" class="post-author">@{post.username}</a>
-					<span class="post-name">{post.display_name || post.user_name}</span>
-					<span class="post-plan">{post.plan}</span>
-					<span class="post-time">{timeAgo(post.created_at)}</span>
-				</div>
-				<div class="post-content">{post.content}</div>
-				{#if post.post_type === 'scan_share' && post.scan_url}
-					<div class="scan-share">
-						<span class="scan-url">{post.scan_url}</span>
-						<span class="scan-score" class:good={post.scan_score >= 70} class:warn={post.scan_score >= 40 && post.scan_score < 70} class:bad={post.scan_score < 40}>{post.scan_score}/100</span>
-					</div>
-				{/if}
-				<div class="post-actions">
-					<button class="action-btn" onclick={() => toggleLike(post.id)}>
-						{post._liked ? '❤️' : '♡'} {post.likes_count || 0}
-					</button>
-					<button class="action-btn" onclick={() => toggleComments(post.id)}>
-						💬 {post.comments_count || 0}
-					</button>
-					{#if $auth.user?.id === post.user_id}
-						<button class="action-btn delete-btn" onclick={() => removePost(post.id)}>🗑️</button>
-					{/if}
-				</div>
+        {#if posts.length === 0}
+          <div class="w-empty">No posts yet. Be the first to share something!</div>
+        {/if}
 
-				<!-- Comments Section -->
-				{#if expandedComments.has(post.id)}
-					<div class="comments-section">
-						{#each postComments[post.id] || [] as c (c.id)}
-							<div class="comment">
-								<a href="/wisers/{c.username}" class="comment-author">@{c.username}</a>
-								<span class="comment-text">{c.content}</span>
-								<span class="comment-time">{timeAgo(c.created_at)}</span>
-							</div>
-						{/each}
-						{#if $auth.token}
-							<div class="comment-input">
-								<input type="text" placeholder="Write a comment..."
-									bind:value={commentInputs[post.id]}
-									onkeydown={(e) => e.key === 'Enter' && submitComment(post.id)} />
-								<button onclick={() => submitComment(post.id)}>Send</button>
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		{/each}
+        {#each posts as post (post.id)}
+          <article class="w-post">
+            <div class="w-post-left">
+              <a href="/wisers/{post.username}" class="w-avatar-md">{initial(post.display_name || post.user_name)}</a>
+            </div>
+            <div class="w-post-right">
+              <div class="w-post-meta">
+                <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
+                <span class="w-post-handle">@{post.username}</span>
+                <span class="w-post-dot">·</span>
+                <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                {#if post.plan !== 'free'}<span class="w-plan-badge">{post.plan}</span>{/if}
+              </div>
+              <div class="w-post-body">{post.content}</div>
+              {#if post.post_type === 'scan_share' && post.scan_url}
+                <div class="w-scan-card">
+                  <span>{post.scan_url}</span>
+                  <span class="w-scan-score" class:good={post.scan_score >= 70} class:warn={post.scan_score >= 40 && post.scan_score < 70} class:bad={post.scan_score < 40}>{post.scan_score}</span>
+                </div>
+              {/if}
+              <div class="w-post-actions">
+                <button class="w-action" onclick={() => toggleLike(post.id)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={post._liked ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  {post.likes_count || 0}
+                </button>
+                <button class="w-action" onclick={() => toggleComments(post.id)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  {post.comments_count || 0}
+                </button>
+                {#if $auth.user?.id === post.user_id}
+                  <button class="w-action w-action-del" onclick={() => removePost(post.id)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                {/if}
+              </div>
+              {#if expandedComments.has(post.id)}
+                <div class="w-comments">
+                  {#each postComments[post.id] || [] as c (c.id)}
+                    <div class="w-comment">
+                      <a href="/wisers/{c.username}" class="w-comment-author">@{c.username}</a>
+                      <span class="w-comment-text">{c.content}</span>
+                      <span class="w-comment-time">{timeAgo(c.created_at)}</span>
+                    </div>
+                  {/each}
+                  {#if $auth.token}
+                    <div class="w-comment-input">
+                      <input type="text" placeholder="Reply..." bind:value={commentInputs[post.id]} onkeydown={(e) => e.key === 'Enter' && submitComment(post.id)} />
+                      <button onclick={() => submitComment(post.id)}>Reply</button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          </article>
+        {/each}
 
-	<!-- FRIENDS TAB -->
-	{:else if activeTab === 'friends'}
-		<div class="search-bar">
-			<input type="text" bind:value={searchQuery} placeholder="Search wisers..."
-				onkeydown={(e) => e.key === 'Enter' && search()} />
-			<button onclick={search} disabled={searching || searchQuery.length < 2}>Search</button>
-		</div>
+      <!-- EXPLORE VIEW -->
+      {:else if activeView === 'explore'}
+        <h2 class="w-section-title">Discover Wisers</h2>
+        {#if searchResults.length > 0}
+          <div class="w-user-grid">
+            {#each searchResults as u}
+              <div class="w-user-card">
+                <div class="w-avatar-lg">{initial(u.display_name || u.name)}</div>
+                <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
+                <div class="w-user-real">{u.display_name || u.name}</div>
+                {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
+                <div class="w-user-foot">
+                  <span class="w-plan-badge">{u.plan}</span>
+                  {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <div class="w-user-grid">
+            {#each allUsers as u}
+              <div class="w-user-card">
+                <div class="w-avatar-lg">{initial(u.display_name || u.name)}</div>
+                <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
+                <div class="w-user-real">{u.display_name || u.name}</div>
+                {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
+                <div class="w-user-foot">
+                  <span class="w-plan-badge">{u.plan}</span>
+                  {#if $auth.token}<button class="w-add-btn" onclick={() => sendRequest(u.username)}>Connect</button>{/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
 
-		{#if searchResults.length > 0}
-			<div class="section"><h3>Results</h3>
-				<div class="user-grid">
-					{#each searchResults as u}
-						<div class="user-card">
-							<a href="/wisers/{u.username}" class="user-name">@{u.username}</a>
-							<div class="user-display">{u.display_name || u.name}</div>
-							<div class="user-actions"><span class="plan-badge">{u.plan}</span>
-								<button class="btn-sm" onclick={() => sendRequest(u.username)}>Add</button>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
+      <!-- FRIENDS VIEW -->
+      {:else if activeView === 'friends'}
+        {#if incoming.length > 0}
+          <h2 class="w-section-title">Friend Requests ({incoming.length})</h2>
+          <div class="w-user-grid">
+            {#each incoming as req}
+              <div class="w-user-card w-request-card">
+                <div class="w-avatar-lg">{initial(req.display_name || req.name)}</div>
+                <a href="/wisers/{req.username}" class="w-user-name">@{req.username}</a>
+                <div class="w-user-real">{req.display_name || req.name}</div>
+                <div class="w-req-actions">
+                  <button class="w-accept-btn" onclick={() => accept(req.id)}>Accept</button>
+                  <button class="w-decline-btn" onclick={() => decline(req.id)}>Decline</button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+        <h2 class="w-section-title">Your Friends ({friends.length})</h2>
+        {#if friends.length === 0}
+          <div class="w-empty">No friends yet. Explore wisers to connect!</div>
+        {:else}
+          <div class="w-user-grid">
+            {#each friends as f}
+              <div class="w-user-card">
+                <div class="w-avatar-lg">{initial(f.display_name || f.name)}</div>
+                <a href="/wisers/{f.username}" class="w-user-name">@{f.username}</a>
+                <div class="w-user-real">{f.display_name || f.name}</div>
+                <div class="w-user-foot">
+                  <a href="/wisers/messages" class="w-msg-btn">Message</a>
+                  <button class="w-remove-btn" onclick={() => removeFriend(f.username)}>Remove</button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+    </main>
 
-		<div class="section"><h3>Your Friends ({friends.length})</h3>
-			{#if friends.length === 0}<div class="empty">No friends yet</div>
-			{:else}
-				<div class="user-grid">
-					{#each friends as f}
-						<div class="user-card">
-							<a href="/wisers/{f.username}" class="user-name">@{f.username}</a>
-							<div class="user-display">{f.display_name || f.name}</div>
-							<div class="user-actions"><span class="plan-badge">{f.plan}</span>
-								<button class="btn-unfriend" onclick={() => removeFriend(f.username)}>Unfriend</button>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-	<!-- REQUESTS TAB -->
-	{:else if activeTab === 'requests'}
-		<div class="section"><h3>Incoming ({incoming.length})</h3>
-			<div class="user-grid">
-				{#each incoming as req}
-					<div class="user-card request-card">
-						<a href="/wisers/{req.username}" class="user-name">@{req.username}</a>
-						<div class="user-display">{req.display_name || req.name}</div>
-						<div class="request-actions">
-							<button class="btn-accept" onclick={() => accept(req.id)}>Accept</button>
-							<button class="btn-decline" onclick={() => decline(req.id)}>Decline</button>
-						</div>
-					</div>
-				{/each}
-				{#if !incoming.length}<div class="empty">No pending requests</div>{/if}
-			</div>
-		</div>
-		{#if outgoing.length > 0}
-			<div class="section"><h3>Sent ({outgoing.length})</h3>
-				<div class="user-grid">
-					{#each outgoing as req}
-						<div class="user-card pending-card">
-							<a href="/wisers/{req.username}" class="user-name">@{req.username}</a>
-							<span class="status-pending">Pending</span>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-	{/if}
+    <!-- RIGHT SIDEBAR -->
+    <aside class="w-sidebar-right">
+      {#if $auth.token && suggested.length > 0}
+        <div class="w-widget">
+          <h3>People you may know</h3>
+          {#each suggested.slice(0, 5) as u}
+            <div class="w-suggest-item">
+              <div class="w-avatar-sm">{initial(u.display_name || u.name)}</div>
+              <div class="w-suggest-info">
+                <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
+                <div class="w-suggest-real">{u.display_name || u.name}</div>
+              </div>
+              <button class="w-connect-sm" onclick={() => sendRequest(u.username)}>+</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if incoming.length > 0}
+        <div class="w-widget">
+          <h3>Pending Requests</h3>
+          {#each incoming as req}
+            <div class="w-suggest-item">
+              <div class="w-avatar-sm">{initial(req.display_name || req.name)}</div>
+              <div class="w-suggest-info">
+                <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
+              </div>
+              <button class="w-connect-sm w-accept-sm" onclick={() => accept(req.id)}>Accept</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      <div class="w-widget w-footer">
+        <a href="/">BSCAN Scanner</a> · <a href="/seo">SEO</a> · <a href="/compare">Compare</a>
+        <div class="w-copyright">Balancewise Technologies &copy; 2026</div>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <style>
-	.wisers { max-width: 700px; margin: 0 auto; padding: 32px 16px; }
-	.wisers-header { text-align: center; margin-bottom: 24px; }
-	.wisers-header h1 { font-size: 28px; font-weight: 800; color: var(--clr-gold, #f5a623); }
-	.wisers-header p { font-size: 13px; margin-top: 4px; }
-	.dm-link { display: inline-block; margin-top: 10px; padding: 8px 20px; border-radius: 8px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); color: var(--clr-gold); font-size: 12px; font-weight: 700; text-decoration: none; }
-	.dm-link:hover { border-color: var(--clr-gold); }
-	.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--clr-border, #2a2a3e); padding-bottom: 8px; }
-	.tabs button { padding: 8px 16px; border: none; background: none; color: var(--clr-text-muted, #888); font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; }
-	.tabs button.active { color: var(--clr-gold, #f5a623); border-bottom: 2px solid var(--clr-gold); }
-	.action-msg { text-align: center; padding: 8px; font-size: 12px; color: var(--clr-success, #10b981); }
-	.composer { margin-bottom: 20px; border: 1px solid var(--clr-border, #2a2a3e); border-radius: 12px; overflow: hidden; background: var(--clr-bg-card, #1a1a2e); }
-	.composer textarea { width: 100%; padding: 14px 16px; border: none; background: transparent; color: var(--clr-text, #e0e0f0); font-size: 14px; resize: none; outline: none; font-family: inherit; }
-	.composer-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-top: 1px solid var(--clr-border, #2a2a3e); }
-	.char-count { font-size: 11px; color: var(--clr-text-muted); }
-	.feed-toggle { display: flex; gap: 2px; }
-	.feed-toggle button { padding: 4px 10px; border: 1px solid var(--clr-border); background: none; color: var(--clr-text-muted); font-size: 11px; border-radius: 6px; cursor: pointer; }
-	.feed-toggle button.active { background: var(--clr-gold, #f5a623); color: #000; border-color: var(--clr-gold); }
-	.btn-post { padding: 6px 20px; border: none; background: var(--clr-gold, #f5a623); color: #000; font-weight: 700; font-size: 12px; border-radius: 8px; cursor: pointer; }
-	.btn-post:disabled { opacity: 0.4; cursor: not-allowed; }
-	.post-card { border: 1px solid var(--clr-border, #2a2a3e); border-radius: 12px; padding: 16px; margin-bottom: 12px; background: var(--clr-bg-card, #1a1a2e); }
-	.post-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-	.post-author { font-weight: 700; color: var(--clr-gold, #f5a623); text-decoration: none; font-size: 13px; }
-	.post-author:hover { text-decoration: underline; }
-	.post-name { font-size: 12px; color: var(--clr-text-secondary, #8888aa); }
-	.post-plan { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--clr-gold); }
-	.post-time { font-size: 11px; color: var(--clr-text-muted, #666); margin-left: auto; }
-	.post-content { font-size: 14px; line-height: 1.5; color: var(--clr-text, #e0e0f0); white-space: pre-wrap; word-break: break-word; }
-	.scan-share { margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--clr-bg-deep, #0d0d1a); border: 1px solid var(--clr-border); display: flex; justify-content: space-between; align-items: center; }
-	.scan-url { font-size: 12px; color: var(--clr-text-secondary); font-family: monospace; }
-	.scan-score { font-size: 16px; font-weight: 800; }
-	.scan-score.good { color: var(--clr-success, #10b981); }
-	.scan-score.warn { color: var(--clr-warning, #f59e0b); }
-	.scan-score.bad { color: var(--clr-danger, #ef4444); }
-	.post-actions { display: flex; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--clr-border, #2a2a3e); }
-	.action-btn { background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
-	.action-btn:hover { background: rgba(255,255,255,0.05); }
-	.delete-btn { margin-left: auto; }
-	.comments-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--clr-border, #2a2a3e); }
-	.comment { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
-	.comment-author { color: var(--clr-gold); font-weight: 600; text-decoration: none; font-size: 12px; }
-	.comment-text { color: var(--clr-text-secondary); margin-left: 6px; }
-	.comment-time { font-size: 10px; color: var(--clr-text-muted); margin-left: 8px; }
-	.comment-input { display: flex; gap: 6px; margin-top: 10px; }
-	.comment-input input { flex: 1; padding: 8px 12px; border: 1px solid var(--clr-border); border-radius: 8px; background: var(--clr-bg-deep, #0d0d1a); color: var(--clr-text); font-size: 12px; outline: none; }
-	.comment-input button { padding: 8px 14px; border: none; background: var(--clr-gold); color: #000; font-weight: 700; font-size: 11px; border-radius: 8px; cursor: pointer; }
-	.search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
-	.search-bar input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--clr-border); background: var(--clr-bg-card); color: var(--clr-text); font-size: 13px; outline: none; }
-	.search-bar button { padding: 10px 20px; border-radius: 10px; border: none; background: var(--clr-gold); color: #000; font-weight: 700; font-size: 12px; cursor: pointer; }
-	.section { margin-bottom: 24px; }
-	.section h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-	.user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-	.user-card { padding: 14px; border-radius: 10px; border: 1px solid var(--clr-border); background: var(--clr-bg-card); }
-	.user-name { font-size: 14px; font-weight: 700; color: var(--clr-gold); text-decoration: none; }
-	.user-display { font-size: 11px; color: var(--clr-text-secondary); margin-top: 2px; }
-	.user-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-	.plan-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--clr-gold); }
-	.btn-sm { padding: 5px 12px; border-radius: 7px; border: none; background: var(--clr-gold); color: #000; font-size: 11px; font-weight: 700; cursor: pointer; }
-	.btn-accept { padding: 5px 12px; border-radius: 7px; border: none; background: var(--clr-success, #10b981); color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
-	.btn-decline { padding: 5px 12px; border-radius: 7px; border: 1px solid var(--clr-border); background: none; color: var(--clr-text-muted); font-size: 11px; cursor: pointer; }
-	.btn-unfriend { padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); background: none; color: var(--clr-danger, #ef4444); font-size: 10px; font-weight: 600; cursor: pointer; }
-	.request-actions { display: flex; gap: 6px; margin-top: 10px; }
-	.request-card { border-color: var(--clr-success); }
-	.pending-card { opacity: 0.6; }
-	.status-pending { font-size: 11px; color: var(--clr-warning); font-weight: 600; }
-	.empty { text-align: center; padding: 40px; color: var(--clr-text-muted); font-size: 13px; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+  :global([data-wisers-theme="light"]) { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
+
+  .w { --wb: #0a0a0f; --wc: #111117; --wt: #e4e6ea; --wt2: #8a8d91; --wt3: #606770; --wbd: #1e1e2a; --wcard: #16161f; --wgold: #f5a623; --whover: rgba(255,255,255,0.04);
+    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--wt); background: var(--wb); min-height: 100vh; position: relative; }
+  .w.light { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
+
+  .w-topbar { position: sticky; top: 0; z-index: 100; background: var(--wcard); border-bottom: 1px solid var(--wbd); height: 56px; }
+  .w-topbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; height: 100%; padding: 0 16px; gap: 12px; }
+  .w-logo { font-size: 24px; font-weight: 800; color: var(--wgold); text-decoration: none; letter-spacing: -1px; flex-shrink: 0; }
+  .w-logo span { color: var(--wt); }
+  .w-search-wrap { flex: 1; max-width: 400px; }
+  .w-search { width: 100%; padding: 8px 16px; border-radius: 20px; border: none; background: var(--wc); color: var(--wt); font-size: 14px; outline: none; font-family: inherit; }
+  .w-search::placeholder { color: var(--wt3); }
+  .w-search:focus { box-shadow: 0 0 0 2px var(--wgold); }
+  .w-topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .w-topbar-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--wc); border: none; color: var(--wt2); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; }
+  .w-topbar-btn:hover { background: var(--wbd); color: var(--wt); }
+  .w-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; text-decoration: none; flex-shrink: 0; }
+  .w-avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; text-decoration: none; flex-shrink: 0; }
+  .w-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
+  .w-avatar-gold { background: var(--wgold); }
+  .w-login-btn { padding: 7px 16px; border-radius: 8px; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; }
+
+  .w-body { display: flex; max-width: 1280px; margin: 0 auto; min-height: calc(100vh - 56px); }
+
+  .w-sidebar-left { width: 240px; padding: 16px 12px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; flex-shrink: 0; }
+  .w-profile-card { display: flex; flex-direction: column; align-items: center; padding: 20px 12px; border-radius: 12px; background: var(--wcard); border: 1px solid var(--wbd); text-decoration: none; color: var(--wt); margin-bottom: 16px; }
+  .w-profile-card:hover { border-color: var(--wgold); }
+  .w-profile-name { font-weight: 700; font-size: 15px; margin-top: 10px; }
+  .w-profile-handle { font-size: 12px; color: var(--wt2); }
+  .w-sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+  .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: none; background: none; color: var(--wt2); font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; }
+  .w-sidebar-nav button:hover, .w-sidebar-link:hover { background: var(--whover); color: var(--wt); }
+  .w-sidebar-nav button.active { background: rgba(245,166,35,0.1); color: var(--wgold); font-weight: 700; }
+  .w-count { font-size: 11px; background: var(--wbd); padding: 1px 6px; border-radius: 99px; margin-left: auto; }
+  .w-sidebar-divider { height: 1px; background: var(--wbd); margin: 12px 0; }
+  .w-sidebar-back { font-size: 12px; color: var(--wt3); text-decoration: none; padding: 8px 12px; }
+  .w-sidebar-back:hover { color: var(--wgold); }
+
+  .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); }
+
+  .w-sidebar-right { width: 280px; padding: 16px 12px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; flex-shrink: 0; }
+
+  .w-composer { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .w-composer-top { display: flex; gap: 10px; }
+  .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 15px; resize: none; outline: none; font-family: inherit; min-height: 50px; }
+  .w-composer textarea::placeholder { color: var(--wt3); }
+  .w-composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
+  .w-feed-tabs { display: flex; gap: 2px; }
+  .w-feed-tabs button { padding: 5px 12px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .w-feed-tabs button.active { background: var(--wgold); color: #000; border-color: var(--wgold); }
+  .w-char { font-size: 11px; color: var(--wt3); }
+  .w-post-btn { padding: 7px 20px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .w-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .w-join-cta { text-align: center; padding: 40px 20px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 16px; }
+  .w-join-cta h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .w-join-cta p { color: var(--wt2); font-size: 14px; margin-bottom: 16px; }
+  .w-join-btn { display: inline-block; padding: 10px 28px; border-radius: 20px; background: var(--wgold); color: #000; font-weight: 700; font-size: 14px; text-decoration: none; }
+
+  .w-post { display: flex; gap: 12px; padding: 16px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 10px; }
+  .w-post:hover { border-color: rgba(245,166,35,0.2); }
+  .w-post-right { flex: 1; min-width: 0; }
+  .w-post-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .w-post-author { font-weight: 700; font-size: 14px; color: var(--wt); text-decoration: none; }
+  .w-post-author:hover { text-decoration: underline; }
+  .w-post-handle { font-size: 13px; color: var(--wt2); }
+  .w-post-dot { color: var(--wt3); }
+  .w-post-time { font-size: 12px; color: var(--wt3); }
+  .w-plan-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--wgold); }
+  .w-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .w-scan-card { margin-top: 10px; padding: 12px; border-radius: 8px; background: var(--wc); border: 1px solid var(--wbd); display: flex; justify-content: space-between; align-items: center; }
+  .w-scan-score { font-size: 18px; font-weight: 800; }
+  .w-scan-score.good { color: #10b981; } .w-scan-score.warn { color: #f59e0b; } .w-scan-score.bad { color: #ef4444; }
+  .w-post-actions { display: flex; gap: 16px; margin-top: 10px; }
+  .w-action { display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--wt3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
+  .w-action:hover { background: var(--whover); color: var(--wt); }
+  .w-action-del { margin-left: auto; }
+  .w-action-del:hover { color: #ef4444; }
+
+  .w-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
+  .w-comment { padding: 6px 0; font-size: 13px; }
+  .w-comment-author { color: var(--wgold); font-weight: 600; text-decoration: none; font-size: 12px; }
+  .w-comment-text { color: var(--wt2); margin-left: 6px; }
+  .w-comment-time { font-size: 10px; color: var(--wt3); margin-left: 6px; }
+  .w-comment-input { display: flex; gap: 6px; margin-top: 8px; }
+  .w-comment-input input { flex: 1; padding: 7px 12px; border: 1px solid var(--wbd); border-radius: 20px; background: var(--wc); color: var(--wt); font-size: 12px; outline: none; font-family: inherit; }
+  .w-comment-input button { padding: 7px 14px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 11px; border-radius: 20px; cursor: pointer; font-family: inherit; }
+
+  .w-section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+  .w-user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .w-user-card { padding: 20px; border-radius: 12px; background: var(--wcard); border: 1px solid var(--wbd); display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .w-user-card:hover { border-color: var(--wgold); }
+  .w-user-name { font-weight: 700; color: var(--wgold); text-decoration: none; font-size: 14px; margin-top: 8px; }
+  .w-user-real { font-size: 12px; color: var(--wt2); margin-top: 2px; }
+  .w-user-bio { font-size: 11px; color: var(--wt3); margin-top: 6px; line-height: 1.3; }
+  .w-user-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .w-add-btn, .w-msg-btn { padding: 5px 14px; border-radius: 16px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .w-remove-btn { padding: 5px 14px; border-radius: 16px; border: 1px solid rgba(239,68,68,0.3); background: none; color: #ef4444; font-size: 10px; cursor: pointer; font-family: inherit; }
+  .w-accept-btn { padding: 6px 16px; border-radius: 16px; border: none; background: #10b981; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .w-decline-btn { padding: 6px 16px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; }
+  .w-req-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .w-request-card { border-color: #10b981; }
+
+  .w-widget { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .w-widget h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .w-suggest-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .w-suggest-info { flex: 1; min-width: 0; }
+  .w-suggest-name { font-size: 12px; font-weight: 600; color: var(--wgold); text-decoration: none; }
+  .w-suggest-real { font-size: 10px; color: var(--wt3); }
+  .w-connect-sm { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .w-connect-sm:hover { background: var(--wgold); color: #000; }
+  .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 10px; width: auto; padding: 4px 10px; border-radius: 12px; }
+  .w-footer { font-size: 11px; color: var(--wt3); }
+  .w-footer a { color: var(--wt3); text-decoration: none; }
+  .w-footer a:hover { color: var(--wgold); }
+  .w-copyright { margin-top: 8px; font-size: 10px; }
+
+  .w-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 10px 24px; border-radius: 20px; font-weight: 700; font-size: 13px; z-index: 200; animation: slideUp 0.3s; }
+  .w-empty { text-align: center; padding: 40px; color: var(--wt3); font-size: 14px; }
+
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+  @media (max-width: 1024px) { .w-sidebar-right { display: none; } }
+  @media (max-width: 768px) {
+    .w-sidebar-left { display: none; }
+    .w-body { flex-direction: column; }
+    .w-main { border: none; }
+    .w-topbar-inner { padding: 0 8px; }
+    .w-search-wrap { max-width: 200px; }
+  }
 </style>

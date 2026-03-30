@@ -581,6 +581,16 @@
 					<a href="https://balancewises.io/#services" class="btn btn-outline">View Services</a>
 				</div>
 			</div>
+			<!-- Wisers Community CTA -->
+			<div class="wisers-cta">
+				<div class="wisers-cta-inner">
+					<div>
+						<h3 style="font-size: 18px; font-weight: 800; color: var(--clr-gold);">Join the Wisers Community</h3>
+						<p class="text-secondary" style="font-size: 13px; margin-top: 4px;">Connect with web professionals. Share insights. Grow together.</p>
+					</div>
+					<a href="/wisers" class="btn btn-gold" style="white-space: nowrap;">Explore Wisers</a>
+				</div>
+			</div>
 		</section>
 	{/if}
 

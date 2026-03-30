@@ -793,3 +793,11 @@ export async function markAllNotificationsRead(): Promise<any> {
 export async function markNotificationRead(id: number): Promise<any> {
   return request(`/api/community/notifications/${id}/read`, { method: 'POST' });
 }
+
+// ── Discovery ──
+export async function getSuggestedUsers(): Promise<any> {
+  return request('/api/community/suggested-users');
+}
+export async function getAllUsers(page: number = 1): Promise<any> {
+  return request(`/api/community/all-users?page=${page}`);
+}
