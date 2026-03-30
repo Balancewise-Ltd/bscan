@@ -25,7 +25,14 @@
     loading = true; error = '';
     try {
       profile = await api.getCommunityProfile(username);
-      if ($auth.token) { status = (await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }))).status; }
+      if ($auth.token) { 
+        status = (await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }))).status;
+        if (status !== 'self') {
+          try { followStatus = await api.getFollowStatus(username); } catch {}
+          try { followersCount = (await api.getFollowers(username)).count || 0; } catch {}
+          try { followingCount = (await api.getFollowing(username)).count || 0; } catch {}
+        }
+      }
       try { posts = (await api.getUserPosts(username)).posts || []; } catch {}
     } catch (e: any) { error = e.message || 'User not found'; }
     loading = false;
