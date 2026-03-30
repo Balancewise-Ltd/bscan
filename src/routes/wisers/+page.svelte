@@ -22,6 +22,16 @@
   let expandedComments = $state<Set<number>>(new Set());
   let postComments = $state<Record<number, any[]>>({});
   let actionMsg = $state('');
+  let bookmarkedPosts = $state<Set<number>>(new Set());
+  let editingPost = $state<number | null>(null);
+  let editContent = $state('');
+  let trendingTags = $state<any[]>([]);
+  let showScheduler = $state(false);
+  let scheduleContent = $state('');
+  let scheduleDate = $state('');
+  let activeTab = $state<'feed' | 'bookmarks' | 'activity'>('feed');
+  let bookmarkedList = $state<any[]>([]);
+  let activityList = $state<any[]>([]);
   let theme = $state<'dark' | 'light'>('dark');
 
   onMount(async () => {
@@ -180,6 +190,65 @@
     } catch {}
   }
 
+  async function handleBookmark(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.toggleBookmark(post.id);
+      if (res.bookmarked) { bookmarkedPosts.add(post.id); } else { bookmarkedPosts.delete(post.id); }
+      bookmarkedPosts = new Set(bookmarkedPosts);
+    } catch {}
+  }
+
+  async function handleEditPost(post: any) {
+    if (editingPost === post.id) {
+      if (editContent.trim() && editContent !== post.content) {
+        try {
+          await api.editPost(post.id, editContent);
+          post.content = editContent;
+          post.edited = 1;
+          posts = [...posts];
+        } catch {}
+      }
+      editingPost = null;
+    } else {
+      editingPost = post.id;
+      editContent = post.content;
+    }
+  }
+
+  async function handleSchedulePost() {
+    if (!scheduleContent.trim() || !scheduleDate) return;
+    try {
+      await api.schedulePost(scheduleContent, scheduleDate);
+      scheduleContent = '';
+      scheduleDate = '';
+      showScheduler = false;
+      actionMsg = 'Post scheduled!';
+      setTimeout(() => actionMsg = '', 2000);
+    } catch {}
+  }
+
+  async function loadBookmarks() {
+    try { const res = await api.getBookmarks(); bookmarkedList = res.posts || []; } catch {}
+  }
+
+  async function loadActivity() {
+    try { const res = await api.getActivity(); activityList = res.activities || []; } catch {}
+  }
+
+  async function loadTrending() {
+    try { const res = await api.getTrendingHashtags(); trendingTags = res.hashtags || []; } catch {}
+  }
+
+  function renderContent(text: string): string {
+    if (!text) return '';
+    // Convert #hashtags to links
+    let html = text.replace(/#(\w{2,30})/g, '<a href="/wisers?tag=$1" class="w-hashtag">#$1</a>');
+    // Convert @mentions to profile links
+    html = html.replace(/@(\w{2,30})/g, '<a href="/wisers/$1" class="w-mention">@$1</a>');
+    return html;
+  }
+
   async function handleRepost(post: any) {
     if (!$auth.token) return;
     try {
@@ -265,6 +334,16 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Friends <span class="w-count">{friends.length}</span>
         </button>{/if}
+        {#if $auth.token}
+        <button class:w-sidebar-active={activeTab === 'bookmarks'} onclick={() => { activeTab = 'bookmarks'; loadBookmarks(); }} class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Saved
+        </button>
+        <button class:w-sidebar-active={activeTab === 'activity'} onclick={() => { activeTab = 'activity'; loadActivity(); }} class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Activity
+        </button>
+        {/if}
         {#if $auth.token}<a href="/wisers/messages" class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Messages
@@ -358,12 +437,20 @@
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   <span>{post.comments_count || 0}</span>
                 </button>
+                {#if $auth.token}
+                  <button class="w-action w-bookmark-btn" class:w-bookmarked={bookmarkedPosts.has(post.id)} onclick={() => handleBookmark(post)} title="Bookmark">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedPosts.has(post.id) ? '#eab308' : 'none'} stroke={bookmarkedPosts.has(post.id) ? '#eab308' : 'currentColor'} stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </button>
+                {/if}
                 {#if $auth.token && $auth.user?.id !== post.user_id}
                   <button class="w-action w-report-btn" title="Report" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => alert('Report submitted')).catch(() => {}); }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
                   </button>
                 {/if}
                 {#if $auth.user?.id === post.user_id}
+                  <button class="w-action w-edit-btn" onclick={() => handleEditPost(post)} title={editingPost === post.id ? 'Save' : 'Edit'}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={editingPost === post.id ? '#10b981' : 'currentColor'} stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
                   <button class="w-action w-action-del" onclick={() => removePost(post.id)} title="Delete">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
@@ -471,6 +558,17 @@
 
     <!-- RIGHT SIDEBAR -->
     <aside class="w-sidebar-right">
+        {#if trendingTags.length > 0}
+          <div class="w-card w-trending">
+            <h3 class="w-card-title">Trending</h3>
+            {#each trendingTags.slice(0, 8) as tag}
+              <a href="/wisers?tag={tag.tag}" class="w-trending-item">
+                <span class="w-trending-tag">#{tag.tag}</span>
+                <span class="w-trending-count">{tag.post_count} posts</span>
+              </a>
+            {/each}
+          </div>
+        {/if}
       {#if $auth.token && suggested.length > 0}
         <div class="w-widget">
           <h3>People you may know</h3>
@@ -662,23 +760,27 @@
     60% { opacity: 1; }
     100% { transform: translateY(-110vh) rotate(var(--rot, -20deg)); opacity: 0; }
   }
-  .w-reactions { display: flex; justify-content: space-between; max-width: 400px; margin-top: 8px; }
-  .w-rx { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; border: none; background: none; color: var(--wt3); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s ease; }
-  .w-rx svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: all 0.15s ease; }
-  .w-rx:hover { background: rgba(255,255,255,0.04); }
-  .w-rx span { font-variant-numeric: tabular-nums; }
 
-  .w-rx-like:hover { color: #f43f5e; } .w-rx-like:hover svg { stroke: #f43f5e; }
-  .w-rx-like.w-rx-on { color: #f43f5e; } .w-rx-like.w-rx-on svg { fill: #f43f5e; stroke: #f43f5e; }
 
-  .w-rx-rocket:hover { color: #f97316; } .w-rx-rocket:hover svg { stroke: #f97316; }
-  .w-rx-rocket.w-rx-on { color: #f97316; } .w-rx-rocket.w-rx-on svg { fill: #f97316; stroke: #f97316; }
 
-  .w-rx-repost:hover { color: #10b981; } .w-rx-repost:hover svg { stroke: #10b981; }
-  .w-rx-repost.w-rx-on { color: #10b981; } .w-rx-repost.w-rx-on svg { fill: none; stroke: #10b981; stroke-width: 2.5; }
 
-  .w-rx-comment:hover { color: #3b82f6; } .w-rx-comment:hover svg { stroke: #3b82f6; }
 
-  .w-rx.w-rx-on { animation: rxPop 0.3s ease; }
   @keyframes rxPop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .w-bookmark-btn:hover { color: #eab308; }
+  .w-bookmarked { color: #eab308 !important; }
+  .w-edit-btn:hover { color: #10b981; }
+  .w-edit-textarea { width: 100%; background: var(--wc); border: 1px solid var(--wbd); border-radius: 8px; color: var(--wt); padding: 8px; font: inherit; resize: vertical; }
+  .w-edited-tag { font-size: 11px; color: var(--wt3); margin-left: 6px; }
+  .w-hashtag { color: var(--wgold); text-decoration: none; font-weight: 600; }
+  .w-hashtag:hover { text-decoration: underline; }
+  .w-mention { color: #3b82f6; text-decoration: none; font-weight: 600; }
+  .w-mention:hover { text-decoration: underline; }
+  .w-sched-btn { background: none; border: none; color: var(--wt3); cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; }
+  .w-sched-btn:hover { color: var(--wgold); background: rgba(245,166,35,0.1); }
+  .w-sidebar-active { background: rgba(245,166,35,0.12) !important; color: var(--wgold) !important; font-weight: 600 !important; }
+  .w-trending { margin-bottom: 16px; }
+  .w-trending-item { display: flex; justify-content: space-between; padding: 8px 12px; text-decoration: none; border-radius: 6px; }
+  .w-trending-item:hover { background: rgba(255,255,255,0.04); }
+  .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 14px; }
+  .w-trending-count { color: var(--wt3); font-size: 12px; }
 </style>
