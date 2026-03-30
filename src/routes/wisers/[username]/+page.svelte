@@ -131,7 +131,7 @@
           {#if status === 'friends'}<a href="/wisers/messages" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends ✓</button>
           {:else if status === 'request_sent'}<button class="pr-btn pr-btn-o" disabled>Pending</button>
           {:else}<button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
-          <button class="pr-btn" style="background:{followStatus.i_follow ? 'transparent' : 'var(--wgold)'}; color:{followStatus.i_follow ? 'var(--wt2)' : '#000'}; border:1px solid {followStatus.i_follow ? 'var(--wbd)' : 'var(--wgold)'}; font-weight:700;" onclick={() => handleFollow()}>{followStatus.i_follow ? '✓ Following' : 'Follow'}</button>
+          <button class="pr-btn" style="background:#f5a623; color:#000; border:2px solid #f5a623; font-weight:700;" onclick={() => handleFollow()}>{followStatus.i_follow ? '✓ Following' : 'Follow'}</button>
         {/if}
       </div>
     </div>
