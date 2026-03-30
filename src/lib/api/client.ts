@@ -725,10 +725,10 @@ export async function sendFriendRequest(username: string): Promise<any> {
 	return request(`/api/community/friend-request/${username}`, { method: 'POST' });
 }
 export async function acceptFriendRequest(id: number): Promise<any> {
-	return request(`/api/community/friend-request/\${id}/accept`, { method: 'POST' });
+	return request(`/api/community/friend-request/${id}/accept`, { method: 'POST' });
 }
 export async function declineFriendRequest(id: number): Promise<any> {
-	return request(`/api/community/friend-request/\${id}/decline`, { method: 'POST' });
+	return request(`/api/community/friend-request/${id}/decline`, { method: 'POST' });
 }
 export async function unfriend(username: string): Promise<any> {
 	return request(`/api/community/unfriend/${username}`, { method: 'DELETE' });
