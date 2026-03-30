@@ -148,6 +148,12 @@
   }
 
   function initial(name: string) { return (name || '?')[0].toUpperCase(); }
+
+  function avatarSrc(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return 'https://api-bscan.balancewises.io/avatars/' + url;
+  }
 </script>
 
 <svelte:head>
@@ -265,7 +271,7 @@
         {#each posts as post (post.id)}
           <article class="w-post">
             <div class="w-post-left">
-              <a href="/wisers/{post.username}" class="w-avatar-md">{initial(post.display_name || post.user_name)}</a>
+              <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
             </div>
             <div class="w-post-right">
               <div class="w-post-meta">
@@ -291,6 +297,11 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   {post.comments_count || 0}
                 </button>
+                {#if $auth.token && $auth.user?.id !== post.user_id}
+                  <button class="w-action" title="Report" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => alert('Report submitted')).catch(() => {}); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                  </button>
+                {/if}
                 {#if $auth.user?.id === post.user_id}
                   <button class="w-action w-action-del" onclick={() => removePost(post.id)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -328,7 +339,7 @@
           <div class="w-user-grid">
             {#each searchResults as u}
               <div class="w-user-card">
-                <div class="w-avatar-lg">{initial(u.display_name || u.name)}</div>
+                <div class="w-avatar-lg">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(u.display_name || u.name)}{/if}</div>
                 <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
@@ -343,7 +354,7 @@
           <div class="w-user-grid">
             {#each allUsers as u}
               <div class="w-user-card">
-                <div class="w-avatar-lg">{initial(u.display_name || u.name)}</div>
+                <div class="w-avatar-lg">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(u.display_name || u.name)}{/if}</div>
                 <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
                 <div class="w-user-real">{u.display_name || u.name}</div>
                 {#if u.bio}<div class="w-user-bio">{u.bio}</div>{/if}
@@ -383,7 +394,7 @@
           <div class="w-user-grid">
             {#each friends as f}
               <div class="w-user-card">
-                <div class="w-avatar-lg">{initial(f.display_name || f.name)}</div>
+                <div class="w-avatar-lg">{#if avatarSrc(f.avatar_url)}<img src={avatarSrc(f.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(f.display_name || f.name)}{/if}</div>
                 <a href="/wisers/{f.username}" class="w-user-name">@{f.username}</a>
                 <div class="w-user-real">{f.display_name || f.name}</div>
                 <div class="w-user-foot">
@@ -404,7 +415,7 @@
           <h3>People you may know</h3>
           {#each suggested.slice(0, 5) as u}
             <div class="w-suggest-item">
-              <div class="w-avatar-sm">{initial(u.display_name || u.name)}</div>
+              <div class="w-avatar-sm">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(u.display_name || u.name)}{/if}</div>
               <div class="w-suggest-info">
                 <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
                 <div class="w-suggest-real">{u.display_name || u.name}</div>
@@ -460,6 +471,9 @@
   .w-avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; text-decoration: none; flex-shrink: 0; }
   .w-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
   .w-avatar-gold { background: var(--wgold); }
+  .w-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+  .w-av-img-lg { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+  .w-av-img-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
   .w-login-btn { padding: 7px 16px; border-radius: 8px; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; }
 
   .w-body { display: flex; max-width: 1280px; margin: 0 auto; min-height: calc(100vh - 56px); }

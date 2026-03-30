@@ -809,3 +809,8 @@ export async function getSupportTicket(): Promise<any> {
 export async function sendSupportMessage(content: string): Promise<any> {
   return request('/api/community/support/send', { method: 'POST', body: JSON.stringify({ content }) });
 }
+
+// ── Reports ──
+export async function reportContent(type: string, id: number, reason: string): Promise<any> {
+  return request('/api/community/report', { method: 'POST', body: JSON.stringify({ type, id, reason }) });
+}
