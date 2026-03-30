@@ -707,3 +707,33 @@ export async function getReportHistory(id: string): Promise<{ history: ReportHis
 export async function getReportStats(): Promise<ReportStats> {
 	return request('/api/reports/stats');
 }
+
+// ── Community / Wisers ──
+export async function getCommunityProfile(username: string): Promise<any> {
+	return request(\`/api/community/profile/\${username}\`);
+}
+export async function searchWisers(q: string): Promise<{ users: any[] }> {
+	return request(\`/api/community/search?q=\${encodeURIComponent(q)}\`);
+}
+export async function getFriends(): Promise<{ friends: any[] }> {
+	return request('/api/community/friends');
+}
+export async function getFriendRequests(): Promise<{ incoming: any[]; outgoing: any[] }> {
+	return request('/api/community/friend-requests');
+}
+export async function sendFriendRequest(username: string): Promise<any> {
+	return request(\`/api/community/friend-request/\${username}\`, { method: 'POST' });
+}
+export async function acceptFriendRequest(id: number): Promise<any> {
+	return request(\`/api/community/friend-request/\${id}/accept\`, { method: 'POST' });
+}
+export async function declineFriendRequest(id: number): Promise<any> {
+	return request(\`/api/community/friend-request/\${id}/decline\`, { method: 'POST' });
+}
+export async function unfriend(username: string): Promise<any> {
+	return request(\`/api/community/unfriend/\${username}\`, { method: 'DELETE' });
+}
+export async function getFriendshipStatus(username: string): Promise<{ status: string }> {
+	return request(\`/api/community/friendship-status/\${username}\`);
+}
+
