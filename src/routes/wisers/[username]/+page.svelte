@@ -10,16 +10,11 @@
   let loading = $state(true);
   let error = $state('');
   let actionMsg = $state('');
-  let theme = $state<'dark' | 'light'>('dark');
+  let activeTab = $state('posts');
 
   $effect(() => {
     const username = $page.params.username;
     if (username) loadProfile(username);
-  });
-
-  onMount(() => {
-    const saved = localStorage.getItem('wisers-theme');
-    if (saved === 'light') { theme = 'light'; if (typeof document !== 'undefined') document.documentElement.setAttribute('data-wisers-theme', 'light'); }
   });
 
   async function loadProfile(username: string) {
@@ -27,7 +22,8 @@
     try {
       profile = await api.getCommunityProfile(username);
       if ($auth.token) {
-        status = (await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }))).status;
+        const s = await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }));
+        status = s.status;
       }
       try { posts = (await api.getUserPosts(username)).posts || []; } catch {}
     } catch (e: any) { error = e.message || 'User not found'; }
@@ -40,6 +36,7 @@
       actionMsg = res.message;
       status = res.status === 'accepted' ? 'friends' : 'request_sent';
     } catch (e: any) { actionMsg = e.message; }
+    setTimeout(() => actionMsg = '', 3000);
   }
 
   async function removeFriend() {
@@ -60,126 +57,247 @@
     if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm';
     if (s < 86400) return Math.floor(s/3600) + 'h'; return Math.floor(s/86400) + 'd';
   }
+
+  function planLabel(p: string) {
+    if (p === 'agency') return 'Agency';
+    if (p === 'pro') return 'Pro';
+    return 'Free';
+  }
+  function planColor(p: string) {
+    if (p === 'agency') return '#f5a623';
+    if (p === 'pro') return '#3b82f6';
+    return '#555';
+  }
+
+  const verifySvg = '<svg viewBox="0 0 22 22" width="18" height="18"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.635-.08 1.293.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.604-.274 1.26-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.141.27.587.7 1.086 1.24 1.44s1.167.551 1.813.568c.645-.017 1.27-.213 1.81-.567.54-.355.97-.854 1.244-1.44.607.223 1.264.27 1.897.14.634-.131 1.218-.437 1.687-.883.445-.47.75-1.054.882-1.69.13-.635.083-1.292-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="white"/></svg>';
 </script>
 
 <svelte:head>
-  <title>{profile?.username ? '@' + profile.username : 'Profile'} — Wisers</title>
+  <title>{profile?.username ? '@' + profile.username + ' — Wisers' : 'Profile — Wisers'}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   {#if profile}
-    <meta property="og:title" content="@{profile.username} — Wisers" />
-    <meta property="og:description" content="{profile.bio || profile.display_name || profile.name} on BSCAN Wisers" />
+    <meta property="og:title" content="@{profile.username} on Wisers" />
+    <meta property="og:description" content="{profile.bio || (profile.display_name || profile.name) + ' on BSCAN Wisers'}" />
     <meta name="robots" content="index, follow" />
   {/if}
 </svelte:head>
 
-<div class="p" class:light={theme === 'light'}>
-  <header class="p-top">
-    <a href="/wisers" class="p-back" title="Back">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    </a>
-    <a href="/wisers" class="p-logo">W<span>isers</span></a>
-    {#if profile}<h1 class="p-page-title">@{profile.username}</h1>{/if}
-  </header>
-
+<div class="pr">
   {#if loading}
-    <div class="p-loading">Loading...</div>
+    <div class="pr-state"><div class="pr-spinner"></div></div>
   {:else if error}
-    <div class="p-error"><p>{error}</p><a href="/wisers">Back to Wisers</a></div>
+    <div class="pr-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+      <p>{error}</p>
+      <a href="/wisers" class="pr-back-link">Back to Wisers</a>
+    </div>
   {:else if profile}
-    <div class="p-content">
-      <div class="p-card">
-        <div class="p-card-top">
-          <div class="p-avatar">
+
+    <!-- Banner -->
+    <div class="pr-banner">
+      <div class="pr-banner-gradient"></div>
+    </div>
+
+    <!-- Profile Header -->
+    <div class="pr-header">
+      <div class="pr-header-inner">
+        <div class="pr-avatar-wrap">
+          <div class="pr-avatar">
             {#if avatarSrc(profile.avatar_url)}
-              <img src={avatarSrc(profile.avatar_url)} alt="" class="p-avatar-img" />
+              <img src={avatarSrc(profile.avatar_url)} alt="" class="pr-avatar-img" />
             {:else}
               {initial(profile.display_name || profile.name)}
             {/if}
           </div>
-          <div class="p-info">
-            <h2 class="p-username">@{profile.username}</h2>
-            <div class="p-realname">{profile.display_name || profile.name}</div>
-            {#if profile.bio}<p class="p-bio">{profile.bio}</p>{/if}
-            <div class="p-meta">
-              {#if profile.company}<span>{profile.company}</span>{/if}
-              {#if profile.city || profile.country}<span>{[profile.city, profile.country].filter(Boolean).join(', ')}</span>{/if}
-              {#if profile.website}<a href={profile.website} target="_blank" rel="noopener">{profile.website}</a>{/if}
+        </div>
+
+        <div class="pr-header-right">
+          {#if $auth.token && status !== 'self'}
+            <div class="pr-actions">
+              {#if status === 'friends'}
+                <a href="/wisers/messages" class="pr-btn pr-btn-outline">Message</a>
+                <button class="pr-btn pr-btn-outline pr-btn-green" onclick={removeFriend}>Friends ✓</button>
+              {:else if status === 'request_sent'}
+                <button class="pr-btn pr-btn-outline" disabled>Pending</button>
+              {:else if status === 'request_received'}
+                <button class="pr-btn pr-btn-primary" onclick={addFriend}>Accept</button>
+              {:else}
+                <button class="pr-btn pr-btn-primary" onclick={addFriend}>Connect</button>
+              {/if}
             </div>
-          </div>
+          {/if}
         </div>
-
-        <div class="p-stats">
-          <div class="p-stat"><div class="p-stat-num">{profile.stats.total_scans}</div><div class="p-stat-label">Scans</div></div>
-          <div class="p-stat"><div class="p-stat-num">{profile.stats.avg_score}</div><div class="p-stat-label">Avg Score</div></div>
-          <div class="p-stat"><div class="p-stat-num">{profile.stats.friends}</div><div class="p-stat-label">Friends</div></div>
-        </div>
-
-        {#if $auth.token && status !== 'self'}
-          <div class="p-actions">
-            {#if status === 'friends'}
-              <a href="/wisers/messages" class="p-btn p-btn-msg">Message</a>
-              <button class="p-btn p-btn-friend" onclick={removeFriend}>Friends ✓</button>
-            {:else if status === 'request_sent'}
-              <button class="p-btn p-btn-pending" disabled>Request Sent</button>
-            {:else if status === 'request_received'}
-              <button class="p-btn p-btn-accept" onclick={addFriend}>Accept Request</button>
-            {:else}
-              <button class="p-btn p-btn-add" onclick={addFriend}>Connect</button>
-            {/if}
-            {#if actionMsg}<span class="p-action-msg">{actionMsg}</span>{/if}
-          </div>
-        {/if}
       </div>
 
-      {#if posts.length > 0}
-        <h3 class="p-section">Posts</h3>
-        {#each posts as post}
-          <div class="p-post">
-            <div class="p-post-text">{post.content}</div>
-            <div class="p-post-meta">{timeAgo(post.created_at)} · {post.likes_count || 0} likes · {post.comments_count || 0} comments</div>
-          </div>
-        {/each}
+      <div class="pr-identity">
+        <div class="pr-name-row">
+          <h1 class="pr-display-name">{profile.display_name || profile.name}</h1>
+          <span class="pr-verify" style="fill: {planColor(profile.plan)};">{@html verifySvg}</span>
+        </div>
+        <div class="pr-handle">@{profile.username}</div>
+        {#if profile.bio}
+          <p class="pr-bio">{profile.bio}</p>
+        {/if}
+        <div class="pr-meta-row">
+          {#if profile.company}
+            <span class="pr-meta-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              {profile.company}
+            </span>
+          {/if}
+          {#if profile.city || profile.country}
+            <span class="pr-meta-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {[profile.city, profile.country].filter(Boolean).join(', ')}
+            </span>
+          {/if}
+          {#if profile.website}
+            <a href={profile.website} target="_blank" rel="noopener" class="pr-meta-item pr-meta-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              {profile.website.replace(/https?:\/\//, '')}
+            </a>
+          {/if}
+          <span class="pr-meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Joined {new Date(profile.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+          </span>
+        </div>
+
+        {#if actionMsg}<div class="pr-toast">{actionMsg}</div>{/if}
+      </div>
+
+      <!-- Stats -->
+      <div class="pr-stats">
+        <div class="pr-stat"><strong>{profile.stats?.total_scans || 0}</strong> Scans</div>
+        <div class="pr-stat"><strong>{profile.stats?.avg_score || 0}</strong> Avg Score</div>
+        <div class="pr-stat"><strong>{profile.stats?.friends || 0}</strong> Friends</div>
+        <div class="pr-stat"><strong>{posts.length}</strong> Posts</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="pr-tabs">
+        <button class="pr-tab" class:active={activeTab === 'posts'} onclick={() => activeTab = 'posts'}>Posts</button>
+        <button class="pr-tab" class:active={activeTab === 'scans'} onclick={() => activeTab = 'scans'}>Scans</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="pr-content">
+      {#if activeTab === 'posts'}
+        {#if posts.length === 0}
+          <div class="pr-empty">No posts yet</div>
+        {:else}
+          {#each posts as post}
+            <div class="pr-post">
+              <div class="pr-post-header">
+                <div class="pr-post-av">
+                  {#if avatarSrc(profile.avatar_url)}
+                    <img src={avatarSrc(profile.avatar_url)} alt="" />
+                  {:else}
+                    {initial(profile.display_name || profile.name)}
+                  {/if}
+                </div>
+                <div>
+                  <span class="pr-post-name">{profile.display_name || profile.name}</span>
+                  <span class="pr-post-handle">@{profile.username} · {timeAgo(post.created_at)}</span>
+                </div>
+              </div>
+              <div class="pr-post-body">{post.content}</div>
+              <div class="pr-post-footer">
+                <span>❤️ {post.likes_count || 0}</span>
+                <span>💬 {post.comments_count || 0}</span>
+              </div>
+            </div>
+          {/each}
+        {/if}
+      {:else}
+        <div class="pr-empty">
+          <p><strong>{profile.stats?.total_scans || 0}</strong> scans completed with an average score of <strong>{profile.stats?.avg_score || 0}</strong></p>
+        </div>
       {/if}
     </div>
+
   {/if}
 </div>
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-  .p { --pb: #0a0a0f; --pc: #111117; --pt: #e4e6ea; --pt2: #8a8d91; --pt3: #606770; --pbd: #1e1e2a; --pcard: #16161f; --pgold: #f5a623; --phover: rgba(255,255,255,0.04);
-    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--pt); background: var(--pb); min-height: 100vh; }
-  .p.light { --pb: #fff; --pc: #f0f2f5; --pt: #1c1e21; --pt2: #606770; --pt3: #8a8d91; --pbd: #dddfe2; --pcard: #fff; --pgold: #d4a017; --phover: rgba(0,0,0,0.04); }
-  .p-top { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 52px; background: var(--pcard); border-bottom: 1px solid var(--pbd); position: sticky; top: 0; z-index: 10; }
-  .p-back { color: var(--pt2); display: flex; text-decoration: none; } .p-back:hover { color: var(--pt); }
-  .p-logo { font-size: 20px; font-weight: 800; color: var(--pgold); text-decoration: none; letter-spacing: -1px; } .p-logo span { color: var(--pt); }
-  .p-page-title { font-size: 15px; font-weight: 600; margin-left: 8px; }
-  .p-loading, .p-error { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px; color: var(--pt3); gap: 12px; }
-  .p-error a { color: var(--pgold); text-decoration: none; }
-  .p-content { max-width: 600px; margin: 24px auto; padding: 0 16px; }
-  .p-card { background: var(--pcard); border: 1px solid var(--pbd); border-radius: 16px; padding: 24px; }
-  .p-card-top { display: flex; gap: 20px; align-items: flex-start; }
-  .p-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--pgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 28px; flex-shrink: 0; overflow: hidden; }
-  .p-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-  .p-info { flex: 1; }
-  .p-username { font-size: 22px; font-weight: 800; color: var(--pgold); }
-  .p-realname { font-size: 14px; color: var(--pt2); margin-top: 2px; }
-  .p-bio { font-size: 14px; line-height: 1.5; margin-top: 8px; color: var(--pt); }
-  .p-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--pt3); }
-  .p-meta a { color: var(--pgold); text-decoration: none; }
-  .p-stats { display: flex; gap: 24px; justify-content: center; padding: 20px 0; margin-top: 16px; border-top: 1px solid var(--pbd); }
-  .p-stat { text-align: center; }
-  .p-stat-num { font-size: 22px; font-weight: 800; }
-  .p-stat-label { font-size: 11px; color: var(--pt3); text-transform: uppercase; letter-spacing: 0.05em; }
-  .p-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; align-items: center; }
-  .p-btn { padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; border: none; text-decoration: none; }
-  .p-btn-add, .p-btn-accept { background: var(--pgold); color: #000; }
-  .p-btn-msg { background: transparent; border: 1px solid var(--pbd); color: var(--pt); }
-  .p-btn-msg:hover { border-color: var(--pgold); color: var(--pgold); }
-  .p-btn-friend { background: transparent; border: 1px solid #10b981; color: #10b981; }
-  .p-btn-pending { background: transparent; border: 1px solid var(--pbd); color: var(--pt3); }
-  .p-action-msg { font-size: 12px; color: #10b981; }
-  .p-section { font-size: 16px; font-weight: 700; margin: 24px 0 12px; }
-  .p-post { background: var(--pcard); border: 1px solid var(--pbd); border-radius: 12px; padding: 16px; margin-bottom: 8px; }
-  .p-post-text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-  .p-post-meta { font-size: 11px; color: var(--pt3); margin-top: 8px; }
+  .pr { --bg: #0a0a0f; --card: #111117; --t1: #e4e6ea; --t2: #8a8d91; --t3: #606770; --bd: #1e1e2a; --gold: #f5a623; --hover: rgba(255,255,255,0.04);
+    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--t1); background: var(--bg); min-height: 100vh; }
+
+  /* Banner */
+  .pr-banner { height: 200px; position: relative; overflow: hidden; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%); }
+  .pr-banner-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, var(--bg) 100%); }
+
+  /* Header */
+  .pr-header { max-width: 680px; margin: 0 auto; padding: 0 20px; }
+  .pr-header-inner { display: flex; justify-content: space-between; align-items: flex-start; margin-top: -60px; position: relative; z-index: 2; }
+  .pr-avatar-wrap { flex-shrink: 0; }
+  .pr-avatar { width: 120px; height: 120px; border-radius: 50%; background: var(--gold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 42px; border: 4px solid var(--bg); overflow: hidden; }
+  .pr-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+  .pr-header-right { padding-top: 72px; }
+
+  /* Actions */
+  .pr-actions { display: flex; gap: 8px; }
+  .pr-btn { padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .pr-btn-primary { background: var(--gold); color: #000; }
+  .pr-btn-primary:hover { filter: brightness(1.1); }
+  .pr-btn-outline { background: transparent; border: 1px solid var(--bd); color: var(--t1); }
+  .pr-btn-outline:hover { border-color: var(--t2); }
+  .pr-btn-green { border-color: #10b981; color: #10b981; }
+  .pr-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* Identity */
+  .pr-identity { margin-top: 12px; }
+  .pr-name-row { display: flex; align-items: center; gap: 6px; }
+  .pr-display-name { font-size: 24px; font-weight: 800; margin: 0; }
+  .pr-verify { display: inline-flex; }
+  .pr-handle { font-size: 15px; color: var(--t2); }
+  .pr-bio { font-size: 15px; line-height: 1.5; margin-top: 10px; white-space: pre-wrap; }
+  .pr-meta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; color: var(--t2); }
+  .pr-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+  .pr-meta-link { color: var(--gold); text-decoration: none; }
+  .pr-meta-link:hover { text-decoration: underline; }
+  .pr-toast { margin-top: 8px; font-size: 12px; color: #10b981; }
+
+  /* Stats */
+  .pr-stats { display: flex; gap: 24px; margin-top: 16px; padding: 16px 0; border-bottom: 1px solid var(--bd); }
+  .pr-stat { font-size: 14px; color: var(--t2); }
+  .pr-stat strong { color: var(--t1); font-weight: 800; margin-right: 3px; }
+
+  /* Tabs */
+  .pr-tabs { display: flex; border-bottom: 1px solid var(--bd); }
+  .pr-tab { flex: 1; padding: 14px 0; text-align: center; font-size: 14px; font-weight: 600; color: var(--t2); background: none; border: none; cursor: pointer; border-bottom: 3px solid transparent; font-family: inherit; }
+  .pr-tab:hover { background: var(--hover); }
+  .pr-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* Content */
+  .pr-content { max-width: 680px; margin: 0 auto; padding: 0 20px 60px; }
+  .pr-empty { padding: 40px; text-align: center; color: var(--t3); font-size: 14px; }
+
+  /* Posts */
+  .pr-post { padding: 16px 0; border-bottom: 1px solid var(--bd); }
+  .pr-post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .pr-post-av { width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; overflow: hidden; flex-shrink: 0; }
+  .pr-post-av img { width: 100%; height: 100%; object-fit: cover; }
+  .pr-post-name { font-weight: 700; font-size: 14px; }
+  .pr-post-handle { font-size: 13px; color: var(--t2); margin-left: 4px; }
+  .pr-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .pr-post-footer { display: flex; gap: 20px; margin-top: 10px; font-size: 13px; color: var(--t2); }
+
+  /* States */
+  .pr-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 12px; color: var(--t3); }
+  .pr-back-link { color: var(--gold); text-decoration: none; font-size: 14px; }
+  .pr-spinner { width: 28px; height: 28px; border: 3px solid var(--bd); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .pr-banner { height: 140px; }
+    .pr-avatar { width: 90px; height: 90px; font-size: 32px; }
+    .pr-header-inner { margin-top: -45px; }
+    .pr-header-right { padding-top: 52px; }
+    .pr-display-name { font-size: 20px; }
+    .pr-stats { gap: 16px; flex-wrap: wrap; }
+  }
 </style>
