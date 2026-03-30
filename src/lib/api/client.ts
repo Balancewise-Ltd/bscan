@@ -822,3 +822,192 @@ export async function toggleRocket(postId: number): Promise<any> {
 export async function toggleRepost(postId: number): Promise<any> {
   return request('/api/community/repost/' + postId, { method: 'POST' });
 }
+
+
+// ═══════════════════════════════════════════════
+// BOOKMARKS
+// ═══════════════════════════════════════════════
+
+export async function toggleBookmark(postId: number): Promise<{ bookmarked: boolean }> {
+	return request(`/api/community/bookmark/${postId}`, { method: 'POST' });
+}
+
+export async function getBookmarks(page: number = 1): Promise<any> {
+	return request(`/api/community/bookmarks?page=${page}`);
+}
+
+// ═══════════════════════════════════════════════
+// BLOCK / MUTE
+// ═══════════════════════════════════════════════
+
+export async function blockUser(username: string): Promise<{ blocked: boolean }> {
+	return request(`/api/community/block/${username}`, { method: 'POST' });
+}
+
+export async function unblockUser(username: string): Promise<{ blocked: boolean }> {
+	return request(`/api/community/block/${username}`, { method: 'DELETE' });
+}
+
+export async function muteUser(username: string): Promise<{ muted: boolean }> {
+	return request(`/api/community/mute/${username}`, { method: 'POST' });
+}
+
+export async function unmuteUser(username: string): Promise<{ muted: boolean }> {
+	return request(`/api/community/mute/${username}`, { method: 'DELETE' });
+}
+
+export async function getBlockedUsers(): Promise<{ users: any[] }> {
+	return request('/api/community/blocked-users');
+}
+
+export async function getMutedUsers(): Promise<{ users: any[] }> {
+	return request('/api/community/muted-users');
+}
+
+// ═══════════════════════════════════════════════
+// FOLLOW (non-mutual)
+// ═══════════════════════════════════════════════
+
+export async function followUser(username: string): Promise<{ following: boolean }> {
+	return request(`/api/community/follow/${username}`, { method: 'POST' });
+}
+
+export async function unfollowUser(username: string): Promise<{ following: boolean }> {
+	return request(`/api/community/follow/${username}`, { method: 'DELETE' });
+}
+
+export async function getFollowers(username: string): Promise<{ followers: any[]; count: number }> {
+	return request(`/api/community/followers/${username}`);
+}
+
+export async function getFollowing(username: string): Promise<{ following: any[]; count: number }> {
+	return request(`/api/community/following/${username}`);
+}
+
+export async function getFollowStatus(username: string): Promise<{ i_follow: boolean; they_follow: boolean }> {
+	return request(`/api/community/follow-status/${username}`);
+}
+
+// ═══════════════════════════════════════════════
+// POST EDIT
+// ═══════════════════════════════════════════════
+
+export async function editPost(postId: number, content: string): Promise<{ edited: boolean }> {
+	return request(`/api/community/post/${postId}`, { method: 'PUT', body: JSON.stringify({ content }) });
+}
+
+export async function getPostEdits(postId: number): Promise<{ edits: any[] }> {
+	return request(`/api/community/post/${postId}/edits`);
+}
+
+// ═══════════════════════════════════════════════
+// HASHTAGS
+// ═══════════════════════════════════════════════
+
+export async function getTrendingHashtags(): Promise<{ hashtags: any[] }> {
+	return request('/api/community/hashtags/trending');
+}
+
+export async function getHashtagPosts(tag: string, page: number = 1): Promise<any> {
+	return request(`/api/community/hashtags/${encodeURIComponent(tag)}?page=${page}`);
+}
+
+// ═══════════════════════════════════════════════
+// POLLS
+// ═══════════════════════════════════════════════
+
+export async function createPoll(question: string, options: string[], content?: string, endsAt?: string): Promise<any> {
+	return request('/api/community/poll', { method: 'POST', body: JSON.stringify({ question, options, content, ends_at: endsAt }) });
+}
+
+export async function votePoll(pollId: number, optionId: number): Promise<any> {
+	return request(`/api/community/poll/${pollId}/vote`, { method: 'POST', body: JSON.stringify({ option_id: optionId }) });
+}
+
+export async function getPoll(postId: number): Promise<any> {
+	return request(`/api/community/poll/${postId}`);
+}
+
+// ═══════════════════════════════════════════════
+// POST SCHEDULING
+// ═══════════════════════════════════════════════
+
+export async function schedulePost(content: string, scheduledFor: string): Promise<any> {
+	return request('/api/community/schedule-post', { method: 'POST', body: JSON.stringify({ content, scheduled_for: scheduledFor }) });
+}
+
+export async function getScheduledPosts(): Promise<{ posts: any[] }> {
+	return request('/api/community/scheduled-posts');
+}
+
+export async function deleteScheduledPost(id: number): Promise<any> {
+	return request(`/api/community/scheduled-post/${id}`, { method: 'DELETE' });
+}
+
+// ═══════════════════════════════════════════════
+// DM READ RECEIPTS
+// ═══════════════════════════════════════════════
+
+export async function markMessageRead(msgId: number): Promise<any> {
+	return request(`/api/community/messages/${msgId}/read`, { method: 'POST' });
+}
+
+export async function getReadStatus(conversationId: number): Promise<any> {
+	return request(`/api/community/messages/${conversationId}/read-status`);
+}
+
+// ═══════════════════════════════════════════════
+// MENTIONS
+// ═══════════════════════════════════════════════
+
+export async function getMentions(page: number = 1): Promise<{ posts: any[] }> {
+	return request(`/api/community/mentions?page=${page}`);
+}
+
+// ═══════════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════════
+
+export async function getPostAnalytics(postId: number): Promise<any> {
+	return request(`/api/community/post/${postId}/analytics`);
+}
+
+// ═══════════════════════════════════════════════
+// ACTIVITY
+// ═══════════════════════════════════════════════
+
+export async function getActivity(): Promise<{ activities: any[] }> {
+	return request('/api/community/activity');
+}
+
+// ═══════════════════════════════════════════════
+// GROUP CHATS
+// ═══════════════════════════════════════════════
+
+export async function createGroupChat(name: string, members: string[]): Promise<any> {
+	return request('/api/community/group-chat', { method: 'POST', body: JSON.stringify({ name, members }) });
+}
+
+export async function getGroupChats(): Promise<{ groups: any[] }> {
+	return request('/api/community/group-chats');
+}
+
+export async function getGroupMessages(groupId: number, page: number = 1): Promise<any> {
+	return request(`/api/community/group-chat/${groupId}/messages?page=${page}`);
+}
+
+export async function sendGroupMessage(groupId: number, content: string): Promise<any> {
+	return request(`/api/community/group-chat/${groupId}/send`, { method: 'POST', body: JSON.stringify({ content }) });
+}
+
+export async function addGroupMember(groupId: number, username: string): Promise<any> {
+	return request(`/api/community/group-chat/${groupId}/add-member/${username}`, { method: 'POST' });
+}
+
+// ═══════════════════════════════════════════════
+// WELCOME POST
+// ═══════════════════════════════════════════════
+
+export async function createWelcomePost(username: string): Promise<any> {
+	return request(`/api/community/welcome-post/${username}`, { method: 'POST' });
+}
