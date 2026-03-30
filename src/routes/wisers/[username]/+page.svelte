@@ -43,7 +43,7 @@
   async function saveProfile() {
     saving = true;
     try {
-      await api.updateProfile(editData);
+      await api.updateProfile($auth.user?.email || '', editData);
       Object.assign(profile, editData);
       editing = false; actionMsg = 'Saved!';
     } catch { actionMsg = 'Failed'; }

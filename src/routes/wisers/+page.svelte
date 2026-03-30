@@ -654,10 +654,23 @@
     60% { opacity: 1; }
     100% { transform: translateY(-110vh) rotate(var(--rot, -20deg)); opacity: 0; }
   }
-  .w-reactions { display: flex; gap: 4px; margin-top: 8px; align-items: center; }
-  .w-react-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 16px; border: none; background: transparent; color: var(--wt2); font-size: 13px; cursor: pointer; font-family: inherit; }
-  .w-react-btn:hover { background: var(--whover); }
-  .w-react-btn.active { color: var(--wgold); }
-  .w-react-btn.active-rocket { color: #f97316; }
-  .w-react-btn.active-repost { color: #10b981; }
+  .w-reactions { display: flex; justify-content: space-between; max-width: 400px; margin-top: 8px; }
+  .w-rx { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; border: none; background: none; color: var(--wt3); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s ease; }
+  .w-rx svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: all 0.15s ease; }
+  .w-rx:hover { background: rgba(255,255,255,0.04); }
+  .w-rx span { font-variant-numeric: tabular-nums; }
+
+  .w-rx-like:hover { color: #f43f5e; } .w-rx-like:hover svg { stroke: #f43f5e; }
+  .w-rx-like.w-rx-on { color: #f43f5e; } .w-rx-like.w-rx-on svg { fill: #f43f5e; stroke: #f43f5e; }
+
+  .w-rx-rocket:hover { color: #f97316; } .w-rx-rocket:hover svg { stroke: #f97316; }
+  .w-rx-rocket.w-rx-on { color: #f97316; } .w-rx-rocket.w-rx-on svg { fill: #f97316; stroke: #f97316; }
+
+  .w-rx-repost:hover { color: #10b981; } .w-rx-repost:hover svg { stroke: #10b981; }
+  .w-rx-repost.w-rx-on { color: #10b981; } .w-rx-repost.w-rx-on svg { fill: none; stroke: #10b981; stroke-width: 2.5; }
+
+  .w-rx-comment:hover { color: #3b82f6; } .w-rx-comment:hover svg { stroke: #3b82f6; }
+
+  .w-rx.w-rx-on { animation: rxPop 0.3s ease; }
+  @keyframes rxPop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
 </style>
