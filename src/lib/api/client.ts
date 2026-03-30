@@ -801,3 +801,11 @@ export async function getSuggestedUsers(): Promise<any> {
 export async function getAllUsers(page: number = 1): Promise<any> {
   return request(`/api/community/all-users?page=${page}`);
 }
+
+// ── Support ──
+export async function getSupportTicket(): Promise<any> {
+  return request('/api/community/support/my-ticket');
+}
+export async function sendSupportMessage(content: string): Promise<any> {
+  return request('/api/community/support/send', { method: 'POST', body: JSON.stringify({ content }) });
+}
