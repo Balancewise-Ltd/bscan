@@ -342,11 +342,19 @@
                 </div>
               {/if}
               <div class="w-post-actions">
-                <button class="w-action" onclick={() => toggleLike(post.id)}>
+                <button class="w-action" onclick={() => toggleLike(post.id)} title="Like">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill={post._liked ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                   {post.likes_count || 0}
                 </button>
-                <button class="w-action" onclick={() => toggleComments(post.id)}>
+                <button class="w-action w-action-rocket" class:w-action-active={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={post.my_rocket ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                  {post.rockets_count || 0}
+                </button>
+                <button class="w-action w-action-repost" class:w-action-active={post.my_repost} onclick={() => handleRepost(post)} title="Repost">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                  {post.reposts_count || 0}
+                </button>
+                <button class="w-action" onclick={() => toggleComments(post.id)} title="Comment">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   {post.comments_count || 0}
                 </button>
@@ -356,7 +364,7 @@
                   </button>
                 {/if}
                 {#if $auth.user?.id === post.user_id}
-                  <button class="w-action w-action-del" onclick={() => removePost(post.id)}>
+                  <button class="w-action w-action-del" onclick={() => removePost(post.id)} title="Delete">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 {/if}
