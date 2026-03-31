@@ -45,7 +45,21 @@
     wsHandler = (e: any) => {
       const data = e.detail;
       loadConversations();
-      if (activeConv) { loadMessages(activeConv); scrollBottom(); }
+      if (activeConv) {
+        // Synchronously append so Svelte renders immediately (avoids async flush delay)
+        if (data.conversation_id === activeConv && data.sender_id && data.content) {
+          messages = [...messages, {
+            id: `ws-${Date.now()}`,
+            sender_id: data.sender_id,
+            content: data.content,
+            created_at: new Date().toISOString(),
+            read_at: null
+          }];
+          scrollBottom();
+        }
+        // Also reload from server for accurate IDs / read receipts
+        loadMessages(activeConv);
+      }
     };
     window.addEventListener('wisers:new_message', wsHandler);
 
@@ -106,7 +120,7 @@
     activeConv = convId;
     await loadMessages(convId);
     const conv = conversations.find((c: any) => c.id === convId);
-    if (conv && $auth.token) markConvRead($auth.token, convId, conv.unread || 0);
+    if (conv && $auth.token) markConvRead($auth.token, convId, conv.my_unread || 0);
   }
 
   async function send() {
