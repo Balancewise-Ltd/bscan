@@ -1,11 +1,25 @@
 import { writable, get } from 'svelte/store';
 
-export const wsNotifCount = writable(0);
-export const wsUnreadDMs = writable(0);
-
 const API = 'https://api-bscan.balancewises.io/api/community';
 
+// ═══════════════════════════════════════
+// STORES
+// ═══════════════════════════════════════
+export const wsNotifCount = writable(0);
+export const wsUnreadDMs = writable(0);
+export const wsConnected = writable(false);
+
+// ═══════════════════════════════════════
+// SERVER SYNC (source of truth)
+// ═══════════════════════════════════════
+let lastFetchTime = 0;
+const FETCH_COOLDOWN = 3000; // Don't re-fetch within 3s (prevents spam on reconnect flicker)
+
 export async function fetchUnreadCounts(authToken: string) {
+  const now = Date.now();
+  if (now - lastFetchTime < FETCH_COOLDOWN) return; // Debounce
+  lastFetchTime = now;
+
   const h = { Authorization: `Bearer ${authToken}` };
   try {
     const dm = await fetch(`${API}/unread-count`, { headers: h }).then(r => r.json());
@@ -17,6 +31,9 @@ export async function fetchUnreadCounts(authToken: string) {
   } catch {}
 }
 
+// ═══════════════════════════════════════
+// EXPLICIT READ ACTIONS
+// ═══════════════════════════════════════
 export async function markConvRead(authToken: string, convId: number, convUnread: number) {
   if (convUnread <= 0) return;
   wsUnreadDMs.update(n => Math.max(0, n - convUnread));
@@ -32,13 +49,9 @@ export async function markNotifsRead(authToken: string) {
   } catch {}
 }
 
-export const wsConnected = writable(false);
-
-let ws: WebSocket | null = null;
-let pingInterval: any = null;
-let reconnectTimeout: any = null;
-let token: string | null = null;
-
+// ═══════════════════════════════════════
+// SOUND
+// ═══════════════════════════════════════
 function playPing() {
   if (typeof window === 'undefined') return;
   try {
@@ -56,17 +69,39 @@ function playPing() {
   } catch {}
 }
 
+// ═══════════════════════════════════════
+// TAB TITLE (X-standard)
+// ═══════════════════════════════════════
+function updateTabTitle() {
+  if (typeof document === 'undefined') return;
+  const dm = get(wsUnreadDMs);
+  const notif = get(wsNotifCount);
+  const total = dm + notif;
+  const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
+  document.title = total > 0 ? `(${total > 99 ? '99+' : total}) ${base}` : base;
+}
+
+// ═══════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════
+let ws: WebSocket | null = null;
+let pingInterval: any = null;
+let reconnectTimeout: any = null;
+let token: string | null = null;
+
 export function connectWS(authToken: string) {
   if (typeof window === 'undefined') return;
   if (ws && ws.readyState === WebSocket.OPEN) return;
   token = authToken;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
   try {
     ws = new WebSocket(`${protocol}//api-bscan.balancewises.io/api/community/ws?token=${authToken}`);
 
     ws.onopen = () => {
       wsConnected.set(true);
-      console.log('[WS] Connected for user:', authToken.slice(0, 10));
+      console.log('[WS] Connected');
+      // Sync with server on every connect/reconnect (catches missed events)
       fetchUnreadCounts(authToken);
       pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -79,33 +114,32 @@ export function connectWS(authToken: string) {
       try {
         const data = JSON.parse(event.data);
         if (data.action === 'pong') return;
+
+        // NOTIFICATION — separate from DMs
         if (data.action === 'new_notification') {
-          // Dispatch toast event for UI
-          window.dispatchEvent(new CustomEvent('wisers:toast', { detail: { title: data.title || 'New notification', body: data.body || '', type: 'notification' } }));
-          wsNotifCount.update(n => {
-            const next = n + 1;
-            playPing();
-            return next;
-          });
+          wsNotifCount.update(n => n + 1);
+          playPing();
+          window.dispatchEvent(new CustomEvent('wisers:toast', {
+            detail: { title: data.title || 'New notification', body: data.body || '', type: 'notification' }
+          }));
         }
+
+        // DM — separate from notifications
         if (data.action === 'new_message') {
-          // Dispatch toast for message
-          window.dispatchEvent(new CustomEvent('wisers:toast', { detail: { title: 'New message', body: (data.content || '').slice(0, 60), type: 'message', from: data.sender_id } }));
-          wsUnreadDMs.update(n => {
-            const next = n + 1;
-            playPing();
-            return next;
-          });
-          // Dispatch a custom event so WisersDM and messages page can react
+          wsUnreadDMs.update(n => n + 1);
+          playPing();
           window.dispatchEvent(new CustomEvent('wisers:new_message', { detail: data }));
+          window.dispatchEvent(new CustomEvent('wisers:toast', {
+            detail: { title: 'New message', body: (data.content || '').slice(0, 60), type: 'message' }
+          }));
         }
       } catch {}
     };
 
     ws.onclose = () => {
       wsConnected.set(false);
-      console.log('[WS] Disconnected');
-      if (pingInterval) clearInterval(pingInterval);
+      if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+      // Reconnect after 3s
       reconnectTimeout = setTimeout(() => {
         if (token) connectWS(token);
       }, 3000);
@@ -130,25 +164,10 @@ export function disconnectWS() {
   token = null;
 }
 
-export function resetNotifCount() {
-  wsNotifCount.set(0);
-}
+export function resetNotifCount() { wsNotifCount.set(0); }
+export function resetDMCount() { wsUnreadDMs.set(0); }
 
-export function resetDMCount() {
-  wsUnreadDMs.set(0);
-}
-
-// X-standard: update browser tab title with unread count
-function updateTabTitle() {
-  if (typeof document === 'undefined') return;
-  const dm = get(wsUnreadDMs);
-  const notif = get(wsNotifCount);
-  const total = dm + notif;
-  const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
-  document.title = total > 0 ? `(${total > 99 ? '99+' : total}) ${base}` : base;
-}
-
-// Subscribe to both stores to keep tab title in sync
+// Subscribe to stores for tab title updates
 if (typeof window !== 'undefined') {
   wsUnreadDMs.subscribe(() => updateTabTitle());
   wsNotifCount.subscribe(() => updateTabTitle());
