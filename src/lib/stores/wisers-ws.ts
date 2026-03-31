@@ -38,7 +38,7 @@ export async function markConvRead(authToken: string, convId: number, convUnread
   if (convUnread <= 0) return;
   wsUnreadDMs.update(n => Math.max(0, n - convUnread));
   try {
-    await fetch(`${API}/conversations/${convId}/messages`, { headers: { Authorization: `Bearer ${authToken}` } });
+    await fetch(`${API}/conversations/${convId}/messages?mark_read=true`, { headers: { Authorization: `Bearer ${authToken}` } });
   } catch {}
 }
 

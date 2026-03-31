@@ -37,7 +37,7 @@
   async function openConv(conv: any) {
     activeConv = conv;
     try {
-      const res = await api.getMessages(conv.id);
+      const res = await api.getMessages(conv.id, false);
       messages = res.messages || [];
       scrollBottom();
     } catch {}
@@ -80,7 +80,7 @@
       const data = e.detail;
       loadConversations();
       if (activeConv && activeConv.id === data.conversation_id) {
-        api.getMessages(activeConv.id).then(r => { messages = r.messages || []; scrollBottom(); }).catch(() => {});
+        api.getMessages(activeConv.id, false).then(r => { messages = r.messages || []; scrollBottom(); }).catch(() => {});
       }
     };
     window.addEventListener('wisers:new_message', handler);

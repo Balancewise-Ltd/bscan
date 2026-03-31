@@ -64,7 +64,7 @@
   }
 
   async function loadMessages(convId: number) {
-    try { messages = (await api.getMessages(convId)).messages || []; scrollBottom(); } catch {}
+    try { messages = (await api.getMessages(convId, true)).messages || []; scrollBottom(); } catch {}
   }
 
   async function selectConv(convId: number) {
