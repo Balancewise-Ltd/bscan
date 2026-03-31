@@ -55,6 +55,16 @@
 
 
 
+  async function handleMarkUnread(e: MouseEvent, conv: any) {
+    e.stopPropagation();
+    if (conv.my_unread > 0) return;
+    try {
+      await api.markConvUnread(conv.id);
+      conv.my_unread = 1;
+      wsUnreadDMs.update(n => n + 1);
+    } catch {}
+  }
+
   function scrollBottom() {
     setTimeout(() => { const el = document.getElementById('msg-scroll'); if (el) el.scrollTop = el.scrollHeight; }, 150);
   }
@@ -199,7 +209,8 @@
           </div>
         {:else}
           {#each conversations as conv (conv.id)}
-            <button class="m-conv" class:active={activeConv === conv.id} onclick={() => selectConv(conv.id)}>
+            <!-- svelte-ignore a11y_interactive_supports_focus -->
+            <div class="m-conv" class:active={activeConv === conv.id} role="button" tabindex="0" onclick={() => selectConv(conv.id)} onkeydown={(e) => e.key === 'Enter' && selectConv(conv.id)}>
               <div class="m-conv-avatar">{initial(conv.other_display_name || conv.other_name)}</div>
               <div class="m-conv-body">
                 <div class="m-conv-top">
@@ -211,7 +222,8 @@
                 </div>
               </div>
               {#if conv.my_unread > 0}<span class="m-conv-badge">{conv.my_unread}</span>{/if}
-              <button class="m-conv-action" title={conv.my_unread > 0 ? "Already unread" : "Mark as unread"} onclick|stopPropagation={async () => {
+              <button class="m-conv-action" title={conv.my_unread > 0 ? "Already unread" : "Mark as unread"} onclick={async (e) => {
+                e.stopPropagation();
                 if (conv.my_unread > 0) return;
                 try {
                   await api.markConvUnread(conv.id);
@@ -225,7 +237,7 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>
                 {/if}
               </button>
-            </button>
+            </div>
           {/each}
         {/if}
       </div>

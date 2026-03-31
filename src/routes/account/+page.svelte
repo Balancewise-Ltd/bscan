@@ -1670,12 +1670,12 @@
 				{#if showNewSchedule}
 				<div class="card" style="padding: 20px; margin-bottom: 20px; border: 1px solid var(--clr-gold-dim);">
 					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-						<div><label class="label">Website URL *</label><input class="input" type="url" placeholder="https://client-site.com" bind:value={newSched.url} /></div>
-						<div><label class="label">Recipient Email *</label><input class="input" type="email" placeholder="client@company.com" bind:value={newSched.recipient_email} /></div>
-						<div><label class="label">Recipient Name</label><input class="input" type="text" placeholder="John Smith" bind:value={newSched.recipient_name} /></div>
-						<div><label class="label">Frequency</label><select class="input" bind:value={newSched.frequency}><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option></select></div>
-						<div><label class="label">Brand Name</label><input class="input" type="text" placeholder="Your Company" bind:value={newSched.branding_company} /></div>
-						<div><label class="label">Brand Colour</label><div style="display: flex; gap: 8px; align-items: center;"><input type="color" bind:value={newSched.branding_color} style="width: 40px; height: 36px; border: none; cursor: pointer; border-radius: 6px;" /><input class="input" type="text" bind:value={newSched.branding_color} style="flex: 1; font-family: var(--font-mono);" /></div></div>
+						<div><label class="label" for="sched-url">Website URL *</label><input id="sched-url" class="input" type="url" placeholder="https://client-site.com" bind:value={newSched.url} /></div>
+						<div><label class="label" for="sched-email">Recipient Email *</label><input id="sched-email" class="input" type="email" placeholder="client@company.com" bind:value={newSched.recipient_email} /></div>
+						<div><label class="label" for="sched-name">Recipient Name</label><input id="sched-name" class="input" type="text" placeholder="John Smith" bind:value={newSched.recipient_name} /></div>
+						<div><label class="label" for="sched-freq">Frequency</label><select id="sched-freq" class="input" bind:value={newSched.frequency}><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option></select></div>
+						<div><label class="label" for="sched-brand">Brand Name</label><input id="sched-brand" class="input" type="text" placeholder="Your Company" bind:value={newSched.branding_company} /></div>
+						<div><label class="label" for="sched-color-text">Brand Colour</label><div style="display: flex; gap: 8px; align-items: center;"><input type="color" bind:value={newSched.branding_color} style="width: 40px; height: 36px; border: none; cursor: pointer; border-radius: 6px;" aria-label="Brand colour picker" /><input id="sched-color-text" class="input" type="text" bind:value={newSched.branding_color} style="flex: 1; font-family: var(--font-mono);" /></div></div>
 					</div>
 					<div style="display: flex; gap: 16px; margin-top: 16px; align-items: center;">
 						<label style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><input type="checkbox" bind:checked={newSched.include_ai_fixes} /> AI Fixes</label>
@@ -1897,8 +1897,8 @@
 									<p style="padding-left: 12px;">&#x2022; After 6 months, your data is permanently and irreversibly deleted</p>
 								</div>
 								<div style="margin-bottom: 12px;">
-									<label class="label" style="font-size: 11px; margin-bottom: 6px;">Type DELETE to confirm</label>
-									<input class="input" type="text" placeholder="DELETE" bind:value={deleteConfirmText} style="text-transform: uppercase; font-family: var(--font-mono);" />
+									<label class="label" for="delete-confirm" style="font-size: 11px; margin-bottom: 6px;">Type DELETE to confirm</label>
+									<input id="delete-confirm" class="input" type="text" placeholder="DELETE" bind:value={deleteConfirmText} style="text-transform: uppercase; font-family: var(--font-mono);" />
 								</div>
 								{#if deleteMsg}<div class="msg-error" style="margin-bottom: 12px;">{deleteMsg}</div>{/if}
 								<div style="display: flex; gap: 8px;">
