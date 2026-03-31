@@ -210,6 +210,20 @@
                 </div>
               </div>
               {#if conv.my_unread > 0}<span class="m-conv-badge">{conv.my_unread}</span>{/if}
+              <button class="m-conv-action" title={conv.my_unread > 0 ? "Already unread" : "Mark as unread"} onclick|stopPropagation={async () => {
+                if (conv.my_unread > 0) return;
+                try {
+                  await api.markConvUnread(conv.id);
+                  conv.my_unread = 1;
+                  wsUnreadDMs.update(n => n + 1);
+                } catch {}
+              }}>
+                {#if conv.my_unread > 0}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5a623" stroke="none"><circle cx="12" cy="12" r="5"/></svg>
+                {:else}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg>
+                {/if}
+              </button>
             </button>
           {/each}
         {/if}
@@ -317,6 +331,9 @@
   .m-conv-name { font-size: 14px; font-weight: 600; }
   .m-conv-time { font-size: 11px; color: var(--mt3); }
   .m-conv-preview { font-size: 12px; color: var(--mt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .m-conv-action { background: none; border: none; color: var(--mt3); cursor: pointer; padding: 4px; border-radius: 50%; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+  .m-conv:hover .m-conv-action { opacity: 1; }
+  .m-conv-action:hover { color: var(--mgold); background: var(--mhover); }
   .m-conv-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 10px; background: var(--mgold); color: #000; padding: 2px 7px; border-radius: 99px; font-weight: 800; }
 
   .m-chat { flex: 1; display: flex; flex-direction: column; background: var(--mb); min-height: 0; }
