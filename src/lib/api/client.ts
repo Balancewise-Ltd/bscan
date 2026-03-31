@@ -1035,3 +1035,11 @@ export async function getComments(postId: number): Promise<any> {
 export async function bookmarkPost(postId: number): Promise<any> {
 	return request('/api/community/bookmark/' + postId, { method: 'POST' });
 }
+
+export async function markConvUnread(convId: number) {
+  return post(\`community/conversations/\${convId}/mark-unread\`, {});
+}
+
+export async function getMessageRequests() {
+  return get('community/message-requests');
+}

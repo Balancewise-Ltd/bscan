@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { wsUnreadDMs, markConvRead, fetchUnreadCounts } from '$lib/stores/wisers-ws';
+  import { wsUnreadDMs, wsConnected as wsConnectedStore, markConvRead, fetchUnreadCounts, connectWS } from '$lib/stores/wisers-ws';
   import { page } from '$app/stores';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
@@ -16,24 +16,32 @@
   let showEmoji = $state(false);
   const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','🛠️','💻','🌐','🤖','🧠','💭','✨','🙏','🤝','👋','✌️','🤞'];
   let pollInterval: any;
+  let wsHandler: any;
   let newConvUser = $state('');
   let showNewConv = $state(false);
-  let wsConnected = $state(false);
   let theme = $state<'dark' | 'light'>('dark');
 
   onMount(async () => {
-    if ($auth.token) fetchUnreadCounts($auth.token);
+    if ($auth.token) { connectWS($auth.token); fetchUnreadCounts($auth.token); }
     if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
     await loadConversations();
     loading = false;
+
+    wsHandler = (e: any) => {
+      const data = e.detail;
+      loadConversations();
+      if (activeConv && data.conversation_id) { loadMessages(activeConv); scrollBottom(); }
+    };
+    window.addEventListener('wisers:new_message', wsHandler);
+
     const dmUser = $page.url.searchParams.get('user');
     if (dmUser) await startChatWith(dmUser);
     pollInterval = setInterval(async () => {
       await loadConversations();
-      if (activeConv && !wsConnected) await loadMessages(activeConv);
-    }, wsConnected ? 30000 : 5000);
+      if (activeConv && !$wsConnectedStore) await loadMessages(activeConv);
+    }, $wsConnectedStore ? 30000 : 5000);
   });
 
   onDestroy(() => {
@@ -42,17 +50,7 @@
 
   });
 
-  // Listen for real-time messages from global WS store
-  if (typeof window !== 'undefined') {
-    window.addEventListener('wisers:new_message', (e: any) => {
-      const data = e.detail;
-      loadConversations();
-      if (activeConv && activeConv.id === data.conversation_id) {
-        loadMessages(activeConv);
-        scrollBottom();
-      }
-    });
-  }
+
 
 
 
@@ -151,7 +149,7 @@
     <a href="/wisers" class="m-logo">W<span>isers</span></a>
     <h1 class="m-title">Messages</h1>
     <div class="m-top-right">
-      {#if wsConnected}<span class="m-live" title="Live connection"></span>{/if}
+      {#if $wsConnectedStore}<span class="m-live" title="Live connection"></span>{/if}
       <button class="m-theme-btn" onclick={toggleTheme}>
         {#if theme === 'dark'}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>

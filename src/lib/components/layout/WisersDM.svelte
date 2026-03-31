@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { connectWS, wsUnreadDMs } from '$lib/stores/wisers-ws';
+  import { connectWS, wsUnreadDMs, fetchUnreadCounts } from '$lib/stores/wisers-ws';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
   import { page } from '$app/stores';
@@ -20,7 +20,7 @@
   );
 
   $effect(() => {
-    if ($auth.token) connectWS($auth.token);
+    if ($auth.token) { connectWS($auth.token); fetchUnreadCounts($auth.token); }
   });
 
   $effect(() => {

@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import { disconnectWS } from './wisers-ws';
 import type { User, Plan } from '$lib/types';
 import { safeGetStorage, safeSetStorage, safeRemoveStorage } from '$lib/utils/security';
 import * as api from '$lib/api/client';
@@ -31,6 +32,7 @@ async function init() {
 		_user.set(me);
 	} catch {
 		safeRemoveStorage('bscan_token');
+	disconnectWS();
 		_token.set(null);
 	}
 	_loading.set(false);
@@ -58,6 +60,7 @@ async function register(email: string, password: string, name: string, referral_
 
 function logout() {
 	safeRemoveStorage('bscan_token');
+	disconnectWS();
 	safeRemoveStorage('bscan_email');
 	safeRemoveStorage('bscan_name');
 	_token.set(null);
