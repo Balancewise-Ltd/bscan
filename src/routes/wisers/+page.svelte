@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { connectWS, wsNotifCount, wsUnreadDMs } from '$lib/stores/wisers-ws';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
 
-  let activeView = $state<'feed' | 'explore' | 'friends' | 'messages'>('feed');
+  let activeView = $state<'feed' | 'explore' | 'friends' | 'messages' | 'bookmarks' | 'activity'>('feed');
   let friends = $state<any[]>([]);
   let incoming = $state<any[]>([]);
   let outgoing = $state<any[]>([]);
@@ -33,6 +34,8 @@
   let bookmarkedList = $state<any[]>([]);
   let activityList = $state<any[]>([]);
   let theme = $state<'dark' | 'light'>('dark');
+  let notifCount = $state(0);
+  let prevNotifCount = $state(0);
 
   onMount(async () => {
     // Load theme preference
@@ -53,9 +56,11 @@
         outgoing = req.outgoing || [];
         suggested = sg.users || [];
       } catch {}
+      try { const bk = await api.getBookmarks(); bookmarkedPosts = new Set((bk.posts || []).map((p: any) => p.id)); } catch {}
     }
     loading = false;
     if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
+    if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
 
   function toggleTheme() {
@@ -64,14 +69,43 @@
     localStorage.setItem('wisers-theme', theme);
   }
 
-  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); });
+  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); if (notifInterval) clearInterval(notifInterval); });
+
+  let notifInterval: any;
+
+  function playPing() {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      o.start(ctx.currentTime);
+      o.stop(ctx.currentTime + 0.4);
+    } catch {}
+  }
+
+  async function pollNotifs() {
+    if (!$auth.token) return;
+    try {
+      const res = await api.getNotificationCount();
+      const count = res.count || 0;
+      if (count > prevNotifCount && prevNotifCount !== 0) playPing();
+      prevNotifCount = count;
+      notifCount = count;
+    } catch {}
+  }
 
   async function loadFeed() {
     try {
       const res = feedType === 'friends' && $auth.token
         ? await api.getFriendsFeed(1)
         : await api.getCommunityFeed(1);
-      posts = res.posts || [];
+      posts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
     } catch {}
   }
 
@@ -155,11 +189,15 @@
   }
 
   function timeAgo(d: string) {
-    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (!d) return '';
+    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
+    const now = new Date();
+    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
     if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s/60) + 'm';
-    if (s < 86400) return Math.floor(s/3600) + 'h';
-    return Math.floor(s/86400) + 'd';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
   function launchRockets() {
@@ -232,7 +270,7 @@
   }
 
   async function loadBookmarks() {
-    try { const res = await api.getBookmarks(); bookmarkedList = res.posts || []; } catch {}
+    try { const res = await api.getBookmarks(); bookmarkedList = res.posts || []; bookmarkedPosts = new Set((res.posts || []).map((p: any) => p.id)); } catch {}
   }
 
   async function loadActivity() {
@@ -256,8 +294,7 @@
     if (!$auth.token) return;
     try {
       const res = await api.toggleRepost(post.id);
-      post.reposts_count = (post.reposts_count || 0) + (res.reposted ? 1 : -1);
-      post.my_repost = res.reposted;
+      posts = posts.map(p => p.id === post.id ? { ...p, reposts_count: (p.reposts_count || 0) + (res.reposted ? 1 : -1), my_repost: res.reposted } : p);
       if (res.reposted) launchRockets();
     } catch {}
   }
@@ -292,11 +329,13 @@
         <input type="text" class="w-search" placeholder="Search wisers..." bind:value={searchQuery} onkeydown={(e) => e.key === 'Enter' && search()} />
       </div>
       <div class="w-topbar-right">
-        <a href="/wisers/messages" class="w-topbar-btn" title="Messages">
+        <a href="/wisers/messages" class="w-topbar-btn w-notif-btn" title="Messages" >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          {#if $wsUnreadDMs > 0}<span class="w-notif-badge">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
         </a>
-        <a href="/notifications" class="w-topbar-btn" title="Notifications">
+        <a href="/notifications" class="w-topbar-btn w-notif-btn" title="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          {#if $wsNotifCount > 0}<span class="w-notif-badge">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
         </a>
         <button class="w-topbar-btn" onclick={toggleTheme} title="Toggle theme">
           {#if theme === 'dark'}
@@ -338,11 +377,11 @@
           Friends <span class="w-count">{friends.length}</span>
         </button>{/if}
         {#if $auth.token}
-        <button class:w-sidebar-active={activeTab === 'bookmarks'} onclick={() => { activeTab = 'bookmarks'; loadBookmarks(); }} class="w-sidebar-link">
+        <button class:w-sidebar-active={activeView === 'bookmarks'} onclick={() => { activeView = 'bookmarks'; loadBookmarks(); }} class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Saved
         </button>
-        <button class:w-sidebar-active={activeTab === 'activity'} onclick={() => { activeTab = 'activity'; loadActivity(); }} class="w-sidebar-link">
+        <button class:w-sidebar-active={activeView === 'activity'} onclick={() => { activeView = 'activity'; loadActivity(); }} class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Activity
         </button>
@@ -350,14 +389,16 @@
         {#if $auth.token}<a href="/wisers/messages" class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Messages
+          {#if $wsUnreadDMs > 0}<span class="w-count" style="background:#ef4444;color:#fff;">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
         </a>
         <a href="/notifications" class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
           Notifications
+          {#if $wsNotifCount > 0}<span class="w-count" style="background:#ef4444;color:#fff;">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
         </a>{/if}
       </nav>
       <div class="w-sidebar-divider"></div>
-      <a href="/" class="w-sidebar-back">Back to BSCAN Scanner</a>
+      <a href="https://balancewises.io" class="w-sidebar-back" target="_blank">Balancewise Technologies</a>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -488,7 +529,7 @@
         <h2 class="w-section-title">Discover Wisers</h2>
         {#if searchResults.length > 0}
           <div class="w-user-grid">
-            {#each searchResults as u}
+            {#each searchResults.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username)) as u}
               <div class="w-user-card">
                 <div class="w-avatar-lg">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(u.display_name || u.name)}{/if}</div>
                 <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
@@ -503,7 +544,7 @@
           </div>
         {:else}
           <div class="w-user-grid">
-            {#each allUsers as u}
+            {#each allUsers.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username)) as u}
               <div class="w-user-card">
                 <div class="w-avatar-lg">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(u.display_name || u.name)}{/if}</div>
                 <a href="/wisers/{u.username}" class="w-user-name">@{u.username}</a>
@@ -520,6 +561,81 @@
 
       <!-- FRIENDS VIEW -->
       {/if}
+
+      {:else if activeView === 'bookmarks'}
+        <h2 class="w-section-title">Saved Posts</h2>
+        {#if bookmarkedList.length === 0}
+          <div class="w-empty">No saved posts yet. Bookmark posts to find them here.</div>
+        {:else}
+          {#each bookmarkedList as post (post.id)}
+            <article class="w-post">
+              <div class="w-post-left">
+                <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
+              </div>
+              <div class="w-post-right">
+                <div class="w-post-meta">
+                  <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
+                  <span class="w-post-handle">@{post.username}</span>
+                  <span class="w-post-dot">·</span>
+                  <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                </div>
+                <div class="w-post-body">{post.content}</div>
+                <div class="w-post-actions">
+                  <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span>{post.likes_count || 0}</span>
+                  </button>
+                  <button class="w-action" onclick={() => toggleComments(post.id)} title="Comment">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>{post.comments_count || 0}</span>
+                  </button>
+                  <button class="w-action w-bookmark-btn w-bookmarked" onclick={() => handleBookmark(post)} title="Remove bookmark">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#eab308" stroke="#eab308" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </button>
+                </div>
+              </div>
+            </article>
+          {/each}
+        {/if}
+
+      {:else if activeView === 'activity'}
+        <div class="w-activity-header">
+          <h2 class="w-section-title">Activity</h2>
+          <span class="w-activity-count">{activityList.length} recent actions</span>
+        </div>
+        {#if activityList.length === 0}
+          <div class="w-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <p>No recent activity yet</p>
+          </div>
+        {:else}
+          <div class="w-activity-list">
+            {#each activityList as item}
+              <div class="w-activity-item">
+                <div class="w-activity-badge w-activity-badge--{item.type}">
+                  {#if item.type === 'like'}<svg width="14" height="14" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  {:else if item.type === 'rocket'}<svg width="14" height="14" viewBox="0 0 24 24" fill="#f97316" stroke="none"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+                  {:else if item.type === 'repost'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                  {:else if item.type === 'comment'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  {:else if item.type === 'post'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  {:else}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{/if}
+                </div>
+                <div class="w-activity-body">
+                  <span class="w-activity-action">
+                    {#if item.type === 'like'}You liked a post
+                    {:else if item.type === 'rocket'}You rocketed a post
+                    {:else if item.type === 'repost'}You reposted
+                    {:else if item.type === 'comment'}You commented
+                    {:else if item.type === 'post'}You posted
+                    {:else}Activity{/if}
+                  </span>
+                  <span class="w-activity-preview">"{(item.text || '').slice(0, 80)}{(item.text || '').length > 80 ? '...' : ''}"</span>
+                </div>
+                <span class="w-activity-time">{timeAgo(item.at || item.created_at)}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
 
       {:else if activeView === 'friends'}
         {#if incoming.length > 0}
@@ -538,6 +654,21 @@
             {/each}
           </div>
         {/if}
+        {#if outgoing.length > 0}
+          <h2 class="w-section-title">Sent Requests ({outgoing.length})</h2>
+          <div class="w-user-grid">
+            {#each outgoing as req}
+              <div class="w-user-card">
+                <div class="w-avatar-lg">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-lg" />{:else}{initial(req.display_name || req.name)}{/if}</div>
+                <a href="/wisers/{req.username}" class="w-user-name">@{req.username}</a>
+                <div class="w-user-real">{req.display_name || req.name}</div>
+                <div class="w-user-foot">
+                  <span class="w-pending-badge">Pending</span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <h2 class="w-section-title">Your Friends ({friends.length})</h2>
         {#if friends.length === 0}
           <div class="w-empty">No friends yet. Explore wisers to connect!</div>
@@ -549,7 +680,7 @@
                 <a href="/wisers/{f.username}" class="w-user-name">@{f.username}</a>
                 <div class="w-user-real">{f.display_name || f.name}</div>
                 <div class="w-user-foot">
-                  <a href="/wisers/messages" class="w-msg-btn">Message</a>
+                  <a href="/wisers/messages?user={f.username}" class="w-msg-btn">Message</a>
                   <button class="w-remove-btn" onclick={() => removeFriend(f.username)}>Remove</button>
                 </div>
               </div>
@@ -572,10 +703,10 @@
             {/each}
           </div>
         {/if}
-      {#if $auth.token && suggested.length > 0}
+      {#if $auth.token && suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).length > 0}
         <div class="w-widget">
-          <h3>People you may know</h3>
-          {#each suggested.slice(0, 5) as u}
+          <div class="w-widget-head"><h3>People you may know</h3><button class="w-show-more" onclick={() => activeView = 'explore'}>See all</button></div>
+          {#each suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).slice(0, 5) as u}
             <div class="w-suggest-item">
               <div class="w-avatar-sm">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(u.display_name || u.name)}{/if}</div>
               <div class="w-suggest-info">
@@ -589,14 +720,30 @@
       {/if}
       {#if incoming.length > 0}
         <div class="w-widget">
-          <h3>Pending Requests</h3>
+          <div class="w-widget-head"><h3>Requests for you <span class="w-badge-count">{incoming.length}</span></h3><button class="w-show-more" onclick={() => activeView = 'friends'}>See all</button></div>
           {#each incoming as req}
             <div class="w-suggest-item">
-              <div class="w-avatar-sm">{initial(req.display_name || req.name)}</div>
+              <div class="w-avatar-sm">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(req.display_name || req.name)}{/if}</div>
               <div class="w-suggest-info">
                 <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
+                <div class="w-suggest-real">{req.display_name || req.name}</div>
               </div>
-              <button class="w-connect-sm w-accept-sm" onclick={() => accept(req.id)}>Accept</button>
+              <button class="w-connect-sm w-accept-sm" onclick={() => accept(req.id)}>✓</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if outgoing.length > 0}
+        <div class="w-widget">
+          <div class="w-widget-head"><h3>Sent requests <span class="w-badge-count">{outgoing.length}</span></h3><button class="w-show-more" onclick={() => activeView = 'friends'}>See all</button></div>
+          {#each outgoing as req}
+            <div class="w-suggest-item">
+              <div class="w-avatar-sm">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(req.display_name || req.name)}{/if}</div>
+              <div class="w-suggest-info">
+                <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
+                <div class="w-suggest-real">{req.display_name || req.name}</div>
+              </div>
+              <span class="w-pending-label">Pending</span>
             </div>
           {/each}
         </div>
@@ -614,7 +761,7 @@
 
   :global([data-wisers-theme="light"]) { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
 
-  .w { --wb: #0a0a0f; --wc: #111117; --wt: #e4e6ea; --wt2: #8a8d91; --wt3: #606770; --wbd: #1e1e2a; --wcard: #16161f; --wgold: #f5a623; --whover: rgba(255,255,255,0.04);
+  .w { margin-top: 0; padding-top: 0; --wb: #0a0a0f; --wc: #111117; --wt: #e4e6ea; --wt2: #8a8d91; --wt3: #606770; --wbd: #1e1e2a; --wcard: #16161f; --wgold: #f5a623; --whover: rgba(255,255,255,0.04);
     font-family: 'DM Sans', -apple-system, sans-serif; color: var(--wt); background: var(--wb); min-height: 100vh; position: relative; }
   .w.light { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
 
@@ -649,7 +796,7 @@
   .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: none; background: none; color: var(--wt2); font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; }
   .w-sidebar-nav button:hover, .w-sidebar-link:hover { background: var(--whover); color: var(--wt); }
   .w-sidebar-nav button.active { background: rgba(245,166,35,0.1); color: var(--wgold); font-weight: 700; }
-  .w-count { font-size: 11px; background: var(--wbd); padding: 1px 6px; border-radius: 99px; margin-left: auto; }
+  .w-count { font-size: 11px; padding: 1px 6px; border-radius: 99px; margin-left: auto; }
   .w-sidebar-divider { height: 1px; background: var(--wbd); margin: 12px 0; }
   .w-sidebar-back { font-size: 12px; color: var(--wt3); text-decoration: none; padding: 8px 12px; }
   .w-sidebar-back:hover { color: var(--wgold); }
@@ -786,4 +933,28 @@
   .w-trending-item:hover { background: rgba(255,255,255,0.04); }
   .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 14px; }
   .w-trending-count { color: var(--wt3); font-size: 12px; }
+  .w-activity-header { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px; }
+  .w-activity-count { font-size:12px;color:var(--wt3,#606770); }
+  .w-activity-list { display:flex;flex-direction:column; }
+  .w-activity-item { display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--wbd,#1e1e2a); }
+  .w-activity-item:last-child { border-bottom:none; }
+  .w-activity-badge { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+  .w-activity-badge--like { background:rgba(244,63,94,0.12); }
+  .w-activity-badge--rocket { background:rgba(249,115,22,0.12); }
+  .w-activity-badge--repost { background:rgba(16,185,129,0.12); }
+  .w-activity-badge--comment { background:rgba(96,165,250,0.12); }
+  .w-activity-badge--post { background:rgba(167,139,250,0.12); }
+  .w-activity-body { display:flex;flex-direction:column;gap:2px;flex:1;min-width:0; }
+  .w-activity-action { font-size:13px;font-weight:600;color:var(--wt1,#e4e6ea); }
+  .w-activity-preview { font-size:12px;color:var(--wt2,#8a8d91);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .w-activity-time { font-size:11px;color:var(--wt3,#606770);white-space:nowrap;flex-shrink:0; }
+  .w-badge-count { background:var(--wgold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px; }
+  .w-pending-label { font-size:11px;color:var(--wt3);border:1px solid var(--wbd);padding:3px 8px;border-radius:12px;white-space:nowrap; }
+  .w-widget-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+  .w-widget-head h3 { margin:0; }
+  .w-show-more { background:none;border:none;color:var(--wgold);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:inherit; }
+  .w-show-more:hover { text-decoration:underline; }
+  .w-pending-badge { font-size:11px;color:var(--wt3);border:1px solid var(--wbd);padding:4px 10px;border-radius:12px; }
+  .w-notif-btn { position: relative; }
+  .w-notif-badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; }
 </style>

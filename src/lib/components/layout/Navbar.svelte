@@ -78,16 +78,12 @@
     </div>
 
     <!-- Wisers Direct Link -->
-    <a href="/wisers" class="nav-link nav-wisers" class:active={$page.url.pathname.startsWith('/wisers')}>
+    <a href="https://wisrs.com/wisers" class="nav-link nav-wisers" target="_blank">
       <Users size={15} strokeWidth={2} />
       Wisers
     </a>
 
-    <!-- Notification Bell -->
-    <a href="/notifications" class="nav-icon-btn" title="Notifications">
-      <BellDot size={17} strokeWidth={2} />
-      {#if notifCount > 0}<span class="notif-badge">{notifCount}</span>{/if}
-    </a>
+
 
     <!-- Get a Quote -->
     

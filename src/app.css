@@ -332,6 +332,10 @@ h3 { font-size: clamp(16px, 2vw, 20px); }
 	width: 100%;
 }
 
+:global(body.wisers-page) .page {
+	padding-top: 0;
+}
+
 
 /* ── Animations ────────────────────────────────────────── */
 @keyframes fadeIn {

@@ -1011,3 +1011,27 @@ export async function addGroupMember(groupId: number, username: string): Promise
 export async function createWelcomePost(username: string): Promise<any> {
 	return request(`/api/community/welcome-post/${username}`, { method: 'POST' });
 }
+
+export async function openConversation(username: string): Promise<{ conversation_id: number }> {
+	return request('/api/community/open-conversation/' + username, { method: 'POST' });
+}
+
+export async function updateMessagesPrivacy(value: string): Promise<any> {
+	return request('/api/community/profile/update', { method: 'PATCH', body: JSON.stringify({ messages_from: value }) });
+}
+
+export async function rocketPost(postId: number): Promise<any> {
+	return request('/api/community/rocket/' + postId, { method: 'POST' });
+}
+
+export async function repostPost(postId: number): Promise<any> {
+	return request('/api/community/repost/' + postId, { method: 'POST' });
+}
+
+export async function getComments(postId: number): Promise<any> {
+	return request('/api/community/comments/' + postId);
+}
+
+export async function bookmarkPost(postId: number): Promise<any> {
+	return request('/api/community/bookmark/' + postId, { method: 'POST' });
+}

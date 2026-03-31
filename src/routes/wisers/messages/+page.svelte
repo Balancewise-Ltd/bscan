@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { wsUnreadDMs, markConvRead, fetchUnreadCounts } from '$lib/stores/wisers-ws';
+  import { page } from '$app/stores';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
 
@@ -16,16 +18,18 @@
   let pollInterval: any;
   let newConvUser = $state('');
   let showNewConv = $state(false);
-  let ws: WebSocket | null = null;
   let wsConnected = $state(false);
   let theme = $state<'dark' | 'light'>('dark');
 
   onMount(async () => {
+    if ($auth.token) fetchUnreadCounts($auth.token);
+    if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
     await loadConversations();
     loading = false;
-    connectWebSocket();
+    const dmUser = $page.url.searchParams.get('user');
+    if (dmUser) await startChatWith(dmUser);
     pollInterval = setInterval(async () => {
       await loadConversations();
       if (activeConv && !wsConnected) await loadMessages(activeConv);
@@ -33,38 +37,24 @@
   });
 
   onDestroy(() => {
+    if (typeof document !== 'undefined') document.body.classList.remove('wisers-page');
     if (pollInterval) clearInterval(pollInterval);
-    if (ws) { ws.close(); ws = null; }
+
   });
 
-  function connectWebSocket() {
-    if (!$auth.token) return;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    try {
-      ws = new WebSocket(`${protocol}//api-bscan.balancewises.io/api/community/ws?token=${$auth.token}`);
-      ws.onopen = () => {
-        wsConnected = true;
-        const ping = setInterval(() => {
-          if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: 'ping' }));
-          else clearInterval(ping);
-        }, 25000);
-      };
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.action === 'new_message') {
-            loadConversations();
-            if (activeConv === data.conversation_id) {
-              loadMessages(activeConv);
-              scrollBottom();
-            }
-          }
-        } catch {}
-      };
-      ws.onclose = () => { wsConnected = false; setTimeout(connectWebSocket, 3000); };
-      ws.onerror = () => { wsConnected = false; };
-    } catch { wsConnected = false; }
+  // Listen for real-time messages from global WS store
+  if (typeof window !== 'undefined') {
+    window.addEventListener('wisers:new_message', (e: any) => {
+      const data = e.detail;
+      loadConversations();
+      if (activeConv && activeConv.id === data.conversation_id) {
+        loadMessages(activeConv);
+        scrollBottom();
+      }
+    });
   }
+
+
 
   function scrollBottom() {
     setTimeout(() => { const el = document.getElementById('msg-scroll'); if (el) el.scrollTop = el.scrollHeight; }, 150);
@@ -82,6 +72,8 @@
   async function selectConv(convId: number) {
     activeConv = convId;
     await loadMessages(convId);
+    const conv = conversations.find((c: any) => c.id === convId);
+    if (conv && $auth.token) markConvRead($auth.token, convId, conv.unread || 0);
   }
 
   async function send() {
@@ -116,11 +108,15 @@
   }
 
   function timeAgo(d: string) {
-    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-    if (s < 60) return 'now';
-    if (s < 3600) return Math.floor(s/60) + 'm';
-    if (s < 86400) return Math.floor(s/3600) + 'h';
-    return Math.floor(s/86400) + 'd';
+    if (!d) return '';
+    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
+    const now = new Date();
+    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
   function timeFull(d: string) {
@@ -132,15 +128,11 @@
 
   async function startChatWith(username: string) {
     try {
-      await api.sendMessage(username, 'Hey! 👋');
-      // Reload conversations
+      const res = await api.openConversation(username);
       conversations = (await api.getConversations()).conversations || [];
-      // Select the new conversation
-      if (conversations.length > 0) {
-        selectedConv = conversations[0];
-      }
+      await selectConv(res.conversation_id);
     } catch (e) {
-      console.error('Failed to start chat', e);
+      console.error('Failed to open chat', e);
     }
   }
 </script>
@@ -290,7 +282,7 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
   .m { --mb: #0a0a0f; --mc: #111117; --mt: #e4e6ea; --mt2: #8a8d91; --mt3: #606770; --mbd: #1e1e2a; --mcard: #16161f; --mgold: #f5a623; --mhover: rgba(255,255,255,0.04); --mmine: rgba(245,166,35,0.12); --mmine-bd: rgba(245,166,35,0.25);
-    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--mt); background: var(--mb); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--mt); background: var(--mb); height: calc(100vh - 56px); display: flex; flex-direction: column; overflow: hidden; }
   .m.light { --mb: #ffffff; --mc: #f0f2f5; --mt: #1c1e21; --mt2: #606770; --mt3: #8a8d91; --mbd: #dddfe2; --mcard: #ffffff; --mgold: #d4a017; --mhover: rgba(0,0,0,0.04); --mmine: rgba(245,166,35,0.08); --mmine-bd: rgba(245,166,35,0.2); }
 
   .m-top { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 52px; background: var(--mcard); border-bottom: 1px solid var(--mbd); flex-shrink: 0; }
@@ -329,7 +321,7 @@
   .m-conv-preview { font-size: 12px; color: var(--mt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .m-conv-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 10px; background: var(--mgold); color: #000; padding: 2px 7px; border-radius: 99px; font-weight: 800; }
 
-  .m-chat { flex: 1; display: flex; flex-direction: column; background: var(--mb); }
+  .m-chat { flex: 1; display: flex; flex-direction: column; background: var(--mb); min-height: 0; }
   .m-chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
   .m-chat-empty h2 { font-size: 20px; font-weight: 700; }
   .m-chat-empty p { color: var(--mt3); font-size: 14px; }
@@ -340,7 +332,7 @@
   .m-chat-name { font-size: 14px; font-weight: 700; }
   .m-chat-real { font-size: 11px; color: var(--mt2); }
 
-  .m-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+  .m-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
   .m-msg-empty { text-align: center; color: var(--mt3); font-size: 13px; padding: 40px; }
   .m-msg { display: flex; }
   .m-msg.mine { justify-content: flex-end; }
@@ -351,7 +343,7 @@
   .m-msg-time { font-size: 10px; color: var(--mt3); display: block; margin-top: 4px; }
   .m-msg.mine .m-msg-time { text-align: right; }
 
-  .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); }
+  .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); flex-shrink: 0; }
   .m-emoji-wrap { position: relative; }
   .m-emoji-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
   .m-emoji-btn:hover { background: var(--mhover); }

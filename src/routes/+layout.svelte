@@ -3,9 +3,12 @@
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
+	import { page } from '$app/stores';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import Faq from '$lib/components/scanner/Faq.svelte';
 	import ChatWidget from '$lib/components/layout/ChatWidget.svelte';
+	import WisersDM from '$lib/components/layout/WisersDM.svelte';
+	import { browser } from '$app/environment';
 	import CheckoutModal from '$lib/components/ui/CheckoutModal.svelte';
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 
@@ -26,7 +29,9 @@
 <div class="bg-mesh" aria-hidden="true"></div>
 <div class="bg-grid" aria-hidden="true"></div>
 
+{#if !$page.url.pathname.startsWith('/wisers')}
 <Navbar />
+{/if}
 
 <ErrorBoundary>
 	<main class="page" id="main-content" role="main">
@@ -34,9 +39,14 @@
 	</main>
 </ErrorBoundary>
 
+{#if !$page.url.pathname.startsWith('/wisers')}
 <Faq />
 <Footer />
+{/if}
+{#if !$page.url.pathname.startsWith('/wisers')}
 <ChatWidget />
+{/if}
+{#if browser}<WisersDM />{/if}
 <CheckoutModal />
 
 <style>
@@ -59,5 +69,6 @@
 	}
 
 	/* Hide third-party chat widget on Wisers pages */
-	:global(body.wisers-page #crisp-chatbox, body.wisers-page .tawk-min-container, body.wisers-page [class*="chat-widget"], body.wisers-page iframe[title*="chat"]) { display: none !important; }
+	:global(body.wisers-page #crisp-chatbox, body.wisers-page .tawk-min-container, body.wisers-page [class*="chat-widget"], body.wisers-page iframe[title*="chat"], body.wisers-page .chat-widget-container) { display: none !important; }
+	:global(body.wisers-page main.page) { padding-top: 0 !important; }
 </style>

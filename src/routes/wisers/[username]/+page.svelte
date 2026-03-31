@@ -18,6 +18,11 @@
   let isBlocked = $state(false);
   let editData = $state<any>({});
   let saving = $state(false);
+  let bookmarkedPosts = $state(new Set<number>());
+  let expandedComments = $state(new Set<number>());
+  let postComments = $state<Record<number, any[]>>({});
+  let editingPost = $state<number | null>(null);
+  let editingContent = $state('');
 
   $effect(() => { const u = $page.params.username; if (u) loadProfile(u); });
 
@@ -29,11 +34,11 @@
         status = (await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }))).status;
         if (status !== 'self') {
           try { followStatus = await api.getFollowStatus(username); } catch {}
-          try { followersCount = (await api.getFollowers(username)).count || 0; } catch {}
-          try { followingCount = (await api.getFollowing(username)).count || 0; } catch {}
+          try { followersCount = (await api.getFollowers(username)).followers?.length || 0; } catch {}
+          try { followingCount = (await api.getFollowing(username)).following?.length || 0; } catch {}
         }
       }
-      try { posts = (await api.getUserPosts(username)).posts || []; } catch {}
+      try { posts = ((await api.getUserPosts(username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
     } catch (e: any) { error = e.message || 'User not found'; }
     loading = false;
   }
@@ -48,7 +53,8 @@
     editData = { bio: profile.bio || '', headline: profile.headline || '', company: profile.company || '', website: profile.website || '',
       skills: profile.skills || '', work_history: profile.work_history || '', education: profile.education || '',
       certifications: profile.certifications || '', languages: profile.languages || '', interests: profile.interests || '',
-      github_url: profile.github_url || '', linkedin_url: profile.linkedin_url || '', twitter_url: profile.twitter_url || '' };
+      github_url: profile.github_url || '', linkedin_url: profile.linkedin_url || '', twitter_url: profile.twitter_url || '',
+      messages_from: profile.messages_from || 'everyone' };
     editing = true;
   }
   async function saveProfile() {
@@ -66,7 +72,17 @@
     return url.startsWith('http') ? url : 'https://api-bscan.balancewises.io/avatars/' + url;
   }
   function initial(n: string) { return (n || '?')[0].toUpperCase(); }
-  function timeAgo(d: string) { const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (s < 60) return 'now'; if (s < 3600) return Math.floor(s/60) + 'm'; if (s < 86400) return Math.floor(s/3600) + 'h'; return Math.floor(s/86400) + 'd'; }
+  function timeAgo(d: string) {
+    if (!d) return '';
+    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
+    const now = new Date();
+    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
   function planColor(p: string) { return p === 'agency' ? '#f5a623' : p === 'pro' ? '#3b82f6' : '#555'; }
   function parseList(s: string) { return (s || '').split(',').map(i => i.trim()).filter(Boolean); }
   function parseEntries(s: string) { return (s || '').split('\n').filter(l => l.trim()); }
@@ -105,6 +121,70 @@
       alert('Muted @' + profile.username);
     } catch {}
   }
+
+  async function toggleLike(postId: number) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.likePost(postId);
+      posts = posts.map(p => p.id === postId ? { ...p, likes_count: res.liked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1), _liked: res.liked } : p);
+    } catch {}
+  }
+
+  async function handleRocket(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.rocketPost(post.id);
+      posts = posts.map(p => p.id === post.id ? { ...p, rockets_count: (p.rockets_count || 0) + (res.rocketed ? 1 : -1), my_rocket: res.rocketed } : p);
+    } catch {}
+  }
+
+  async function handleRepost(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.repostPost(post.id);
+      posts = posts.map(p => p.id === post.id ? { ...p, reposts_count: (p.reposts_count || 0) + (res.reposted ? 1 : -1), my_repost: res.reposted } : p);
+    } catch {}
+  }
+
+  async function toggleComments(postId: number) {
+    const s = new Set(expandedComments);
+    if (s.has(postId)) { s.delete(postId); expandedComments = s; return; }
+    s.add(postId); expandedComments = s;
+    try {
+      const res = await api.getComments(postId);
+      postComments = { ...postComments, [postId]: res.comments || [] };
+    } catch {}
+  }
+
+  async function handleBookmark(post: any) {
+    if (!$auth.token) return;
+    try {
+      const res = await api.bookmarkPost(post.id);
+      const s = new Set(bookmarkedPosts);
+      if (res.bookmarked) { s.add(post.id); } else { s.delete(post.id); }
+      bookmarkedPosts = s;
+    } catch {}
+  }
+
+  async function handleEditPost(post: any) {
+    if (editingPost === post.id) {
+      try {
+        await api.editPost(post.id, editingContent);
+        posts = posts.map(p => p.id === post.id ? { ...p, content: editingContent } : p);
+      } catch {}
+      editingPost = null; editingContent = '';
+    } else {
+      editingPost = post.id; editingContent = post.content;
+    }
+  }
+
+  async function removePost(postId: number) {
+    if (!confirm('Delete this post?')) return;
+    try {
+      await api.deletePost(postId);
+      posts = posts.filter(p => p.id !== postId);
+    } catch {}
+  }
 </script>
 
 <svelte:head>
@@ -128,9 +208,9 @@
           <button class="pr-btn pr-btn-o" onclick={startEdit}>Edit profile</button>
           <a href="/account" class="pr-btn pr-btn-o">Settings</a>
         {:else if $auth.token}
-          {#if status === 'friends'}<a href="/wisers/messages" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends ✓</button>
-          {:else if status === 'request_sent'}<button class="pr-btn pr-btn-o" disabled>Pending</button>
-          {:else}<button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
+          {#if status === 'friends'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends ✓</button>
+          {:else if status === 'request_sent'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-o" disabled>Pending</button>
+          {:else}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
           <button class="pr-btn" style="background:#f5a623; color:#000; border:2px solid #f5a623; font-weight:700;" onclick={() => handleFollow()}>{followStatus.i_follow ? '✓ Following' : 'Follow'}</button>
         {/if}
       </div>
@@ -154,6 +234,20 @@
             <div class="pr-edit-field"><label>GitHub</label><input bind:value={editData.github_url} placeholder="https://github.com/you" /></div>
             <div class="pr-edit-field"><label>LinkedIn</label><input bind:value={editData.linkedin_url} placeholder="https://linkedin.com/in/you" /></div>
             <div class="pr-edit-field"><label>X / Twitter</label><input bind:value={editData.twitter_url} placeholder="https://x.com/you" /></div>
+          </div>
+          <div class="pr-edit-field pr-privacy-field">
+            <label>Who can message you?</label>
+            <div class="pr-privacy-toggle">
+              <button class="pr-privacy-opt" class:active={editData.messages_from === 'everyone'} onclick={() => editData.messages_from = 'everyone'} type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Everyone
+              </button>
+              <button class="pr-privacy-opt" class:active={editData.messages_from === 'friends_only'} onclick={() => editData.messages_from = 'friends_only'} type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                Friends only
+              </button>
+            </div>
+            <p class="pr-privacy-hint">{editData.messages_from === 'everyone' ? 'Anyone on Wisers can send you a message.' : 'Only your friends can send you messages.'}</p>
           </div>
         </div>
         <div class="pr-edit-btns">
@@ -252,16 +346,97 @@
               <div class="pr-post-av">{#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{:else}{initial(profile.display_name || profile.name)}{/if}</div>
               <div><span class="pr-post-name">{profile.display_name || profile.name}</span> <span class="pr-post-h">@{profile.username} · {timeAgo(post.created_at)}</span></div>
             </div>
-            <div class="pr-post-body">{post.content}</div>
-            <div class="pr-post-ft"><span>❤️ {post.likes_count || 0}</span><span>💬 {post.comments_count || 0}</span></div>
+            {#if editingPost === post.id}
+              <textarea class="pr-edit-box" bind:value={editingContent} rows="3"></textarea>
+            {:else}
+              <div class="pr-post-body">{post.content}</div>
+            {/if}
+            <div class="pr-post-ft">
+              <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span>{post.likes_count || 0}</span>
+              </button>
+              <button class="w-action w-rocket-btn" class:w-rocketed={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={post.my_rocket ? '#f97316' : 'none'} stroke={post.my_rocket ? '#f97316' : 'currentColor'} stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                <span>{post.rockets_count || 0}</span>
+              </button>
+              <button class="w-action w-repost-btn" class:w-reposted={post.my_repost} onclick={() => handleRepost(post)} title="Repost">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={post.my_repost ? '#10b981' : 'currentColor'} stroke-width={post.my_repost ? '2.5' : '2'}><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                <span>{post.reposts_count || 0}</span>
+              </button>
+              <button class="w-action" onclick={() => toggleComments(post.id)} title="Comment">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>{post.comments_count || 0}</span>
+              </button>
+              {#if $auth.token}
+                <button class="w-action w-bookmark-btn" class:w-bookmarked={bookmarkedPosts.has(post.id)} onclick={() => handleBookmark(post)} title="Bookmark">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedPosts.has(post.id) ? '#eab308' : 'none'} stroke={bookmarkedPosts.has(post.id) ? '#eab308' : 'currentColor'} stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              {/if}
+              {#if $auth.token && $auth.user?.id !== post.user_id}
+                <button class="w-action w-report-btn" title="Report" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => alert('Report submitted')).catch(() => {}); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                </button>
+              {/if}
+              {#if $auth.user?.id === post.user_id}
+                <button class="w-action w-edit-btn" onclick={() => handleEditPost(post)} title={editingPost === post.id ? 'Save' : 'Edit'}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={editingPost === post.id ? '#10b981' : 'currentColor'} stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="w-action w-action-del" onclick={() => removePost(post.id)} title="Delete">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              {/if}
+            </div>
+            {#if expandedComments.has(post.id)}
+              <div class="w-comments">
+                {#each postComments[post.id] || [] as c (c.id)}
+                  <div class="w-comment">
+                    <a href="/wisers/{c.username}" class="w-comment-author">@{c.username}</a>
+                    <span class="w-comment-text">{c.content}</span>
+                    <span class="w-comment-time">{timeAgo(c.created_at)}</span>
+                  </div>
+                {/each}
+                {#if $auth.token}
+                  <div class="w-comment-form">
+                    <input class="w-comment-input" placeholder="Write a comment..." onkeydown={async (e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const input = e.currentTarget;
+                        if (!input.value.trim()) return;
+                        try {
+                          await api.addComment(post.id, input.value.trim());
+                          const res = await api.getComments(post.id);
+                          postComments = { ...postComments, [post.id]: res.comments || [] };
+                          posts = posts.map(p => p.id === post.id ? { ...p, comments_count: (res.comments || []).length } : p);
+                          input.value = '';
+                        } catch {}
+                      }
+                    }} />
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
         {/each}{/if}
       {:else}
-        <div class="pr-empty"><strong>{profile.stats?.total_scans || 0}</strong> scans · avg score <strong>{profile.stats?.avg_score || 0}</strong>  <div class="pr-follow-stats">
-          <span><strong>{followersCount}</strong> followers</span>
-          <span><strong>{followingCount}</strong> following</span>
+        <div class="pr-activity-stats">
+          <div class="pr-stat-row">
+            <span>🔍</span>
+            <span><strong>{profile.stats?.total_scans || 0}</strong> scans completed</span>
+          </div>
+          <div class="pr-stat-row">
+            <span>📊</span>
+            <span>Average score: <strong>{profile.stats?.avg_score || 0}</strong></span>
+          </div>
+          <div class="pr-stat-row">
+            <span>👥</span>
+            <span><strong>{followersCount}</strong> followers · <strong>{followingCount}</strong> following</span>
+          </div>
+          <div class="pr-stat-row">
+            <span>🤝</span>
+            <span><strong>{profile.stats?.friends || 0}</strong> friends</span>
+          </div>
         </div>
-      </div>
       {/if}
     {/if}
   </div>
@@ -337,7 +512,22 @@
   .pr-post-av img { width:100%;height:100%;object-fit:cover; }
   .pr-post-name { font-weight:700;font-size:14px; } .pr-post-h { font-size:13px;color:var(--t2);margin-left:4px; }
   .pr-post-body { font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-word; }
-  .pr-post-ft { display:flex;gap:20px;margin-top:10px;font-size:13px;color:var(--t2); }
+  .pr-post-ft { display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;font-size:13px;color:var(--t2); }
+  .pr-edit-box { width:100%;background:#1a1a2a;border:1px solid #f5a623;border-radius:8px;color:#e4e6ea;padding:8px;font-size:14px;resize:vertical;margin-bottom:6px; }
+  .w-comments { margin-top:10px;padding-top:10px;border-top:1px solid var(--bd,#1e1e2a); }
+  .w-comment { display:flex;gap:8px;align-items:baseline;margin-bottom:6px;font-size:13px; }
+  .w-comment-author { color:#f5a623;font-weight:600;text-decoration:none; }
+  .w-comment-text { color:#c0c0c8; }
+  .w-comment-time { color:#555;margin-left:auto; }
+  .w-comment-form { margin-top:8px; }
+  .w-comment-input { width:100%;background:#1a1a2a;border:1px solid #2a2a3a;border-radius:20px;color:#e4e6ea;padding:6px 14px;font-size:13px; }
+  .w-action { display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#8a8d91;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:13px;transition:color 0.15s; }
+  .w-action:hover { color:#e4e6ea; }
+  .w-liked svg,.w-liked { color:#f43f5e; }
+  .w-rocketed svg,.w-rocketed { color:#f97316; }
+  .w-reposted { color:#10b981; }
+  .w-bookmarked svg { color:#eab308; }
+  .w-action-del:hover { color:#ef4444 !important; }
 
   .pr-center { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px;color:var(--t3); }
   .pr-center a { color:var(--gold);text-decoration:none; }
@@ -351,4 +541,18 @@
   .pr-follow-stats strong { color: var(--wt); font-weight: 700; }
   .pr-btn-mute { background: transparent !important; border: 1px solid var(--wbd) !important; color: var(--wt3) !important; font-size: 12px !important; }
   .pr-btn-block { background: transparent !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #ef4444 !important; font-size: 12px !important; }
+  .pr-activity-stats { padding:16px 0; }
+  .pr-stat-row { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2); }
+  .pr-stat-row strong { color:var(--t1); }
+  .w-activity-list { display:flex;flex-direction:column;gap:0; }
+  .w-activity-item { display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--wbd,#1e1e2a);font-size:14px; }
+  .w-activity-icon { font-size:18px;width:28px;text-align:center; }
+  .w-activity-text { flex:1;color:var(--wt1,#e4e6ea); }
+  .w-activity-time { color:var(--wt3,#606770);font-size:12px;white-space:nowrap; }
+  .pr-privacy-field { grid-column: 1 / -1; }
+  .pr-privacy-toggle { display:flex;gap:8px;margin-top:8px; }
+  .pr-privacy-opt { display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--bd,#1e1e2a);background:transparent;color:var(--t2,#8a8d91);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s; }
+  .pr-privacy-opt.active { border-color:#f5a623;background:rgba(245,166,35,0.1);color:#f5a623; }
+  .pr-privacy-opt:hover:not(.active) { border-color:#555;color:var(--t1,#e4e6ea); }
+  .pr-privacy-hint { font-size:11px;color:var(--t3,#606770);margin-top:6px; }
 </style>

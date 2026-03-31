@@ -1,16 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import * as api from '$lib/api/client';
+  import { markNotifsRead } from '$lib/stores/wisers-ws';
   import { auth } from '$lib/stores/auth';
+  import * as api from '$lib/api/client';
 
   let notifications = $state<any[]>([]);
   let loading = $state(true);
   let theme = $state<'dark' | 'light'>('dark');
 
   onMount(async () => {
+    if ($auth.token) markNotifsRead($auth.token);
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
-    if (!$auth.token) return;
+    if (!$auth.token) { loading = false; return; }
     try { notifications = (await api.getNotifications()).notifications || []; } catch {}
     loading = false;
   });
@@ -25,9 +27,15 @@
   }
 
   function timeAgo(d: string) {
-    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-    if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm ago';
-    if (s < 86400) return Math.floor(s/3600) + 'h ago'; return Math.floor(s/86400) + 'd ago';
+    if (!d) return '';
+    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
+    const now = new Date();
+    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
   function icon(type: string) {
