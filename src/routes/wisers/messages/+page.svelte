@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { wsUnreadDMs, wsConnected as wsConnectedStore, markConvRead, fetchUnreadCounts, connectWS, sendTyping } from '$lib/stores/wisers-ws';
+  import { onMount, onDestroy, untrack } from 'svelte';
+  import { wsUnreadDMs, wsConnected as wsConnectedStore, wsLastMessage, markConvRead, fetchUnreadCounts, connectWS, sendTyping } from '$lib/stores/wisers-ws';
   import { page } from '$app/stores';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
@@ -34,6 +34,31 @@
       : conversations
   );
 
+  // X-standard: complete message via WS, dedup, no reload
+  $effect(() => {
+    const msg = $wsLastMessage;
+    if (!msg || !msg.sender_id || !msg.content) return;
+    untrack(() => {
+      loadConversations();
+      if (activeConv && String(msg.conversation_id) === String(activeConv)) {
+        const isDupe = messages.some(m => m.id === msg.id);
+        if (!isDupe) {
+          messages = [...messages, {
+            id: msg.id || Date.now(),
+            sender_id: msg.sender_id,
+            content: msg.content,
+            created_at: msg.created_at || new Date().toISOString(),
+            read_at: msg.read_at || null,
+            username: msg.username || '',
+            display_name: msg.display_name || '',
+            user_name: msg.user_name || ''
+          }];
+          scrollBottom();
+        }
+      }
+    });
+  });
+
   onMount(async () => {
     if ($auth.token) { connectWS($auth.token); fetchUnreadCounts($auth.token); }
     if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
@@ -42,26 +67,7 @@
     await loadConversations();
     loading = false;
 
-    wsHandler = (e: any) => {
-      const data = e.detail;
-      loadConversations();
-      if (activeConv) {
-        // Use == to handle string/number type mismatch from WS vs API
-        if (data.conversation_id == activeConv && data.sender_id && data.content) {
-          messages = [...messages, {
-            id: `ws-${Date.now()}`,
-            sender_id: data.sender_id,
-            content: data.content,
-            created_at: new Date().toISOString(),
-            read_at: null
-          }];
-          scrollBottom();
-        }
-        // Delay reload so optimistic message isn't immediately overwritten
-        setTimeout(() => { if (activeConv) loadMessages(activeConv); }, 1000);
-      }
-    };
-    window.addEventListener('wisers:new_message', wsHandler);
+    // wsLastMessage store drives real-time updates via $effect (below onMount)
 
     typingHandler = (e: any) => {
       const conv = conversations.find(c => c.id === activeConv);
@@ -84,7 +90,7 @@
   onDestroy(() => {
     if (typeof document !== 'undefined') document.body.classList.remove('wisers-page');
     if (pollInterval) clearInterval(pollInterval);
-    if (wsHandler) window.removeEventListener('wisers:new_message', wsHandler);
+    // wsHandler replaced by $effect — no manual cleanup needed
     if (typingHandler) window.removeEventListener('wisers:typing', typingHandler);
     if (typingTimeout) clearTimeout(typingTimeout);
   });

@@ -8,6 +8,7 @@ const API = 'https://api-bscan.balancewises.io/api/community';
 export const wsNotifCount = writable(0);
 export const wsUnreadDMs = writable(0);
 export const wsConnected = writable(false);
+export const wsLastMessage = writable<any>(null);
 
 // ═══════════════════════════════════════
 // SERVER SYNC (source of truth)
@@ -132,6 +133,7 @@ export function connectWS(authToken: string) {
         // DM — separate from notifications
         if (data.action === 'new_message') {
           wsUnreadDMs.update(n => n + 1);
+          wsLastMessage.set(data);
           playPing();
           window.dispatchEvent(new CustomEvent('wisers:new_message', { detail: data }));
           window.dispatchEvent(new CustomEvent('wisers:toast', {
