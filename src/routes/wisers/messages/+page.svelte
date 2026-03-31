@@ -45,7 +45,7 @@
     wsHandler = (e: any) => {
       const data = e.detail;
       loadConversations();
-      if (activeConv && data.conversation_id) { loadMessages(activeConv); scrollBottom(); }
+      if (activeConv) { loadMessages(activeConv); scrollBottom(); }
     };
     window.addEventListener('wisers:new_message', wsHandler);
 
