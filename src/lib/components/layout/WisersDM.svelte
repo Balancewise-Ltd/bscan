@@ -37,7 +37,7 @@
   async function openConv(conv: any) {
     activeConv = conv;
     try {
-      const res = await api.getMessages(conv.id, false);
+      const res = await api.getMessages(conv.id, true);
       messages = res.messages || [];
       scrollBottom();
     } catch {}
@@ -146,7 +146,7 @@
             </div>
             <div class="fdm-conv-meta">
               <span class="fdm-conv-time">{timeAgo(conv.updated_at)}</span>
-              {#if conv.unread > 0}<span class="fdm-unread">{conv.unread}</span>{/if}
+              {#if conv.my_unread > 0}<span class="fdm-unread">{conv.my_unread}</span>{/if}
             </div>
           </button>
         {/each}

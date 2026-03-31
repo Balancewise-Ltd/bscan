@@ -770,9 +770,8 @@ export async function getUserPosts(username: string, page: number = 1): Promise<
 export async function getConversations(): Promise<any> {
 	return request('/api/community/conversations');
 }
-export async function getMessages(convId: number, markRead: boolean = false) {
-  return get(`community/conversations/${convId}/messages?mark_read=${markRead}`);
-}/messages`);
+export async function getMessages(convId: number, markRead: boolean = false): Promise<any> {
+  return request('/api/community/conversations/' + convId + '/messages?mark_read=' + markRead);
 }
 export async function sendMessage(username: string, content: string): Promise<any> {
 	return request(`/api/community/messages/${username}`, { method: 'POST', body: JSON.stringify({ content }) });
@@ -1037,10 +1036,10 @@ export async function bookmarkPost(postId: number): Promise<any> {
 	return request('/api/community/bookmark/' + postId, { method: 'POST' });
 }
 
-export async function markConvUnread(convId: number) {
-  return post(\`community/conversations/\${convId}/mark-unread\`, {});
+export async function markConvUnread(convId: number): Promise<any> {
+  return request('/api/community/conversations/' + convId + '/mark-unread', { method: 'POST' });
 }
 
-export async function getMessageRequests() {
-  return get('community/message-requests');
+export async function getMessageRequests(): Promise<any> {
+  return request('/api/community/message-requests');
 }

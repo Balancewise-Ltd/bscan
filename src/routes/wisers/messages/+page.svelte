@@ -47,6 +47,7 @@
   onDestroy(() => {
     if (typeof document !== 'undefined') document.body.classList.remove('wisers-page');
     if (pollInterval) clearInterval(pollInterval);
+    if (wsHandler) window.removeEventListener('wisers:new_message', wsHandler);
 
   });
 
@@ -92,7 +93,7 @@
   async function startNewConv() {
     if (!newConvUser.trim()) return;
     try {
-      const res = await api.sendMessage(newConvUser.trim(), 'Hey!');
+      const res = await api.openConversation(newConvUser.trim());
       showNewConv = false; newConvUser = '';
       await loadConversations();
       if (res.conversation_id) await selectConv(res.conversation_id);
