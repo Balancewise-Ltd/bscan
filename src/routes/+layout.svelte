@@ -8,6 +8,7 @@
 	import Faq from '$lib/components/scanner/Faq.svelte';
 	import ChatWidget from '$lib/components/layout/ChatWidget.svelte';
 	import WisersDM from '$lib/components/layout/WisersDM.svelte';
+	import WisersToast from '$lib/components/layout/WisersToast.svelte';
 	import { browser } from '$app/environment';
 	import CheckoutModal from '$lib/components/ui/CheckoutModal.svelte';
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
@@ -46,7 +47,7 @@
 {#if !$page.url.pathname.startsWith('/wisers')}
 <ChatWidget />
 {/if}
-{#if browser}<WisersDM />{/if}
+{#if browser}<WisersDM /><WisersToast />{/if}
 <CheckoutModal />
 
 <style>

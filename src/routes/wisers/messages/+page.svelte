@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { wsUnreadDMs, wsConnected as wsConnectedStore, markConvRead, fetchUnreadCounts, connectWS } from '$lib/stores/wisers-ws';
+  import { wsUnreadDMs, wsConnected as wsConnectedStore, markConvRead, fetchUnreadCounts, connectWS, sendTyping } from '$lib/stores/wisers-ws';
   import { page } from '$app/stores';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
@@ -8,6 +8,10 @@
   let conversations = $state<any[]>([]);
   let friendsList = $state<any[]>([]);
   let showNewChat = $state(false);
+  let searchQuery = $state('');
+  let typingUser = $state('');
+  let typingTimeout: any = null;
+  let lastTypingSent = 0;
   let activeConv = $state<number | null>(null);
   let messages = $state<any[]>([]);
   let newMsg = $state('');
@@ -20,6 +24,14 @@
   let newConvUser = $state('');
   let showNewConv = $state(false);
   let theme = $state<'dark' | 'light'>('dark');
+  const filteredConvs = $derived(
+    searchQuery.trim()
+      ? conversations.filter(c =>
+          (c.other_username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (c.other_display_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : conversations
+  );
 
   onMount(async () => {
     if ($auth.token) { connectWS($auth.token); fetchUnreadCounts($auth.token); }
@@ -36,6 +48,16 @@
     };
     window.addEventListener('wisers:new_message', wsHandler);
 
+    const typingHandler = (e: any) => {
+      const conv = conversations.find(c => c.id === activeConv);
+      if (conv && e.detail.from) {
+        typingUser = conv.other_display_name || conv.other_username || '';
+        if (typingTimeout) clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => { typingUser = ''; }, 3000);
+      }
+    };
+    window.addEventListener('wisers:typing', typingHandler);
+
     const dmUser = $page.url.searchParams.get('user');
     if (dmUser) await startChatWith(dmUser);
     pollInterval = setInterval(async () => {
@@ -48,7 +70,8 @@
     if (typeof document !== 'undefined') document.body.classList.remove('wisers-page');
     if (pollInterval) clearInterval(pollInterval);
     if (wsHandler) window.removeEventListener('wisers:new_message', wsHandler);
-
+    window.removeEventListener('wisers:typing', typingHandler as any);
+    if (typingTimeout) clearTimeout(typingTimeout);
   });
 
 
@@ -175,7 +198,7 @@
     <!-- Conversations sidebar -->
     <div class="m-convos">
       <div class="m-convos-header">
-        <input type="text" class="m-convos-search" placeholder="Search conversations..." />
+        <input type="text" class="m-convos-search" placeholder="Search conversations..." bind:value={searchQuery} />
         <button class="m-new-btn" onclick={() => showNewConv = !showNewConv} title="New message">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
@@ -208,7 +231,7 @@
             <p class="m-empty-sub">Message a friend to get started</p>
           </div>
         {:else}
-          {#each conversations as conv (conv.id)}
+          {#each filteredConvs as conv (conv.id)}
             <!-- svelte-ignore a11y_interactive_supports_focus -->
             <div class="m-conv" class:active={activeConv === conv.id} role="button" tabindex="0" onclick={() => selectConv(conv.id)} onkeydown={(e) => e.key === 'Enter' && selectConv(conv.id)}>
               <div class="m-conv-avatar">{initial(conv.other_display_name || conv.other_name)}</div>
@@ -274,12 +297,18 @@
             <div class="m-msg" class:mine={msg.sender_id === $auth.user?.id}>
               <div class="m-msg-bubble">
                 <div class="m-msg-text">{msg.content}</div>
-                <span class="m-msg-time">{timeFull(msg.created_at)}</span>
+                <span class="m-msg-time">
+                  {timeFull(msg.created_at)}
+                  {#if msg.sender_id === $auth.user?.id}
+                    {#if msg.read_at}<span class="m-tick m-tick-read">✓✓</span>{:else}<span class="m-tick">✓</span>{/if}
+                  {/if}
+                </span>
               </div>
             </div>
           {/each}
         </div>
 
+        {#if typingUser}<div class="m-typing"><span class="m-typing-dots"></span> {typingUser} is typing...</div>{/if}
         <!-- Input -->
         <div class="m-input-bar">
           <div class="m-emoji-wrap">
@@ -293,7 +322,18 @@
           {/if}
         </div>
         <input type="text" class="m-input" bind:value={newMsg} placeholder="Type a message..."
-            onkeydown={(e) => e.key === 'Enter' && send()} />
+            onkeydown={(e) => e.key === 'Enter' && send()}
+            oninput={() => {
+              const now = Date.now();
+              if (now - lastTypingSent > 2000) {
+                const conv = conversations.find(c => c.id === activeConv);
+                if (conv) {
+                  const otherId = conv.user_a === $auth.user?.id ? conv.user_b : conv.user_a;
+                  if (otherId) sendTyping(otherId);
+                }
+                lastTypingSent = now;
+              }
+            }} />
           <button class="m-send" onclick={send} disabled={sending || !newMsg.trim()}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
@@ -370,6 +410,11 @@
   .m-msg-text { font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
   .m-msg-time { font-size: 10px; color: var(--mt3); display: block; margin-top: 4px; }
   .m-msg.mine .m-msg-time { text-align: right; }
+  .m-tick { margin-left: 4px; color: var(--mt3); font-size: 10px; }
+  .m-tick-read { color: #3b82f6; }
+  .m-typing { padding: 4px 20px 6px; font-size: 12px; color: var(--mt3); font-style: italic; min-height: 24px; }
+  .m-typing-dots::after { content: '●●●'; letter-spacing: -2px; animation: typeDots 1.2s infinite; margin-right: 6px; font-style: normal; font-size: 8px; }
+  @keyframes typeDots { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 
   .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); flex-shrink: 0; }
   .m-emoji-wrap { position: relative; }

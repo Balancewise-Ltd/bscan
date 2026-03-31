@@ -124,6 +124,11 @@ export function connectWS(authToken: string) {
           }));
         }
 
+        // TYPING indicator
+        if (data.action === 'typing') {
+          window.dispatchEvent(new CustomEvent('wisers:typing', { detail: data }));
+        }
+
         // DM — separate from notifications
         if (data.action === 'new_message') {
           wsUnreadDMs.update(n => n + 1);
@@ -152,6 +157,12 @@ export function connectWS(authToken: string) {
 
   } catch {
     wsConnected.set(false);
+  }
+}
+
+export function sendTyping(toUsername: string) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'typing', to: toUsername }));
   }
 }
 
