@@ -46,8 +46,8 @@
       const data = e.detail;
       loadConversations();
       if (activeConv) {
-        // Synchronously append so Svelte renders immediately (avoids async flush delay)
-        if (data.conversation_id === activeConv && data.sender_id && data.content) {
+        // Use == to handle string/number type mismatch from WS vs API
+        if (data.conversation_id == activeConv && data.sender_id && data.content) {
           messages = [...messages, {
             id: `ws-${Date.now()}`,
             sender_id: data.sender_id,
@@ -57,8 +57,8 @@
           }];
           scrollBottom();
         }
-        // Also reload from server for accurate IDs / read receipts
-        loadMessages(activeConv);
+        // Delay reload so optimistic message isn't immediately overwritten
+        setTimeout(() => { if (activeConv) loadMessages(activeConv); }, 1000);
       }
     };
     window.addEventListener('wisers:new_message', wsHandler);
