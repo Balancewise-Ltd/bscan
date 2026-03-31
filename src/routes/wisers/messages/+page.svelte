@@ -21,6 +21,7 @@
   const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','🛠️','💻','🌐','🤖','🧠','💭','✨','🙏','🤝','👋','✌️','🤞'];
   let pollInterval: any;
   let wsHandler: any;
+  let typingHandler: ((e: any) => void) | null = null;
   let newConvUser = $state('');
   let showNewConv = $state(false);
   let theme = $state<'dark' | 'light'>('dark');
@@ -48,7 +49,7 @@
     };
     window.addEventListener('wisers:new_message', wsHandler);
 
-    const typingHandler = (e: any) => {
+    typingHandler = (e: any) => {
       const conv = conversations.find(c => c.id === activeConv);
       if (conv && e.detail.from) {
         typingUser = conv.other_display_name || conv.other_username || '';
@@ -70,7 +71,7 @@
     if (typeof document !== 'undefined') document.body.classList.remove('wisers-page');
     if (pollInterval) clearInterval(pollInterval);
     if (wsHandler) window.removeEventListener('wisers:new_message', wsHandler);
-    window.removeEventListener('wisers:typing', typingHandler as any);
+    if (typingHandler) window.removeEventListener('wisers:typing', typingHandler);
     if (typingTimeout) clearTimeout(typingTimeout);
   });
 
