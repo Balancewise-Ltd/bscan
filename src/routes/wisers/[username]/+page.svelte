@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
 
@@ -23,6 +24,16 @@
   let postComments = $state<Record<number, any[]>>({});
   let editingPost = $state<number | null>(null);
   let editingContent = $state('');
+  let theme = $state<'dark'|'light'>('dark');
+  let journeyData = $state<any>({ entries: [], goals: [] });
+  let userCommunities = $state<any[]>([]);
+
+  onMount(() => {
+    const saved = localStorage.getItem('wisers-theme');
+    if (saved === 'light') { theme = 'light'; }
+    else if (!saved && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) { theme = 'light'; }
+    if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-wisers-theme', theme); document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f'; }
+  });
 
   $effect(() => { const u = $page.params.username; if (u) loadProfile(u); });
 
@@ -41,6 +52,9 @@
       try { posts = ((await api.getUserPosts(username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
     } catch (e: any) { error = e.message || 'User not found'; }
     loading = false;
+    // Load journey + communities
+    try { journeyData = await api.getJourney(username); } catch {}
+    try { userCommunities = (await api.getMyCommunities()).communities || []; } catch {}
   }
 
   async function addFriend() {
@@ -88,6 +102,13 @@
   function parseEntries(s: string) { return (s || '').split('\n').filter(l => l.trim()); }
 
   const badge = '<svg viewBox="0 0 22 22" width="18" height="18"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.635-.08 1.293.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.604-.274 1.26-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.141.27.587.7 1.086 1.24 1.44s1.167.551 1.813.568c.645-.017 1.27-.213 1.81-.567.54-.355.97-.854 1.244-1.44.607.223 1.264.27 1.897.14.634-.131 1.218-.437 1.687-.883.445-.47.75-1.054.882-1.69.13-.635.083-1.292-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="white"/></svg>';
+
+  function handleLogout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    auth.set({ token: null, user: null });
+    goto('/wisers');
+  }
 
   async function handleFollow() {
     if (!$auth.token || !profile) return;
@@ -193,7 +214,8 @@
   {#if profile}<meta property="og:title" content="@{profile.username} on Wisers" /><meta name="robots" content="index, follow" />{/if}
 </svelte:head>
 
-<div class="pr">
+<div class="pr" class:light={theme === "light"}>
+<div class="pr-back-bar"><a href="/wisers" class="pr-back-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Feed</a></div>
 {#if loading}<div class="pr-center"><div class="pr-spin"></div></div>
 {:else if error}<div class="pr-center"><p>{error}</p><a href="/wisers">Back to Wisers</a></div>
 {:else if profile}
@@ -335,6 +357,9 @@
       <!-- Tabs -->
       <div class="pr-tabs">
         <button class="pr-tab" class:active={activeTab === 'posts'} onclick={() => activeTab = 'posts'}>Posts</button>
+        <button class="pr-tab" class:active={activeTab === 'about'} onclick={() => activeTab = 'about'}>About</button>
+        <button class="pr-tab" class:active={activeTab === 'journey'} onclick={() => activeTab = 'journey'}>Journey</button>
+        <button class="pr-tab" class:active={activeTab === 'communities'} onclick={() => activeTab = 'communities'}>Communities</button>
         <button class="pr-tab" class:active={activeTab === 'scans'} onclick={() => activeTab = 'scans'}>Activity</button>
       </div>
 
@@ -350,6 +375,7 @@
               <textarea class="pr-edit-box" bind:value={editingContent} rows="3"></textarea>
             {:else}
               <div class="pr-post-body">{post.content}</div>
+            {#if post.image_url}<div class="pr-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
             {/if}
             <div class="pr-post-ft">
               <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
@@ -418,6 +444,76 @@
             {/if}
           </div>
         {/each}{/if}
+      {:else if activeTab === 'about'}
+        <div class="pr-about-section">
+          {#if parseList(profile.skills).length > 0}
+            <div class="pr-about-card"><h4>Skills</h4><div class="pr-tags">{#each parseList(profile.skills) as skill}<span class="pr-tag">{skill}</span>{/each}</div></div>
+          {/if}
+          {#if parseEntries(profile.work_history).length > 0}
+            <div class="pr-about-card"><h4>Experience</h4>{#each parseEntries(profile.work_history) as entry}<div class="pr-entry"><span class="pr-entry-dot"></span><div>{entry}</div></div>{/each}</div>
+          {/if}
+          {#if parseEntries(profile.education).length > 0}
+            <div class="pr-about-card"><h4>Education</h4>{#each parseEntries(profile.education) as entry}<div class="pr-entry"><span class="pr-entry-dot ed"></span><div>{entry}</div></div>{/each}</div>
+          {/if}
+          {#if parseEntries(profile.certifications).length > 0}
+            <div class="pr-about-card"><h4>Certifications</h4>{#each parseEntries(profile.certifications) as cert}<div class="pr-entry"><span class="pr-entry-dot cert"></span><div>{cert}</div></div>{/each}</div>
+          {/if}
+          {#if parseList(profile.languages).length > 0}
+            <div class="pr-about-card"><h4>Languages</h4><div class="pr-tags">{#each parseList(profile.languages) as lang}<span class="pr-tag lang">{lang}</span>{/each}</div></div>
+          {/if}
+          {#if parseList(profile.interests).length > 0}
+            <div class="pr-about-card"><h4>Interests</h4><div class="pr-tags">{#each parseList(profile.interests) as i}<span class="pr-tag int">{i}</span>{/each}</div></div>
+          {/if}
+        </div>
+
+      {:else if activeTab === 'journey'}
+        <div class="pr-journey">
+          {#if journeyData.goals.length > 0}
+            <h4 class="pr-j-heading">Goals</h4>
+            {#each journeyData.goals as goal}
+              <div class="pr-j-goal">
+                <div class="pr-j-goal-top"><span class="pr-j-goal-title">{goal.title}</span><span class="pr-j-goal-status" class:achieved={goal.status === 'achieved'}>{goal.status}</span></div>
+                <div class="pr-j-progress-bar"><div class="pr-j-progress-fill" style="width:{goal.target_value ? Math.min(100, (goal.current_value / goal.target_value) * 100) : 0}%"></div></div>
+                <div class="pr-j-goal-nums">{goal.current_value} / {goal.target_value} {goal.unit}</div>
+              </div>
+            {/each}
+          {/if}
+          {#if journeyData.entries.length > 0}
+            <h4 class="pr-j-heading">Timeline</h4>
+            {#each journeyData.entries as entry}
+              <div class="pr-j-entry">
+                <div class="pr-j-entry-dot"></div>
+                <div class="pr-j-entry-body">
+                  <div class="pr-j-entry-title">{entry.title}</div>
+                  {#if entry.description}<p class="pr-j-entry-desc">{entry.description}</p>{/if}
+                  {#if entry.metric_name}<div class="pr-j-metric">{entry.metric_name}: {entry.metric_value} {entry.metric_unit}</div>{/if}
+                  <span class="pr-j-entry-time">{new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+              </div>
+            {/each}
+          {/if}
+          {#if journeyData.goals.length === 0 && journeyData.entries.length === 0}
+            <div class="pr-empty">No journey entries yet.</div>
+          {/if}
+        </div>
+
+      {:else if activeTab === 'communities'}
+        <div class="pr-communities">
+          {#if userCommunities.length === 0}
+            <div class="pr-empty">Not a member of any communities yet.</div>
+          {:else}
+            {#each userCommunities as c}
+              <a href="/wisers/communities/{c.slug}" class="pr-comm-card">
+                <div class="pr-comm-icon">{c.name[0]}</div>
+                <div class="pr-comm-info">
+                  <div class="pr-comm-name">{c.name}</div>
+                  <div class="pr-comm-meta">{c.member_count} members · {c.role}</div>
+                </div>
+              </a>
+            {/each}
+          {/if}
+        </div>
+
       {:else}
         <div class="pr-activity-stats">
           <div class="pr-stat-row">
@@ -438,6 +534,14 @@
           </div>
         </div>
       {/if}
+    {/if}
+  {#if $auth.token && status === 'self'}
+      <div class="pr-logout-wrap">
+        <button class="pr-logout-btn" onclick={handleLogout}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log out
+        </button>
+      </div>
     {/if}
   </div>
 {/if}
@@ -555,4 +659,59 @@
   .pr-privacy-opt.active { border-color:#f5a623;background:rgba(245,166,35,0.1);color:#f5a623; }
   .pr-privacy-opt:hover:not(.active) { border-color:#555;color:var(--t1,#e4e6ea); }
   .pr-privacy-hint { font-size:11px;color:var(--t3,#606770);margin-top:6px; }
+  /* Theme */
+  .pr { --pr-bg: #0a0a0f; --pr-card: #111117; --pr-t: #e4e6ea; --pr-t2: #8a8d91; --pr-t3: #606770; --pr-bd: #1e1e2a; --pr-gold: #f5a623; }
+  .pr.light { --pr-bg: #ffffff; --pr-card: #ffffff; --pr-t: #1c1e21; --pr-t2: #606770; --pr-t3: #8a8d91; --pr-bd: #dddfe2; --pr-gold: #d4a017; }
+
+  /* Full bleed */
+  :global(body) { margin: 0; }
+  :global(.page) { padding: 0 !important; }
+
+  /* Back link */
+  .pr-back-bar { max-width: 700px; margin: 0 auto; padding: 16px 20px 0; }
+  .pr-back-link { font-size: 13px; color: var(--pr-gold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .pr-back-link:hover { text-decoration: underline; }
+
+  /* Post image */
+  .pr-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
+  .pr-post-img img { width: 100%; max-height: 500px; object-fit: cover; display: block; border-radius: 12px; }
+
+  /* About section */
+  .pr-about-section { display: flex; flex-direction: column; gap: 16px; }
+  .pr-about-card { background: var(--pr-card); border: 1px solid var(--pr-bd); border-radius: 14px; padding: 18px; }
+  .pr-about-card h4 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--pr-gold); }
+
+  /* Journey */
+  .pr-journey { display: flex; flex-direction: column; gap: 12px; }
+  .pr-j-heading { margin: 8px 0; font-size: 15px; font-weight: 600; color: var(--pr-gold); }
+  .pr-j-goal { background: var(--pr-card); border: 1px solid var(--pr-bd); border-radius: 14px; padding: 16px; }
+  .pr-j-goal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .pr-j-goal-title { font-weight: 600; font-size: 14px; }
+  .pr-j-goal-status { font-size: 12px; color: var(--pr-t3); text-transform: capitalize; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--pr-bd); }
+  .pr-j-goal-status.achieved { color: #10b981; border-color: rgba(16,185,129,0.3); }
+  .pr-j-progress-bar { height: 6px; background: var(--pr-bd); border-radius: 3px; overflow: hidden; }
+  .pr-j-progress-fill { height: 100%; background: var(--pr-gold); border-radius: 3px; transition: width 0.3s; }
+  .pr-j-goal-nums { font-size: 12px; color: var(--pr-t3); margin-top: 6px; }
+  .pr-j-entry { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--pr-bd); }
+  .pr-j-entry:last-child { border-bottom: none; }
+  .pr-j-entry-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pr-gold); margin-top: 5px; flex-shrink: 0; }
+  .pr-j-entry-body { flex: 1; }
+  .pr-j-entry-title { font-weight: 600; font-size: 14px; }
+  .pr-j-entry-desc { font-size: 13px; color: var(--pr-t2); margin: 4px 0; line-height: 1.5; }
+  .pr-j-metric { font-size: 13px; color: var(--pr-gold); font-weight: 600; margin: 4px 0; }
+  .pr-j-entry-time { font-size: 12px; color: var(--pr-t3); }
+
+  /* Communities */
+  .pr-communities { display: flex; flex-direction: column; gap: 10px; }
+  .pr-comm-card { display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--pr-card); border: 1px solid var(--pr-bd); border-radius: 14px; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+  .pr-comm-card:hover { border-color: var(--pr-gold); }
+  .pr-comm-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--pr-gold), #e09100); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; font-size: 18px; flex-shrink: 0; }
+  .pr-comm-info { flex: 1; }
+  .pr-comm-name { font-weight: 600; font-size: 14px; }
+  .pr-comm-meta { font-size: 12px; color: var(--pr-t3); margin-top: 2px; }
+
+  /* Logout */
+  .pr-logout-wrap { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--pr-bd); }
+  .pr-logout-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 10px 24px; border-radius: 24px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; transition: all 0.15s; }
+  .pr-logout-btn:hover { background: rgba(239,68,68,0.08); border-color: #ef4444; }
 </style>
