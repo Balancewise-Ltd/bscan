@@ -463,19 +463,21 @@
       </div>
 
       <div class="pr-stats">
-        <div><strong>{followersCount}</strong> Followers</div>
-        <div><strong>{followingCount}</strong> Following</div>
-        <div><strong>{posts.length}</strong> Posts</div>
+        <button class="pr-stat-item" onclick={() => {}}><span class="pr-stat-num">{followersCount}</span><span class="pr-stat-label">Followers</span></button>
+        <button class="pr-stat-item" onclick={() => {}}><span class="pr-stat-num">{followingCount}</span><span class="pr-stat-label">Following</span></button>
+        <button class="pr-stat-item" onclick={() => activeTab = 'posts'}><span class="pr-stat-num">{posts.length}</span><span class="pr-stat-label">Posts</span></button>
       </div>
 
       <!-- Tabs -->
-      <div class="pr-tabs">
-        <button class="pr-tab" class:active={activeTab === 'posts'} onclick={() => activeTab = 'posts'}>Posts</button>
-        <button class="pr-tab" class:active={activeTab === 'media'} onclick={() => activeTab = 'media'}>Media</button>
-        <button class="pr-tab" class:active={activeTab === 'about'} onclick={() => activeTab = 'about'}>About</button>
-        <button class="pr-tab" class:active={activeTab === 'journey'} onclick={() => activeTab = 'journey'}>Journey</button>
-        <button class="pr-tab" class:active={activeTab === 'communities'} onclick={() => activeTab = 'communities'}>Communities</button>
-        <button class="pr-tab" class:active={activeTab === 'scans'} onclick={() => activeTab = 'scans'}>Activity</button>
+      <div class="pr-tabs-scroll">
+        <div class="pr-tabs">
+          <button class="pr-tab" class:active={activeTab === 'posts'} onclick={() => activeTab = 'posts'}>Posts</button>
+          <button class="pr-tab" class:active={activeTab === 'media'} onclick={() => activeTab = 'media'}>Media</button>
+          <button class="pr-tab" class:active={activeTab === 'about'} onclick={() => activeTab = 'about'}>About</button>
+          <button class="pr-tab" class:active={activeTab === 'journey'} onclick={() => activeTab = 'journey'}>Journey</button>
+          {#if status === 'self' && userCommunities.length > 0}<button class="pr-tab" class:active={activeTab === 'communities'} onclick={() => activeTab = 'communities'}>Communities</button>{/if}
+          <button class="pr-tab" class:active={activeTab === 'scans'} onclick={() => activeTab = 'scans'}>Activity</button>
+        </div>
       </div>
 
       {#if activeTab === 'posts'}
@@ -882,23 +884,57 @@
         </div>
 
       {:else}
-        <div class="pr-activity-stats">
-          <div class="pr-stat-row">
-            <span>🔍</span>
-            <span><strong>{profile.stats?.total_scans || 0}</strong> scans completed</span>
+        <div class="pr-activity">
+          <div class="pr-activity-grid">
+            <div class="pr-activity-card">
+              <div class="pr-activity-card-icon pr-ac-scan">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <div class="pr-activity-card-value">{profile.stats?.total_scans || 0}</div>
+              <div class="pr-activity-card-label">Scans</div>
+            </div>
+            <div class="pr-activity-card">
+              <div class="pr-activity-card-icon pr-ac-score">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+              </div>
+              <div class="pr-activity-card-value">{profile.stats?.avg_score || 0}</div>
+              <div class="pr-activity-card-label">Avg Score</div>
+            </div>
+            <div class="pr-activity-card">
+              <div class="pr-activity-card-icon pr-ac-network">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="pr-activity-card-value">{followersCount}<span class="pr-ac-slash">/</span>{followingCount}</div>
+              <div class="pr-activity-card-label">Followers / Following</div>
+            </div>
+            <div class="pr-activity-card">
+              <div class="pr-activity-card-icon pr-ac-friends">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+              </div>
+              <div class="pr-activity-card-value">{profile.stats?.friends || 0}</div>
+              <div class="pr-activity-card-label">Friends</div>
+            </div>
           </div>
-          <div class="pr-stat-row">
-            <span>📊</span>
-            <span>Average score: <strong>{profile.stats?.avg_score || 0}</strong></span>
-          </div>
-          <div class="pr-stat-row">
-            <span>👥</span>
-            <span><strong>{followersCount}</strong> followers · <strong>{followingCount}</strong> following</span>
-          </div>
-          <div class="pr-stat-row">
-            <span>🤝</span>
-            <span><strong>{profile.stats?.friends || 0}</strong> friends</span>
-          </div>
+          {#if posts.length > 0}
+            <div class="pr-activity-recent">
+              <h4 class="pr-activity-heading">Recent Activity</h4>
+              {#each posts.slice(0, 3) as post}
+                <div class="pr-activity-item">
+                  <div class="pr-activity-item-icon">
+                    {#if post.post_type === 'milestone'}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {:else}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    {/if}
+                  </div>
+                  <div class="pr-activity-item-body">
+                    <span class="pr-activity-item-text">{post.content.length > 80 ? post.content.slice(0, 80) + '...' : post.content}</span>
+                    <span class="pr-activity-item-time">{timeAgo(post.created_at)}</span>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
     {/if}
@@ -939,8 +975,10 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
   .pr { --bg:#0a0a0f;--card:#111117;--t1:#e4e6ea;--t2:#8a8d91;--t3:#606770;--bd:#1e1e2a;--gold:#f5a623;--hv:rgba(255,255,255,0.04);
     font-family:'DM Sans',-apple-system,sans-serif;color:var(--t1);background:var(--bg);min-height:100vh; }
-  .pr-banner { height:200px;background:linear-gradient(135deg,#1a1a2e,#16213e 40%,#0f3460 70%,#1a1a2e);position:relative; }
-  .pr-banner::after { content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,var(--bg) 100%); }
+  .pr.light { --bg:#ffffff;--card:#ffffff;--t1:#1c1e21;--t2:#606770;--t3:#8a8d91;--bd:#dddfe2;--gold:#d4a017;--hv:rgba(0,0,0,0.04); }
+  .pr-banner { height:200px;background:linear-gradient(135deg,#1a1520 0%,#1e1a2e 25%,#16213e 50%,#0f3460 75%,#1a1520 100%);position:relative;overflow:hidden; }
+  .pr-banner::before { content:'';position:absolute;top:-50%;right:-20%;width:60%;height:200%;background:radial-gradient(ellipse at center,rgba(245,166,35,0.08) 0%,transparent 70%);pointer-events:none; }
+  .pr-banner::after { content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,var(--bg) 100%); }
   .pr-wrap { max-width:680px;margin:0 auto;padding:0 20px 60px; }
   .pr-top { display:flex;justify-content:space-between;align-items:flex-start;margin-top:-60px;position:relative;z-index:2; }
   .pr-av { width:120px;height:120px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:42px;border:4px solid var(--bg);overflow:hidden;flex-shrink:0; }
@@ -966,8 +1004,11 @@
   .pr-social:hover { border-color:var(--gold);color:var(--gold); }
   .pr-toast { margin-top:8px;font-size:12px;color:#10b981; }
 
-  .pr-stats { display:flex;gap:24px;margin-top:16px;padding:16px 0;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2); }
-  .pr-stats strong { color:var(--t1);font-weight:800;margin-right:3px; }
+  .pr-stats { display:flex;gap:0;margin-top:16px;padding:0;border-bottom:1px solid var(--bd); }
+  .pr-stat-item { flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 8px;background:none;border:none;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:background 0.15s; }
+  .pr-stat-item:hover { background:var(--hv); }
+  .pr-stat-num { font-size:18px;font-weight:800;color:var(--t1); }
+  .pr-stat-label { font-size:13px;color:var(--t2);font-weight:500; }
 
   /* Sections */
   .pr-section { margin-top:20px;padding:20px;background:var(--card);border:1px solid var(--bd);border-radius:14px; }
@@ -993,9 +1034,12 @@
   .pr-edit-btns { display:flex;gap:8px;margin-top:16px; }
 
   /* Tabs */
-  .pr-tabs { display:flex;border-bottom:1px solid var(--bd);margin-top:20px; }
-  .pr-tab { flex:1;padding:14px 0;text-align:center;font-size:14px;font-weight:600;color:var(--t2);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit; }
-  .pr-tab:hover { background:var(--hv); } .pr-tab.active { color:var(--gold);border-bottom-color:var(--gold); }
+  .pr-tabs-scroll { overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;scrollbar-width:none; }
+  .pr-tabs-scroll::-webkit-scrollbar { display:none; }
+  .pr-tabs { display:flex;border-bottom:1px solid var(--bd);min-width:max-content;width:100%; }
+  .pr-tab { padding:14px 16px;text-align:center;font-size:14px;font-weight:600;color:var(--t2);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit;white-space:nowrap;transition:all 0.15s;position:relative; }
+  .pr-tab:hover { color:var(--t1);background:var(--hv); }
+  .pr-tab.active { color:var(--gold);border-bottom-color:var(--gold); }
 
   .pr-empty { padding:40px;text-align:center;color:var(--t3);font-size:14px; }
   .pr-post { padding:16px 0;border-bottom:1px solid var(--bd); }
@@ -1025,7 +1069,19 @@
   .pr-center a { color:var(--gold);text-decoration:none; }
   .pr-spin { width:28px;height:28px;border:3px solid var(--bd);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  @media(max-width:600px) { .pr-banner{height:140px} .pr-av{width:90px;height:90px;font-size:32px} .pr-top{margin-top:-45px} .pr-top-right{padding-top:52px} .pr-name-row h1{font-size:20px} .pr-edit-row{grid-template-columns:1fr} }
+  @media(max-width:600px) {
+    .pr-banner { height:140px; }
+    .pr-av { width:86px;height:86px;font-size:30px;border-width:3px; }
+    .pr-top { margin-top:-43px;flex-wrap:wrap; }
+    .pr-top-right { padding-top:0;margin-top:8px;width:100%;justify-content:flex-end; }
+    .pr-name-row h1 { font-size:20px; }
+    .pr-edit-row { grid-template-columns:1fr; }
+    .pr-btn { padding:7px 16px;font-size:12px; }
+    .pr-activity-grid { grid-template-columns:1fr 1fr;gap:8px; }
+    .pr-activity-card { padding:14px 10px; }
+    .pr-activity-card-value { font-size:20px; }
+    .pr-wrap { padding:0 16px 80px; }
+  }
   .pr-follow-btn { background: var(--pr-gold) !important; color: #000 !important; font-weight: 700; }
   .pr-follow-btn.following { background: transparent !important; color: var(--pr-t2) !important; border: 1px solid var(--pr-bd); }
   .pr-follow-btn.following:hover { border-color: #ef4444; color: #ef4444 !important; }
@@ -1033,14 +1089,27 @@
   .pr-follow-stats strong { color: var(--pr-t); font-weight: 700; }
   .pr-btn-mute { background: transparent !important; border: 1px solid var(--pr-bd) !important; color: var(--pr-t3) !important; font-size: 12px !important; }
   .pr-btn-block { background: transparent !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #ef4444 !important; font-size: 12px !important; }
-  .pr-activity-stats { padding:16px 0; }
-  .pr-stat-row { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd);font-size:14px;color:var(--t2); }
-  .pr-stat-row strong { color:var(--t1); }
-  .w-activity-list { display:flex;flex-direction:column;gap:0; }
-  .w-activity-item { display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--pr-bd);font-size:14px; }
-  .w-activity-icon { font-size:18px;width:28px;text-align:center; }
-  .w-activity-text { flex:1;color:var(--pr-t); }
-  .w-activity-time { color:var(--pr-t3);font-size:12px;white-space:nowrap; }
+  /* Activity tab */
+  .pr-activity { padding:16px 0; }
+  .pr-activity-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px; }
+  .pr-activity-card { background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;transition:border-color 0.15s; }
+  .pr-activity-card:hover { border-color:rgba(245,166,35,0.3); }
+  .pr-activity-card-icon { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center; }
+  .pr-ac-scan { background:rgba(245,166,35,0.1);color:var(--gold); }
+  .pr-ac-score { background:rgba(59,130,246,0.1);color:#3b82f6; }
+  .pr-ac-network { background:rgba(16,185,129,0.1);color:#10b981; }
+  .pr-ac-friends { background:rgba(168,85,247,0.1);color:#a855f7; }
+  .pr-activity-card-value { font-size:24px;font-weight:800;color:var(--t1);letter-spacing:-0.5px; }
+  .pr-ac-slash { font-size:16px;font-weight:400;color:var(--t3);margin:0 2px; }
+  .pr-activity-card-label { font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:0.05em; }
+  .pr-activity-recent { border-top:1px solid var(--bd);padding-top:16px; }
+  .pr-activity-heading { font-size:15px;font-weight:700;color:var(--t1);margin:0 0 12px; }
+  .pr-activity-item { display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd); }
+  .pr-activity-item:last-child { border-bottom:none; }
+  .pr-activity-item-icon { width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--t3); }
+  .pr-activity-item-body { flex:1;min-width:0; }
+  .pr-activity-item-text { font-size:14px;color:var(--t1);display:block;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .pr-activity-item-time { font-size:12px;color:var(--t3);margin-top:2px;display:block; }
   .pr-privacy-field { grid-column: 1 / -1; }
   .pr-privacy-toggle { display:flex;gap:8px;margin-top:8px; }
   .pr-privacy-opt { display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--bd,#1e1e2a);background:transparent;color:var(--t2,#8a8d91);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s; }
@@ -1049,7 +1118,12 @@
   .pr-privacy-hint { font-size:11px;color:var(--t3,#606770);margin-top:6px; }
   /* Theme */
   .pr { --pr-bg: #0a0a0f; --pr-card: #111117; --pr-t: #e4e6ea; --pr-t2: #8a8d91; --pr-t3: #606770; --pr-bd: #1e1e2a; --pr-gold: #f5a623; }
-  .pr.light { --pr-bg: #ffffff; --pr-card: #ffffff; --pr-t: #1c1e21; --pr-t2: #606770; --pr-t3: #8a8d91; --pr-bd: #dddfe2; --pr-gold: #d4a017; }
+  .pr.light { --pr-bg: #ffffff; --pr-card: #ffffff; --pr-t: #1c1e21; --pr-t2: #606770; --pr-t3: #8a8d91; --pr-bd: #dddfe2; --pr-gold: #d4a017; --hv:rgba(0,0,0,0.04); }
+  .pr.light .pr-banner { background:linear-gradient(135deg,#f0ebe3 0%,#e8ddd0 25%,#d4c5b0 50%,#c4a97d 75%,#f0ebe3 100%); }
+  .pr.light .pr-banner::before { background:radial-gradient(ellipse at center,rgba(212,160,23,0.12) 0%,transparent 70%); }
+  .pr.light .pr-activity-card { background:#fafafa;border-color:#e8e8e8; }
+  .pr.light .pr-activity-card:hover { border-color:rgba(212,160,23,0.4); }
+  .pr.light .pr-activity-item-icon { background:#f5f5f5;border-color:#e8e8e8; }
 
   /* Full bleed */
   :global(body) { margin: 0; }
