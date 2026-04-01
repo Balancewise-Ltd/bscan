@@ -235,15 +235,13 @@
   }
 
   function timeAgo(d: string) {
-    if (!d) return '';
-    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
-    const now = new Date();
-    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    if (s < 86400) return Math.floor(s / 3600) + 'h';
+    if (s < 604800) return Math.floor(s / 86400) + 'd';
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  });
   }
 
   function launchRockets() {
@@ -529,6 +527,7 @@
               <div class="w-emoji-wrap">
               <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
               {#if showEmoji}
+                <div class="w-emoji-backdrop" onclick={() => showEmoji = false} role="presentation"></div>
                 <div class="w-emoji-picker">
                   {#each emojis as e}
                     <button class="w-emoji-item" onclick={() => { newPost += e; showEmoji = false; }} type="button">{e}</button>
@@ -1171,4 +1170,6 @@
   .w-milestone-icon { font-size: 22px; }
   .w-milestone-val { font-weight: 700; font-size: 16px; color: var(--wgold); flex: 1; }
   .w-milestone-type { font-size: 11px; color: var(--wt3); text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border: 1px solid var(--wbd); border-radius: 6px; }
+  .w-emoji-backdrop { position: fixed; inset: 0; z-index: 49; }
+  .w-emoji-picker { z-index: 50; }
 </style>
