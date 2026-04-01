@@ -385,7 +385,7 @@
         </button>
         {#if $auth.user}
           <div class="w-user-menu-wrap">
-            <button class="w-avatar-sm w-avatar-btn" onclick={() => showUserMenu = !showUserMenu} aria-label="User menu">
+            <button class="w-avatar-sm w-avatar-btn" onclick={(e) => { e.stopPropagation(); showUserMenu = !showUserMenu; }} aria-label="User menu">
               {initial($auth.user.name || $auth.user.email)}
             </button>
             {#if showUserMenu}
