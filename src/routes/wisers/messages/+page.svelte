@@ -375,9 +375,11 @@
   .m-new-conv input { flex: 1; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 12px; outline: none; font-family: inherit; }
   .m-new-conv button { padding: 6px 14px; border-radius: 16px; border: none; background: var(--mgold); color: #000; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
 
-  .m-convos-list { flex: 1; overflow-y: auto; }
-  .m-empty-conv { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; color: var(--mt3); font-size: 13px; gap: 8px; height: 100%; }
-  .m-empty-sub { font-size: 11px; }
+  .m-convos-list { flex: 1; overflow-y: auto; min-height: 0; }
+  .m-empty-conv { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: var(--mt3); font-size: 14px; gap: 10px; min-height: calc(100vh - 220px); }
+  .m-empty-conv svg { opacity: 0.2; margin-bottom: 4px; }
+  .m-empty-conv p { margin: 0; }
+  .m-empty-sub { font-size: 12px; color: var(--mt3); opacity: 0.7; }
 
   .m-conv { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: none; border-bottom: 1px solid rgba(255,255,255,0.02); background: transparent; color: var(--mt); cursor: pointer; width: 100%; text-align: left; font-family: inherit; position: relative; }
   .m-conv:hover { background: var(--mhover); }
