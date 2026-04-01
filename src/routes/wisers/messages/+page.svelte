@@ -99,16 +99,6 @@
 
 
 
-  async function handleMarkUnread(e: MouseEvent, conv: any) {
-    e.stopPropagation();
-    if (conv.my_unread > 0) return;
-    try {
-      await api.markConvUnread(conv.id);
-      conv.my_unread = 1;
-      wsUnreadDMs.update(n => n + 1);
-    } catch {}
-  }
-
   function scrollBottom() {
     setTimeout(() => { const el = document.getElementById('msg-scroll'); if (el) el.scrollTop = el.scrollHeight; }, 150);
   }
