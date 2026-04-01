@@ -81,11 +81,19 @@
     :global(.crisp-client),
     :global(#tawk-bubble-container),
     :global([id*="crisp"]),
-    :global([id*="tawk"]) {
+    :global([id*="tawk"]),
+    :global(.cc-1m2mf),
+    :global(.cc-nsge),
+    :global([data-chat-widget]),
+    :global(div[style*="z-index: 2147483647"]) {
       display: none !important;
       visibility: hidden !important;
       opacity: 0 !important;
       pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
     }
   }
 </style>
