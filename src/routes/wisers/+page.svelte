@@ -139,7 +139,7 @@
     const file = input.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
-    if (!['image/jpeg','image/png','image/gif','image/webp'].includes(file.type)) { alert('JPG, PNG, GIF, or WebP only'); return; }
+    if (!['image/jpeg','image/png','image/gif','image/webp','image/heic','image/heif',''].includes(file.type)) { alert('JPG, PNG, GIF, or WebP only'); return; }
     postImage = file;
     postImagePreview = URL.createObjectURL(file);
   }
@@ -448,7 +448,7 @@
               <button class="w-img-btn" onclick={() => document.getElementById('post-img-input')?.click()} type="button" title="Add image">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
               </button>
-              <input id="post-img-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onchange={handleImageSelect} style="display:none" />
+              <input id="post-img-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif" onchange={handleImageSelect} style="display:none" />
               <div class="w-emoji-wrap">
               <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
               {#if showEmoji}
