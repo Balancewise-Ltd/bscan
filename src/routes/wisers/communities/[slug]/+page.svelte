@@ -15,6 +15,7 @@
   let posting = $state(false);
   let postImage = $state<File|null>(null);
   let postImagePreview = $state('');
+  let joining = $state(false);
   let theme = $state<'dark'|'light'>('dark');
 
   onMount(async () => {
@@ -36,12 +37,24 @@
   }
 
   async function handleJoin() {
+    if (joining) return;
+    joining = true;
     try {
       await api.joinCommunity(slug);
       community = { ...community, is_member: true, my_role: 'member', member_count: (community.member_count || 0) + 1 };
     } catch (e: any) {
-      if (e.status === 409) community = { ...community, is_member: true };
+      // 409 = already a member, still mark as joined
+      if (e.status === 409 || e.message?.includes('409')) {
+        community = { ...community, is_member: true };
+      } else {
+        // Re-fetch community state to get truth from server
+        try {
+          const fresh = await api.getCommunity(slug);
+          community = fresh;
+        } catch {}
+      }
     }
+    joining = false;
   }
   async function handleLeave() {
     if (!confirm('Leave this community?')) return;
@@ -111,7 +124,7 @@
               Joined
             </button>
           {:else}
-            <button class="cd-join" onclick={handleJoin}>Join</button>
+            <button class="cd-join" onclick={handleJoin} disabled={joining}>{joining ? 'Joining...' : 'Join'}</button>
           {/if}
         {/if}
       </div>
@@ -253,7 +266,7 @@
               <span>Created by</span>
               <a href="/wisers/{community.creator_username}" class="cd-about-creator">
                 <span class="cd-about-creator-badge">{initial(community.creator_username)}</span>
-                Wiser @{community.creator_username}
+                Wiser
               </a>
             </div>
             <div class="cd-about-detail-row">
