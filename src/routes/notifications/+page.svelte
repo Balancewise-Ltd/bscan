@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { markNotifsRead } from '$lib/stores/wisers-ws';
   import { auth } from '$lib/stores/auth';
   import WisersMobileNav from '$lib/components/WisersMobileNav.svelte';
   import * as api from '$lib/api/client';
+  import { timeAgo } from '$lib/utils/time';
 
   let notifications = $state<any[]>([]);
   let loading = $state(true);
@@ -24,19 +26,7 @@
 
   async function markRead(id: number, link: string) {
     try { await api.markNotificationRead(id); notifications = notifications.map(n => n.id === id ? { ...n, read: 1 } : n); } catch {}
-    if (link) window.location.href = link;
-  }
-
-  function timeAgo(d: string) {
-    if (!d) return '';
-    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
-    const now = new Date();
-    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    if (link) goto(link);
   }
 
   function icon(type: string) {

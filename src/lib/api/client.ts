@@ -1054,6 +1054,10 @@ export async function markConvUnread(convId: number): Promise<any> {
   return request('/api/community/conversations/' + convId + '/mark-unread', { method: 'POST' });
 }
 
+export async function markConvRead(convId: number): Promise<any> {
+  return request('/api/community/messages/' + convId + '/read', { method: 'POST' });
+}
+
 export async function getMessageRequests(): Promise<any> {
   return request('/api/community/message-requests');
 }

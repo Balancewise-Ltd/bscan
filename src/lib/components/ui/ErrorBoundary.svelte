@@ -12,18 +12,43 @@
 	let errorMsg = $state('');
 
 	onMount(() => {
+		// Only catch errors from our own app scripts, not third-party
 		const handler = (event: ErrorEvent) => {
+			// Ignore errors from third-party scripts (different origin)
+			if (event.filename && !event.filename.includes('/_app/')) return;
+			// Ignore errors with no filename (browser extensions, injected scripts)
+			if (!event.filename && !event.error) return;
+			// Ignore ResizeObserver errors (browser quirk, not a real problem)
+			if (event.message?.includes('ResizeObserver')) return;
+			// Ignore cross-origin script errors (generic "Script error.")
+			if (event.message === 'Script error.' || event.message === 'Script error') return;
+
 			hasError = true;
 			errorMsg = event.message || 'An unexpected error occurred';
 			event.preventDefault();
 		};
+
+		const promiseHandler = (event: PromiseRejectionEvent) => {
+			// Only catch unhandled promise rejections from app code
+			const msg = event.reason?.message || String(event.reason || '');
+			// Ignore common non-critical rejections
+			if (msg.includes('AbortError') || msg.includes('NetworkError') || msg.includes('fetch')) return;
+			// Don't show error boundary for API failures — pages handle those
+			if (msg.includes('401') || msg.includes('403') || msg.includes('404') || msg.includes('500')) return;
+		};
+
 		window.addEventListener('error', handler);
-		return () => window.removeEventListener('error', handler);
+		window.addEventListener('unhandledrejection', promiseHandler);
+		return () => {
+			window.removeEventListener('error', handler);
+			window.removeEventListener('unhandledrejection', promiseHandler);
+		};
 	});
 
 	function retry() {
 		hasError = false;
 		errorMsg = '';
+		window.location.reload();
 	}
 </script>
 

@@ -49,6 +49,8 @@
   let bookmarkedPosts = $state<Set<number>>(new Set());
   let editingPost = $state<number | null>(null);
   let editContent = $state('');
+  let heartAnim = $state<number | null>(null);
+  let lastTap = $state<{ id: number; time: number }>({ id: 0, time: 0 });
   let trendingTags = $state<any[]>([]);
   let showScheduler = $state(false);
   let scheduleContent = $state('');
@@ -85,28 +87,31 @@
     loading = false;
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
-      document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; showCreateSheet = false; });
+      const clickHandler = () => { openPostMenu = null; showUserMenu = false; showCreateSheet = false; };
+      document.addEventListener('click', clickHandler);
 
-    // Infinite scroll
-    let scrollTicking = false;
-    window.addEventListener('scroll', () => {
-      if (scrollTicking) return;
-      scrollTicking = true;
-      requestAnimationFrame(() => {
-        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
-          loadMore();
-        }
-        scrollTicking = false;
-      });
-    });
+      // Infinite scroll
+      let scrollTicking = false;
+      const scrollHandler = () => {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        requestAnimationFrame(() => {
+          if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
+            loadMore();
+          }
+          scrollTicking = false;
+        });
+      };
+      window.addEventListener('scroll', scrollHandler);
+      cleanupListeners = () => { document.removeEventListener('click', clickHandler); window.removeEventListener('scroll', scrollHandler); };
 
-    // Show PWA install prompt for iOS Safari (not standalone)
-    const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-    const isStandalone = ('standalone' in navigator && (navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches;
-    const dismissed = localStorage.getItem('wisers-pwa-dismissed');
-    if (isIos && !isStandalone && !dismissed) {
-      setTimeout(() => { showPwaPrompt = true; }, 5000);
-    }
+      // Show PWA install prompt for iOS Safari (not standalone)
+      const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+      const isStandalone = ('standalone' in navigator && (navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches;
+      const dismissed = localStorage.getItem('wisers-pwa-dismissed');
+      if (isIos && !isStandalone && !dismissed) {
+        setTimeout(() => { showPwaPrompt = true; }, 5000);
+      }
     }
     if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
@@ -117,9 +122,10 @@
     localStorage.setItem('wisers-theme', theme);
   }
 
-  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); if (notifInterval) clearInterval(notifInterval); });
+  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); if (notifInterval) clearInterval(notifInterval); if (cleanupListeners) cleanupListeners(); });
 
   let notifInterval: any;
+  let cleanupListeners: (() => void) | null = null;
 
   function playPing() {
     try {
@@ -149,9 +155,7 @@
   }
 
   function handleLogout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    auth.set({ token: null, user: null });
+    auth.logout();
     if (typeof window !== 'undefined') window.location.href = '/wisers';
   }
 
@@ -161,7 +165,7 @@
     feedPage += 1;
     try {
       const res = feedType === 'friends'
-        ? await api.getFriendFeed(feedPage)
+        ? await api.getFriendsFeed(feedPage)
         : await api.getFeed(feedPage);
       const newPosts = res.posts || [];
       posts = [...posts, ...newPosts];
@@ -178,6 +182,7 @@
         : await api.getCommunityFeed(1);
       posts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
     } catch {}
+    feedLoading = false;
   }
 
   async function loadUsers() {
@@ -217,7 +222,7 @@
     postImagePreview = URL.createObjectURL(file);
   }
 
-  function removeImage() { postImage = null; postImagePreview = ''; }
+  function removeImage() { if (postImagePreview) URL.revokeObjectURL(postImagePreview); postImage = null; postImagePreview = ''; }
 
   async function toggleLike(postId: number) {
     if (!$auth.token) return;
@@ -379,13 +384,28 @@
     try { const res = await api.getTrendingHashtags(); trendingTags = res.hashtags || []; } catch {}
   }
 
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
   function renderContent(text: string): string {
     if (!text) return '';
-    // Convert #hashtags to links
-    let html = text.replace(/#(\w{2,30})/g, '<a href="/wisers?tag=$1" class="w-hashtag">#$1</a>');
-    // Convert @mentions to profile links
+    let html = escapeHtml(text);
+    html = html.replace(/#(\w{2,30})/g, '<a href="/wisers?tag=$1" class="w-hashtag">#$1</a>');
     html = html.replace(/@(\w{2,30})/g, '<a href="/wisers/$1" class="w-mention">@$1</a>');
     return html;
+  }
+
+  function handleDoubleTap(e: MouseEvent, post: any) {
+    const now = Date.now();
+    if (lastTap.id === post.id && now - lastTap.time < 400) {
+      // Double tap — like
+      if (!post._liked) handleLike(post);
+      heartAnim = post.id;
+      setTimeout(() => { heartAnim = null; }, 800);
+      lastTap = { id: 0, time: 0 };
+    } else {
+      lastTap = { id: post.id, time: now };
+    }
   }
 
   async function handleRepost(post: any) {
@@ -1156,6 +1176,10 @@
   .w-post-menu-dropdown .w-menu-danger { color: #ef4444; }
   .w-post-menu-dropdown .w-menu-danger:hover { background: rgba(239,68,68,0.08); }
   .w-menu-divider { height: 1px; background: #2a2a3a; margin: 4px 0; }
+  .w.light .w-post-menu-dropdown { background: #ffffff; border: 1px solid #dddfe2; box-shadow: 0 0 8px rgba(0,0,0,0.08), 0 12px 36px rgba(0,0,0,0.12); }
+  .w.light .w-post-menu-dropdown button { color: #1c1e21; }
+  .w.light .w-post-menu-dropdown button:hover { background: rgba(0,0,0,0.04); }
+  .w.light .w-menu-divider { background: #dddfe2; }
 
   .w-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
   .w-comment { padding: 6px 0; font-size: 13px; }
@@ -1461,6 +1485,8 @@
       transition: transform 0.15s;
     }
     .w-mn-create:active { transform: scale(0.92); }
+    .w.light .w-mobile-nav { background: #ffffff; border-top: 1px solid #dddfe2; }
+    .w.light .w-mn-create { border: 3px solid #ffffff; }
 
     /* ================================ */
     /* CREATE BOTTOM SHEET             */

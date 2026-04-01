@@ -249,10 +249,10 @@
                   if (conv.my_unread > 0) {
                     await api.markConvRead(conv.id);
                     wsUnreadDMs.update(n => Math.max(0, n - conv.my_unread));
-                    conv.my_unread = 0;
+                    conversations = conversations.map(c => c.id === conv.id ? { ...c, my_unread: 0 } : c);
                   } else {
                     await api.markConvUnread(conv.id);
-                    conv.my_unread = 1;
+                    conversations = conversations.map(c => c.id === conv.id ? { ...c, my_unread: 1 } : c);
                     wsUnreadDMs.update(n => n + 1);
                   }
                 } catch {}
