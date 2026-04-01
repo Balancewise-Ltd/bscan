@@ -913,7 +913,6 @@
           </div>
         {/if}
       {/if}
-    </main>
 
     <!-- RIGHT SIDEBAR -->
     <aside class="w-sidebar-right">
