@@ -1,4 +1,3 @@
-// Enable SSR — SvelteKit prerenders pages with real HTML content
-// Google/Bing can now read page content without executing JavaScript
-export const ssr = true;
-export const prerender = true;
+// SPA mode — single index.html, client-side routing handles all pages
+export const ssr = false;
+export const prerender = false;
