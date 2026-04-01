@@ -639,7 +639,7 @@
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                   <span>{post.likes_count || 0}</span>
                 </button>
-                <button class="w-action w-rocket-btn" class:w-rocketed={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket">
+                <button class="w-action w-rocket-btn" class:w-rocketed={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket & Share">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post.my_rocket ? '#f97316' : 'none'} stroke={post.my_rocket ? '#f97316' : 'currentColor'} stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
                   <span>{post.rockets_count || 0}</span>
                 </button>
@@ -1334,13 +1334,15 @@
       left: 0;
       right: 0;
       height: 60px;
-      background: var(--wcard);
-      border-top: 1px solid var(--wbd);
+      background: #0a0a0f;
+      border-top: 1px solid #1e1e2a;
       z-index: 200;
       align-items: center;
       justify-content: space-around;
       padding: 0 4px;
       padding-bottom: env(safe-area-inset-bottom, 0);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
     .w-mn-item {
       display: flex;
@@ -1385,14 +1387,14 @@
       height: 48px;
       border-radius: 50%;
       background: var(--wgold);
-      border: none;
+      border: 3px solid #0a0a0f;
       color: #000;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       margin-top: -20px;
-      box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 2px 8px rgba(245,166,35,0.25);
       -webkit-tap-highlight-color: transparent;
       transition: transform 0.15s;
     }
