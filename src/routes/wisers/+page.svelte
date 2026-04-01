@@ -1266,7 +1266,6 @@
     .w-search-wrap { flex: 1; max-width: none; }
     .w-search-wrap input { font-size: 14px; padding: 8px 12px 8px 34px; border-radius: 20px; height: 36px; }
     .w-topbar-btn { width: 34px; height: 34px; flex-shrink: 0; }
-    .w-notif-btn { display: none; }
     .w-msg-topbar-btn { display: none; }
     .w-avatar-sm, .w-avatar-btn { width: 30px; height: 30px; font-size: 12px; }
     .w-user-dropdown { right: -4px; top: 40px; min-width: 200px; }

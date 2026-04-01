@@ -72,4 +72,20 @@
 	/* Hide third-party chat widget on Wisers pages */
 	:global(body.wisers-page #crisp-chatbox, body.wisers-page .tawk-min-container, body.wisers-page [class*="chat-widget"], body.wisers-page iframe[title*="chat"], body.wisers-page .chat-widget-container) { display: none !important; }
 	:global(body.wisers-page main.page) { padding-top: 0 !important; }
+  @media (max-width: 768px) {
+    :global(#crisp-chatbox),
+    :global(.tawk-min-container),
+    :global([class*="chat-widget"]),
+    :global(iframe[title*="chat"]),
+    :global(.chat-widget-container),
+    :global(.crisp-client),
+    :global(#tawk-bubble-container),
+    :global([id*="crisp"]),
+    :global([id*="tawk"]) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  }
 </style>
