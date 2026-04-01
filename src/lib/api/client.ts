@@ -744,6 +744,24 @@ export async function getCommunityFeed(page: number = 1): Promise<any> {
 export async function getFriendsFeed(page: number = 1): Promise<any> {
 	return request(`/api/community/feed/friends?page=${page}`);
 }
+export async function uploadPostImage(file: File): Promise<{ url: string }> {
+  const token = getToken();
+  if (!token) throw new ApiError(401, 'Sign in to upload');
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', 'posts');
+  const res = await fetch(API_BASE + '/api/community/upload-image', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail || 'Upload failed');
+  }
+  return res.json();
+}
+
 export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0): Promise<any> {
 	return request('/api/community/posts', { method: 'POST', body: JSON.stringify({ content, post_type: postType, scan_url: scanUrl, scan_score: scanScore }) });
 }

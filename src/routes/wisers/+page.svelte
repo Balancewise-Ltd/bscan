@@ -16,6 +16,9 @@
   let searchResults = $state<any[]>([]);
   let loading = $state(true);
   let newPost = $state('');
+  let postImage = $state<File | null>(null);
+  let postImagePreview = $state('');
+  let uploading = $state(false);
   let posting = $state(false);
   let showEmoji = $state(false);
   const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','📈','📉','🛠️','💻','🌐','🔍','📱','🤖','🧠','💭','📌','📎','✨','🙏','🤝','👋','✌️','🤞','💀','🤡','👑','🦾'];
@@ -114,11 +117,34 @@
   }
 
   async function submitPost() {
-    if (!newPost.trim() || posting) return;
+    if ((!newPost.trim() && !postImage) || posting) return;
     posting = true;
-    try { await api.createPost(newPost.trim()); newPost = ''; await loadFeed(); } catch {}
+    try {
+      let imageUrl = '';
+      if (postImage) {
+        uploading = true;
+        const res = await api.uploadPostImage(postImage);
+        imageUrl = res.url;
+        uploading = false;
+      }
+      await api.createPost(newPost.trim() || '📷', 'text', '', 0, imageUrl);
+      newPost = ''; postImage = null; postImagePreview = '';
+      await loadFeed();
+    } catch { uploading = false; }
     posting = false;
   }
+
+  function handleImageSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
+    if (!['image/jpeg','image/png','image/gif','image/webp'].includes(file.type)) { alert('JPG, PNG, GIF, or WebP only'); return; }
+    postImage = file;
+    postImagePreview = URL.createObjectURL(file);
+  }
+
+  function removeImage() { postImage = null; postImagePreview = ''; }
 
   async function toggleLike(postId: number) {
     if (!$auth.token) return;
@@ -413,11 +439,16 @@
               <div class="w-avatar-sm w-avatar-gold">{initial($auth.user?.name || '')}</div>
               <textarea bind:value={newPost} placeholder="What's on your mind?" maxlength="2000" rows="2"></textarea>
             </div>
+            {#if postImagePreview}<div class="w-img-preview"><img src={postImagePreview} alt="Preview" /><button class="w-img-remove" onclick={removeImage}>✕</button></div>{/if}
             <div class="w-composer-bottom">
               <div class="w-feed-tabs">
                 <button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>Everyone</button>
                 <button class:active={feedType === 'friends'} onclick={() => { feedType = 'friends'; loadFeed(); }}>Friends</button>
               </div>
+              <button class="w-img-btn" onclick={() => document.getElementById('post-img-input')?.click()} type="button" title="Add image">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              </button>
+              <input id="post-img-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onchange={handleImageSelect} style="display:none" />
               <div class="w-emoji-wrap">
               <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
               {#if showEmoji}
@@ -429,7 +460,7 @@
               {/if}
             </div>
             <span class="w-char">{newPost.length}/2000</span>
-              <button class="w-post-btn" onclick={submitPost} disabled={posting || !newPost.trim()}>{posting ? 'Posting...' : 'Post'}</button>
+              <button class="w-post-btn" onclick={submitPost} disabled={posting || (!newPost.trim() && !postImage)}>{uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
             </div>
           </div>
         {:else}
@@ -957,4 +988,10 @@
   .w-pending-badge { font-size:11px;color:var(--wt3);border:1px solid var(--wbd);padding:4px 10px;border-radius:12px; }
   .w-notif-btn { position: relative; }
   .w-notif-badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; }
+  .w-img-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; }
+  .w-img-btn:hover { color: var(--wgold); background: rgba(255,255,255,0.06); }
+  .w-img-preview { position: relative; margin: 8px 0; border-radius: 12px; overflow: hidden; max-height: 200px; }
+  .w-img-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid var(--wbd); }
+  .w-img-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .w-img-remove:hover { background: #ef4444; }
 </style>
