@@ -16,6 +16,10 @@
   let searchQuery = $state('');
   let searchResults = $state<any[]>([]);
   let loading = $state(true);
+  let feedLoading = $state(false);
+  let feedPage = $state(1);
+  let hasMore = $state(true);
+  let loadingMore = $state(false);
   let newPost = $state('');
   let postImage = $state<File | null>(null);
   let postImagePreview = $state('');
@@ -33,6 +37,13 @@
   let openPostMenu = $state<number | null>(null);
   let showUserMenu = $state(false);
   let showCreateSheet = $state(false);
+  let toast = $state('');
+  let toastTimer: any = null;
+  function showToast(msg: string) {
+    toast = msg;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast = ''; }, 2500);
+  }
   let showPwaPrompt = $state(false);
   let mobileTab = $state('home');
   let bookmarkedPosts = $state<Set<number>>(new Set());
@@ -75,6 +86,19 @@
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
       document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; showCreateSheet = false; });
+
+    // Infinite scroll
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+      if (scrollTicking) return;
+      scrollTicking = true;
+      requestAnimationFrame(() => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
+          loadMore();
+        }
+        scrollTicking = false;
+      });
+    });
 
     // Show PWA install prompt for iOS Safari (not standalone)
     const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
@@ -131,7 +155,23 @@
     if (typeof window !== 'undefined') window.location.href = '/wisers';
   }
 
-  async function loadFeed() {
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    loadingMore = true;
+    feedPage += 1;
+    try {
+      const res = feedType === 'friends'
+        ? await api.getFriendFeed(feedPage)
+        : await api.getFeed(feedPage);
+      const newPosts = res.posts || [];
+      posts = [...posts, ...newPosts];
+      hasMore = newPosts.length >= 20;
+    } catch {}
+    loadingMore = false;
+  }
+
+  async function loadFeed(showSkeleton = false) {
+    if (showSkeleton) { feedLoading = true; feedPage = 1; hasMore = true; }
     try {
       const res = feedType === 'friends' && $auth.token
         ? await api.getFriendsFeed(1)
@@ -161,6 +201,7 @@
         await api.createPost(newPost.trim() || '📷', 'text', '', 0, imageUrl);
       }
       newPost = ''; postImage = null; postImagePreview = ''; isMilestone = false; milestoneValue = '';
+      showToast('Post created');
       await loadFeed();
     } catch { uploading = false; }
     posting = false;
@@ -276,6 +317,16 @@
       post.my_rocket = res.rocketed;
       if (res.rocketed) launchRockets();
     } catch {}
+  }
+
+  async function handleShare(post: any) {
+    const url = 'https://wisrs.com/wisers/' + (post.username || '') + '/post/' + post.id;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Wisers', text: post.content?.substring(0, 100), url }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(url);
+      showToast('Link copied');
+    }
   }
 
   async function handleBookmark(post: any) {
@@ -554,7 +605,16 @@
           <div class="w-empty">No posts yet. Be the first to share something!</div>
         {/if}
 
-        {#each posts as post (post.id)}
+        {#if feedLoading}
+              {#each [1,2,3] as _}
+                <div class="w-skel-post">
+                  <div class="w-skel-row"><div class="w-skel w-skel-av"></div><div class="w-skel-col"><div class="w-skel w-skel-name"></div><div class="w-skel w-skel-handle"></div></div></div>
+                  <div class="w-skel w-skel-body"></div>
+                  <div class="w-skel w-skel-body short"></div>
+                  <div class="w-skel-actions"><div class="w-skel w-skel-act"></div><div class="w-skel w-skel-act"></div><div class="w-skel w-skel-act"></div></div>
+                </div>
+              {/each}
+            {:else}{#each posts as post (post.id)}
           <article class="w-post">
             <div class="w-post-left">
               <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
@@ -626,7 +686,8 @@
                 <span class="w-milestone-type">{post.milestone_type}</span>
               </div>
               {/if}
-              <div class="w-post-body">{@html renderContent(post.content)}</div>
+              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
+              {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
               {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
                 <div class="w-scan-card">
@@ -742,7 +803,8 @@
                 <span class="w-milestone-type">{post.milestone_type}</span>
               </div>
               {/if}
-              <div class="w-post-body">{@html renderContent(post.content)}</div>
+              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
+              {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
                 <div class="w-post-actions">
                   <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -931,6 +993,11 @@
         </div>
       </div>
     </div>
+  {/if}
+
+  <!-- TOAST -->
+  {#if toast}
+    <div class="w-toast">{toast}</div>
   {/if}
 
   <!-- MOBILE BOTTOM NAV -->
@@ -1490,4 +1557,44 @@
     .w-mn-item { padding: 6px 8px; font-size: 9px; }
     .w-mn-create { width: 44px; height: 44px; }
   }
+
+  /* Toast */
+  .w-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 10px 24px; border-radius: 24px; font-size: 13px; font-weight: 600; z-index: 500; animation: toastIn 0.25s ease-out; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* Double-tap heart */
+  .w-heart-anim { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; pointer-events: none; animation: heartPop 0.8s ease-out forwards; }
+  @keyframes heartPop { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 60% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+  .w-post { position: relative; }
+
+  /* Share button */
+  .w-share-btn:hover { color: #3b82f6; }
+
+  /* Loading skeletons */
+  .w-skel-post { padding: 16px; border-bottom: 1px solid var(--wbd); }
+  .w-skel-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .w-skel-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .w-skel { background: var(--wbd); border-radius: 6px; animation: shimmer 1.5s infinite; }
+  .w-skel-av { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+  .w-skel-name { height: 14px; width: 120px; }
+  .w-skel-handle { height: 10px; width: 80px; }
+  .w-skel-body { height: 14px; width: 100%; margin-bottom: 8px; }
+  .w-skel-body.short { width: 60%; }
+  .w-skel-actions { display: flex; gap: 24px; margin-top: 12px; }
+  .w-skel-act { height: 14px; width: 40px; }
+  @keyframes shimmer { 0% { opacity: 0.3; } 50% { opacity: 0.6; } 100% { opacity: 0.3; } }
+
+  /* Load more / feed end */
+  .w-load-more { text-align: center; padding: 20px; color: var(--wt3); font-size: 13px; }
+  .w-feed-end { text-align: center; padding: 24px; color: var(--wt3); font-size: 13px; font-weight: 500; border-top: 1px solid var(--wbd); }
+
+  /* Empty state */
+  .w-empty-state { text-align: center; padding: 48px 20px; }
+  .w-empty-icon { color: var(--wt3); margin-bottom: 16px; }
+  .w-empty-state h3 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+  .w-empty-state p { font-size: 14px; color: var(--wt3); margin: 0 0 24px; }
+  .w-empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .w-empty-btn { padding: 10px 24px; border-radius: 24px; background: var(--wgold); color: #000; font-weight: 600; font-size: 13px; text-decoration: none; }
+  .w-empty-btn.secondary { background: none; border: 1px solid var(--wbd); color: var(--wt2); }
+  .w-empty-btn.secondary:hover { border-color: var(--wgold); color: var(--wgold); }
 </style>
