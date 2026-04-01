@@ -312,17 +312,19 @@
 </svelte:head>
 
 <div class="pr" class:light={theme === "light"}>
-<div class="pr-back-bar"><a href="/wisers" class="pr-back-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Feed</a></div>
 {#if loading}<div class="pr-center"><div class="pr-spin"></div></div>
 {:else if error}<div class="pr-center"><p>{error}</p><a href="/wisers">Back to Wisers</a></div>
 {:else if profile}
 
-  <div class="pr-banner"></div>
+  <div class="pr-banner">
+    <a href="/wisers" class="pr-back-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></a>
+  </div>
 
   <div class="pr-wrap">
     <div class="pr-top">
       <div class="pr-av">{#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{:else}{initial(profile.display_name || profile.name)}{/if}</div>
-      <div class="pr-top-right">
+    </div>
+    <div class="pr-actions">
         {#if $auth.token && status === 'self'}
           <div class="pr-more-wrap">
             <button class="pr-more-btn" onclick={(e) => { e.stopPropagation(); showProfileMore = !showProfileMore; }} aria-label="More">
@@ -374,7 +376,6 @@
           {:else}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
           <button class="pr-btn pr-btn-follow" class:following={followStatus.i_follow} onclick={() => handleFollow()}>{followStatus.i_follow ? 'Following' : 'Follow'}</button>
         {/if}
-      </div>
     </div>
 
     {#if editing}
@@ -976,14 +977,16 @@
   .pr { --bg:#0a0a0f;--card:#111117;--t1:#e4e6ea;--t2:#8a8d91;--t3:#606770;--bd:#1e1e2a;--gold:#f5a623;--hv:rgba(255,255,255,0.04);
     font-family:'DM Sans',-apple-system,sans-serif;color:var(--t1);background:var(--bg);min-height:100vh; }
   .pr.light { --bg:#ffffff;--card:#ffffff;--t1:#1c1e21;--t2:#606770;--t3:#8a8d91;--bd:#dddfe2;--gold:#d4a017;--hv:rgba(0,0,0,0.04); }
-  .pr-banner { height:200px;background:linear-gradient(135deg,#1a1520 0%,#1e1a2e 25%,#16213e 50%,#0f3460 75%,#1a1520 100%);position:relative;overflow:hidden; }
+  .pr-banner { height:180px;background:linear-gradient(135deg,#1a1520 0%,#1e1a2e 25%,#16213e 50%,#0f3460 75%,#1a1520 100%);position:relative;overflow:hidden; }
   .pr-banner::before { content:'';position:absolute;top:-50%;right:-20%;width:60%;height:200%;background:radial-gradient(ellipse at center,rgba(245,166,35,0.08) 0%,transparent 70%);pointer-events:none; }
   .pr-banner::after { content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,var(--bg) 100%); }
-  .pr-wrap { max-width:680px;margin:0 auto;padding:0 20px 60px; }
-  .pr-top { display:flex;justify-content:space-between;align-items:flex-start;margin-top:-60px;position:relative;z-index:2; }
-  .pr-av { width:120px;height:120px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:42px;border:4px solid var(--bg);overflow:hidden;flex-shrink:0; }
+  .pr-back-link { position:absolute;top:12px;left:12px;z-index:3;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;transition:background 0.15s; }
+  .pr-back-link:hover { background:rgba(0,0,0,0.7); }
+  .pr-wrap { max-width:680px;margin:0 auto;padding:0 20px 80px; }
+  .pr-top { margin-top:-50px;position:relative;z-index:2; }
+  .pr-av { width:110px;height:110px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:40px;border:4px solid var(--bg);overflow:hidden;flex-shrink:0; }
   .pr-av img { width:100%;height:100%;object-fit:cover; }
-  .pr-top-right { padding-top:72px;display:flex;gap:8px; }
+  .pr-actions { display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap; }
   .pr-btn { padding:8px 20px;border-radius:20px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:6px; }
   .pr-btn-p { background:var(--gold);color:#000; } .pr-btn-p:hover { filter:brightness(1.1); }
   .pr-btn-o { background:transparent;border:1px solid var(--bd);color:var(--t1); } .pr-btn-o:hover { border-color:var(--t2); }
@@ -1072,15 +1075,16 @@
   @media(max-width:600px) {
     .pr-banner { height:140px; }
     .pr-av { width:86px;height:86px;font-size:30px;border-width:3px; }
-    .pr-top { margin-top:-43px;flex-wrap:wrap; }
-    .pr-top-right { padding-top:0;margin-top:8px;width:100%;justify-content:flex-end; }
+    .pr-top { margin-top:-43px; }
+    .pr-actions { margin-top:10px; }
     .pr-name-row h1 { font-size:20px; }
     .pr-edit-row { grid-template-columns:1fr; }
-    .pr-btn { padding:7px 16px;font-size:12px; }
-    .pr-activity-grid { grid-template-columns:1fr 1fr;gap:8px; }
+    .pr-btn { padding:7px 14px;font-size:12px; }
+    .pr-activity-grid { gap:8px; }
     .pr-activity-card { padding:14px 10px; }
     .pr-activity-card-value { font-size:20px; }
     .pr-wrap { padding:0 16px 80px; }
+    .pr-more-dropdown { right:auto;left:0; }
   }
   .pr-follow-btn { background: var(--pr-gold) !important; color: #000 !important; font-weight: 700; }
   .pr-follow-btn.following { background: transparent !important; color: var(--pr-t2) !important; border: 1px solid var(--pr-bd); }
@@ -1121,6 +1125,11 @@
   .pr.light { --pr-bg: #ffffff; --pr-card: #ffffff; --pr-t: #1c1e21; --pr-t2: #606770; --pr-t3: #8a8d91; --pr-bd: #dddfe2; --pr-gold: #d4a017; --hv:rgba(0,0,0,0.04); }
   .pr.light .pr-banner { background:linear-gradient(135deg,#f0ebe3 0%,#e8ddd0 25%,#d4c5b0 50%,#c4a97d 75%,#f0ebe3 100%); }
   .pr.light .pr-banner::before { background:radial-gradient(ellipse at center,rgba(212,160,23,0.12) 0%,transparent 70%); }
+  .pr.light .pr-back-link { background:rgba(255,255,255,0.7);color:#1c1e21; }
+  .pr.light .pr-back-link:hover { background:rgba(255,255,255,0.9); }
+  .pr.light .pr-more-dropdown { background:#fff;border-color:#dddfe2;box-shadow:0 4px 24px rgba(0,0,0,0.12); }
+  .pr.light .pr-more-item { color:#1c1e21; }
+  .pr.light .pr-more-item:hover { background:rgba(0,0,0,0.04); }
   .pr.light .pr-activity-card { background:#fafafa;border-color:#e8e8e8; }
   .pr.light .pr-activity-card:hover { border-color:rgba(212,160,23,0.4); }
   .pr.light .pr-activity-item-icon { background:#f5f5f5;border-color:#e8e8e8; }
@@ -1129,10 +1138,7 @@
   :global(body) { margin: 0; }
   :global(.page) { padding: 0 !important; }
 
-  /* Back link */
-  .pr-back-bar { max-width: 700px; margin: 0 auto; padding: 16px 20px 0; }
-  .pr-back-link { font-size: 13px; color: var(--pr-gold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-  .pr-back-link:hover { text-decoration: underline; }
+  /* Back link is now on the banner — see .pr-back-link above */
 
   /* Post image */
   .pr-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
@@ -1221,7 +1227,7 @@
   .pr-more-wrap { position:relative; }
   .pr-more-btn { width:34px;height:34px;border-radius:50%;background:none;border:1px solid var(--bd);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s; }
   .pr-more-btn:hover { border-color:var(--t2);color:var(--t1);background:var(--hv); }
-  .pr-more-dropdown { position:absolute;top:calc(100% + 6px);right:0;min-width:240px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px 0;z-index:100; }
+  .pr-more-dropdown { position:absolute;top:calc(100% + 6px);right:0;min-width:240px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px 0;z-index:200; }
   .pr-more-item { display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;color:var(--t1);font-size:14px;cursor:pointer;font-family:inherit;text-align:left; }
   .pr-more-item:hover { background:var(--hv); }
   .pr-more-item.pr-more-danger { color:#ef4444; }
