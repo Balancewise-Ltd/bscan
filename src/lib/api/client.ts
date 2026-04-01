@@ -1061,3 +1061,87 @@ export async function markConvUnread(convId: number): Promise<any> {
 export async function getMessageRequests(): Promise<any> {
   return request('/api/community/message-requests');
 }
+
+
+// ═══════════════════════════════════════
+// WISERS: Communities
+// ═══════════════════════════════════════
+export async function getCommunities(page: number = 1, category: string = '', q: string = ''): Promise<any> {
+  return request('/api/wisers/communities?page=' + page + (category ? '&category=' + category : '') + (q ? '&q=' + encodeURIComponent(q) : ''));
+}
+export async function getCommunity(slug: string): Promise<any> {
+  return request('/api/wisers/communities/' + slug);
+}
+export async function createCommunity(data: { name: string; description?: string; category?: string; privacy?: string; rules?: string }): Promise<any> {
+  return request('/api/wisers/communities', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function joinCommunity(slug: string): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/join', { method: 'POST' });
+}
+export async function leaveCommunity(slug: string): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/leave', { method: 'DELETE' });
+}
+export async function getCommunityFeedBySlug(slug: string, page: number = 1): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/feed?page=' + page);
+}
+export async function postToCommunity(slug: string, data: { content: string; image_url?: string; milestone_type?: string; milestone_value?: string }): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/post', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function getCommunityMembers(slug: string, page: number = 1): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/members?page=' + page);
+}
+export async function getMyCommunities(): Promise<any> {
+  return request('/api/wisers/my-communities');
+}
+
+// ═══════════════════════════════════════
+// WISERS: Milestones
+// ═══════════════════════════════════════
+export async function createMilestone(data: { content: string; milestone_type: string; milestone_value: string; image_url?: string; community_id?: number }): Promise<any> {
+  return request('/api/wisers/milestone', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function getMilestoneFeed(page: number = 1): Promise<any> {
+  return request('/api/wisers/milestones/feed?page=' + page);
+}
+
+// ═══════════════════════════════════════
+// WISERS: Journey
+// ═══════════════════════════════════════
+export async function addJourneyEntry(data: { title: string; description?: string; entry_type?: string; metric_name?: string; metric_value?: number; metric_unit?: string; visibility?: string }): Promise<any> {
+  return request('/api/wisers/journey/entries', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function getJourney(username: string): Promise<any> {
+  return request('/api/wisers/journey/' + username);
+}
+export async function addJourneyGoal(data: { title: string; target_value?: number; unit?: string; deadline?: string }): Promise<any> {
+  return request('/api/wisers/journey/goals', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateJourneyGoal(goalId: number, data: { current_value?: number; status?: string }): Promise<any> {
+  return request('/api/wisers/journey/goals/' + goalId, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deleteJourneyEntry(entryId: number): Promise<any> {
+  return request('/api/wisers/journey/entries/' + entryId, { method: 'DELETE' });
+}
+
+// ═══════════════════════════════════════
+// WISERS: Mentorship
+// ═══════════════════════════════════════
+export async function saveMentorshipProfile(data: { role: string; expertise?: string; looking_for?: string; experience_level?: string; monthly_revenue?: string; max_mentees?: number }): Promise<any> {
+  return request('/api/wisers/mentorship/profile', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function getMyMentorshipProfile(): Promise<any> {
+  return request('/api/wisers/mentorship/profile');
+}
+export async function browseMentors(role: string = 'mentor', category: string = '', page: number = 1): Promise<any> {
+  return request('/api/wisers/mentorship/browse?role=' + role + (category ? '&category=' + encodeURIComponent(category) : '') + '&page=' + page);
+}
+export async function requestMentorship(username: string, message: string = ''): Promise<any> {
+  return request('/api/wisers/mentorship/request/' + username, { method: 'POST', body: JSON.stringify({ message }) });
+}
+export async function getMentorshipRequests(): Promise<any> {
+  return request('/api/wisers/mentorship/requests');
+}
+export async function respondMentorship(connectionId: number, action: string): Promise<any> {
+  return request('/api/wisers/mentorship/respond/' + connectionId, { method: 'POST', body: JSON.stringify({ action }) });
+}
+

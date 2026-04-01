@@ -26,6 +26,7 @@
   let expandedComments = $state<Set<number>>(new Set());
   let postComments = $state<Record<number, any[]>>({});
   let actionMsg = $state('');
+  let openPostMenu = $state<number | null>(null);
   let bookmarkedPosts = $state<Set<number>>(new Set());
   let editingPost = $state<number | null>(null);
   let editContent = $state('');
@@ -47,6 +48,7 @@
 
     await loadFeed();
     loadUsers();
+    loadTrending();
     if ($auth.token) {
       try {
         const [fr, req, sg] = await Promise.all([
@@ -62,7 +64,10 @@
       try { const bk = await api.getBookmarks(); bookmarkedPosts = new Set((bk.posts || []).map((p: any) => p.id)); } catch {}
     }
     loading = false;
-    if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('wisers-page');
+      document.addEventListener('click', () => { openPostMenu = null; });
+    }
     if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
 
@@ -481,15 +486,66 @@
               <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
             </div>
             <div class="w-post-right">
+              <!-- Header row: author info + ··· menu top-right (X standard) -->
               <div class="w-post-meta">
-                <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
-                <span class="w-post-handle">@{post.username}</span>
-                <span class="w-post-dot">·</span>
-                <span class="w-post-time">{timeAgo(post.created_at)}</span>
-                <span class="w-verify" class:v-free={post.plan === 'free'} class:v-pro={post.plan === 'pro'} class:v-agency={post.plan === 'agency'}><svg viewBox="0 0 22 22"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.635-.08 1.293.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.604-.274 1.26-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.141.27.587.7 1.086 1.24 1.44s1.167.551 1.813.568c.645-.017 1.27-.213 1.81-.567.54-.355.97-.854 1.244-1.44.607.223 1.264.27 1.897.14.634-.131 1.218-.437 1.687-.883.445-.47.75-1.054.882-1.69.13-.635.083-1.292-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="white"/></svg></span>
+                <div class="w-post-meta-left">
+                  <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
+                  <span class="w-verify" class:v-free={post.plan === 'free'} class:v-pro={post.plan === 'pro'} class:v-agency={post.plan === 'agency'}><svg viewBox="0 0 22 22"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.635-.08 1.293.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.604-.274 1.26-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.141.27.587.7 1.086 1.24 1.44s1.167.551 1.813.568c.645-.017 1.27-.213 1.81-.567.54-.355.97-.854 1.244-1.44.607.223 1.264.27 1.897.14.634-.131 1.218-.437 1.687-.883.445-.47.75-1.054.882-1.69.13-.635.083-1.292-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="white"/></svg></span>
+                  <span class="w-post-handle">@{post.username}</span>
+                  <span class="w-post-dot">·</span>
+                  <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                </div>
+                {#if $auth.token}
+                  <div class="w-post-menu-wrap" onclick={(e) => e.stopPropagation()}>
+                    <button class="w-post-menu-btn" onclick={() => openPostMenu = openPostMenu === post.id ? null : post.id} title="More" aria-label="More options">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                    {#if openPostMenu === post.id}
+                      <div class="w-post-menu-dropdown">
+                        {#if $auth.user?.id === post.user_id}
+                          <button onclick={() => { handleEditPost(post); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            {editingPost === post.id ? 'Save edit' : 'Edit post'}
+                          </button>
+                          <button class="w-menu-danger" onclick={() => { removePost(post.id); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Delete post
+                          </button>
+                          <div class="w-menu-divider"></div>
+                          <button onclick={() => { navigator.clipboard?.writeText(window.location.origin + '/wisers?post=' + post.id); actionMsg = 'Link copied!'; setTimeout(() => actionMsg = '', 2000); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Copy link
+                          </button>
+                        {:else}
+                          <button onclick={() => { api.followUser(post.username).then(() => { actionMsg = 'Following @' + post.username; setTimeout(() => actionMsg = '', 2000); }).catch(() => {}); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                            Follow @{post.username}
+                          </button>
+                          <button onclick={() => { api.muteUser(post.username).then(() => { actionMsg = '@' + post.username + ' muted'; setTimeout(() => actionMsg = '', 2000); posts = posts.filter(p => p.username !== post.username); }).catch(() => {}); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            Mute @{post.username}
+                          </button>
+                          <button class="w-menu-danger" onclick={() => { api.blockUser(post.username).then(() => { actionMsg = '@' + post.username + ' blocked'; setTimeout(() => actionMsg = '', 2000); posts = posts.filter(p => p.username !== post.username); }).catch(() => {}); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                            Block @{post.username}
+                          </button>
+                          <div class="w-menu-divider"></div>
+                          <button onclick={() => { navigator.clipboard?.writeText(window.location.origin + '/wisers?post=' + post.id); actionMsg = 'Link copied!'; setTimeout(() => actionMsg = '', 2000); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Copy link
+                          </button>
+                          <button class="w-menu-danger" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => { actionMsg = 'Report submitted'; setTimeout(() => actionMsg = '', 2000); }).catch(() => {}); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                            Report post
+                          </button>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
               </div>
-              <div class="w-post-body">{post.content}</div>
-                {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
+              <div class="w-post-body">{@html renderContent(post.content)}</div>
+              {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
                 <div class="w-scan-card">
                   <span>{post.scan_url}</span>
@@ -516,19 +572,6 @@
                 {#if $auth.token}
                   <button class="w-action w-bookmark-btn" class:w-bookmarked={bookmarkedPosts.has(post.id)} onclick={() => handleBookmark(post)} title="Bookmark">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={bookmarkedPosts.has(post.id) ? '#eab308' : 'none'} stroke={bookmarkedPosts.has(post.id) ? '#eab308' : 'currentColor'} stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  </button>
-                {/if}
-                {#if $auth.token && $auth.user?.id !== post.user_id}
-                  <button class="w-action w-report-btn" title="Report" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => alert('Report submitted')).catch(() => {}); }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-                  </button>
-                {/if}
-                {#if $auth.user?.id === post.user_id}
-                  <button class="w-action w-edit-btn" onclick={() => handleEditPost(post)} title={editingPost === post.id ? 'Save' : 'Edit'}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={editingPost === post.id ? '#10b981' : 'currentColor'} stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button class="w-action w-action-del" onclick={() => removePost(post.id)} title="Delete">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 {/if}
               </div>
@@ -745,7 +788,7 @@
                 <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
                 <div class="w-suggest-real">{u.display_name || u.name}</div>
               </div>
-              <button class="w-connect-sm" onclick={() => sendRequest(u.username)}>+</button>
+              <button class="w-connect-sm" onclick={() => sendRequest(u.username)}>Add</button>
             </div>
           {/each}
         </div>
@@ -884,6 +927,14 @@
   .w-action:hover { background: var(--whover); color: var(--wt); }
   .w-action-del { margin-left: auto; }
   .w-action-del:hover { color: #ef4444; }
+  .w-post-menu-wrap { position: relative; margin-left: auto; }
+  .w-post-menu-btn { color: var(--wt3); }
+  .w-post-menu-btn:hover { color: var(--wt1); }
+  .w-post-menu-dropdown { position: absolute; right: 0; top: 28px; background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 10px; min-width: 140px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); overflow: hidden; }
+  .w-post-menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--wt1); font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+  .w-post-menu-dropdown button:hover { background: rgba(255,255,255,0.06); }
+  .w-post-menu-dropdown .w-menu-danger { color: #ef4444; }
+  .w-post-menu-dropdown .w-menu-danger:hover { background: rgba(239,68,68,0.08); }
 
   .w-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
   .w-comment { padding: 6px 0; font-size: 13px; }
@@ -915,7 +966,7 @@
   .w-suggest-info { flex: 1; min-width: 0; }
   .w-suggest-name { font-size: 12px; font-weight: 600; color: var(--wgold); text-decoration: none; }
   .w-suggest-real { font-size: 10px; color: var(--wt3); }
-  .w-connect-sm { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .w-connect-sm { height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
   .w-connect-sm:hover { background: var(--wgold); color: #000; }
   .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 10px; width: auto; padding: 4px 10px; border-radius: 12px; }
   .w-footer { font-size: 11px; color: var(--wt3); }
