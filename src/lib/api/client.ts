@@ -762,8 +762,8 @@ export async function uploadPostImage(file: File): Promise<{ url: string }> {
   return res.json();
 }
 
-export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0): Promise<any> {
-	return request('/api/community/posts', { method: 'POST', body: JSON.stringify({ content, post_type: postType, scan_url: scanUrl, scan_score: scanScore }) });
+export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0, imageUrl: string = ''): Promise<any> {
+	return request('/api/community/posts', { method: 'POST', body: JSON.stringify({ content, post_type: postType, scan_url: scanUrl, scan_score: scanScore, image_url: imageUrl }) });
 }
 export async function deletePost(id: number): Promise<any> {
 	return request(`/api/community/posts/${id}`, { method: 'DELETE' });
