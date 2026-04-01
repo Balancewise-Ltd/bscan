@@ -25,6 +25,7 @@
   let editingPost = $state<number | null>(null);
   let editingContent = $state('');
   let openPostMenu = $state<number | null>(null);
+  let showProfileMore = $state(false);
   let avatarUploading = $state(false);
   let theme = $state<'dark'|'light'>('dark');
   let journeyData = $state<any>({ entries: [], goals: [] });
@@ -34,7 +35,7 @@
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; }
     else if (!saved && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) { theme = 'light'; }
-    if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-wisers-theme', theme); document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f'; document.addEventListener('click', () => { openPostMenu = null; }); }
+    if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-wisers-theme', theme); document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f'; document.addEventListener('click', () => { openPostMenu = null; showProfileMore = false; }); }
   });
 
   $effect(() => { const u = $page.params.username; if (u) loadProfile(u); });
@@ -43,12 +44,12 @@
     loading = true; error = '';
     try {
       profile = await api.getCommunityProfile(username);
-      if ($auth.token) { 
+      if ($auth.token) {
         status = (await api.getFriendshipStatus(username).catch(() => ({ status: 'none' }))).status;
+        try { followersCount = (await api.getFollowers(username)).followers?.length || 0; } catch {}
+        try { followingCount = (await api.getFollowing(username)).following?.length || 0; } catch {}
         if (status !== 'self') {
           try { followStatus = await api.getFollowStatus(username); } catch {}
-          try { followersCount = (await api.getFollowers(username)).followers?.length || 0; } catch {}
-          try { followingCount = (await api.getFollowing(username)).following?.length || 0; } catch {}
         }
       }
       try { posts = ((await api.getUserPosts(username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
@@ -249,13 +250,55 @@
       <div class="pr-av">{#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{:else}{initial(profile.display_name || profile.name)}{/if}</div>
       <div class="pr-top-right">
         {#if $auth.token && status === 'self'}
+          <div class="pr-more-wrap">
+            <button class="pr-more-btn" onclick={(e) => { e.stopPropagation(); showProfileMore = !showProfileMore; }} aria-label="More">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+            {#if showProfileMore}
+              <div class="pr-more-dropdown" onclick={(e) => e.stopPropagation()}>
+                <button class="pr-more-item" onclick={() => { navigator.clipboard.writeText(window.location.href); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  Copy profile link
+                </button>
+                <button class="pr-more-item" onclick={() => { if (navigator.share) navigator.share({ title: '@' + profile.username, url: window.location.href }); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  Share profile
+                </button>
+              </div>
+            {/if}
+          </div>
           <button class="pr-btn pr-btn-o" onclick={startEdit}>Edit profile</button>
-          <a href="/account" class="pr-btn pr-btn-o">Settings</a>
         {:else if $auth.token}
-          {#if status === 'friends'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends ✓</button>
+          <div class="pr-more-wrap">
+            <button class="pr-more-btn" onclick={(e) => { e.stopPropagation(); showProfileMore = !showProfileMore; }} aria-label="More">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+            {#if showProfileMore}
+              <div class="pr-more-dropdown" onclick={(e) => e.stopPropagation()}>
+                <button class="pr-more-item" onclick={() => { handleMute(); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                  Mute @{profile.username}
+                </button>
+                <button class="pr-more-item pr-more-danger" onclick={() => { handleBlock(); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                  Block @{profile.username}
+                </button>
+                <div class="pr-more-divider"></div>
+                <button class="pr-more-item" onclick={() => { navigator.clipboard.writeText(window.location.href); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  Copy profile link
+                </button>
+                <button class="pr-more-item pr-more-danger" onclick={() => { const r = prompt('Why are you reporting this user?'); if (r) api.reportContent('user', profile.id, r).then(() => alert('Report submitted')).catch(() => {}); showProfileMore = false; }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                  Report @{profile.username}
+                </button>
+              </div>
+            {/if}
+          </div>
+          {#if status === 'friends'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends</button>
           {:else if status === 'request_sent'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-o" disabled>Pending</button>
           {:else}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
-          <button class="pr-btn" style="background:#f5a623; color:#000; border:2px solid #f5a623; font-weight:700;" onclick={() => handleFollow()}>{followStatus.i_follow ? '✓ Following' : 'Follow'}</button>
+          <button class="pr-btn pr-btn-follow" class:following={followStatus.i_follow} onclick={() => handleFollow()}>{followStatus.i_follow ? 'Following' : 'Follow'}</button>
         {/if}
       </div>
     </div>
@@ -346,59 +389,10 @@
       </div>
 
       <div class="pr-stats">
-        <div><strong>{profile.stats?.total_scans || 0}</strong> Scans</div>
-        <div><strong>{profile.stats?.avg_score || 0}</strong> Avg</div>
-        <div><strong>{profile.stats?.friends || 0}</strong> Friends</div>
+        <div><strong>{followersCount}</strong> Followers</div>
+        <div><strong>{followingCount}</strong> Following</div>
         <div><strong>{posts.length}</strong> Posts</div>
       </div>
-
-      <!-- Skills -->
-      {#if parseList(profile.skills).length > 0}
-        <div class="pr-section">
-          <h3>Skills</h3>
-          <div class="pr-tags">{#each parseList(profile.skills) as skill}<span class="pr-tag">{skill}</span>{/each}</div>
-        </div>
-      {/if}
-
-      <!-- Work -->
-      {#if parseEntries(profile.work_history).length > 0}
-        <div class="pr-section">
-          <h3>Experience</h3>
-          {#each parseEntries(profile.work_history) as entry}<div class="pr-entry"><span class="pr-entry-dot"></span><div>{entry}</div></div>{/each}
-        </div>
-      {/if}
-
-      <!-- Education -->
-      {#if parseEntries(profile.education).length > 0}
-        <div class="pr-section">
-          <h3>Education</h3>
-          {#each parseEntries(profile.education) as entry}<div class="pr-entry"><span class="pr-entry-dot ed"></span><div>{entry}</div></div>{/each}
-        </div>
-      {/if}
-
-      <!-- Certifications -->
-      {#if parseEntries(profile.certifications).length > 0}
-        <div class="pr-section">
-          <h3>Certifications</h3>
-          {#each parseEntries(profile.certifications) as cert}<div class="pr-entry"><span class="pr-entry-dot cert"></span><div>{cert}</div></div>{/each}
-        </div>
-      {/if}
-
-      <!-- Languages -->
-      {#if parseList(profile.languages).length > 0}
-        <div class="pr-section">
-          <h3>Languages</h3>
-          <div class="pr-tags">{#each parseList(profile.languages) as lang}<span class="pr-tag lang">{lang}</span>{/each}</div>
-        </div>
-      {/if}
-
-      <!-- Interests -->
-      {#if parseList(profile.interests).length > 0}
-        <div class="pr-section">
-          <h3>Interests</h3>
-          <div class="pr-tags">{#each parseList(profile.interests) as i}<span class="pr-tag int">{i}</span>{/each}</div>
-        </div>
-      {/if}
 
       <!-- Tabs -->
       <div class="pr-tabs">
@@ -523,23 +517,111 @@
         {/each}{/if}
       {:else if activeTab === 'about'}
         <div class="pr-about-section">
-          {#if parseList(profile.skills).length > 0}
-            <div class="pr-about-card"><h4>Skills</h4><div class="pr-tags">{#each parseList(profile.skills) as skill}<span class="pr-tag">{skill}</span>{/each}</div></div>
-          {/if}
-          {#if parseEntries(profile.work_history).length > 0}
-            <div class="pr-about-card"><h4>Experience</h4>{#each parseEntries(profile.work_history) as entry}<div class="pr-entry"><span class="pr-entry-dot"></span><div>{entry}</div></div>{/each}</div>
-          {/if}
-          {#if parseEntries(profile.education).length > 0}
-            <div class="pr-about-card"><h4>Education</h4>{#each parseEntries(profile.education) as entry}<div class="pr-entry"><span class="pr-entry-dot ed"></span><div>{entry}</div></div>{/each}</div>
-          {/if}
+          <!-- Bio -->
+          <div class="pr-about-card">
+            <h4>Bio</h4>
+            {#if profile.bio}
+              <p class="pr-about-bio">{profile.bio}</p>
+            {:else}
+              <p class="pr-about-empty">{status === 'self' ? 'Tell the world about yourself.' : 'No bio yet.'}</p>
+              {#if status === 'self'}<button class="pr-about-add" onclick={startEdit}>Add bio</button>{/if}
+            {/if}
+          </div>
+
+          <!-- Details -->
+          <div class="pr-about-card">
+            <h4>Details</h4>
+            <div class="pr-about-details">
+              {#if profile.company}<div class="pr-about-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>{profile.company}</span></div>{/if}
+              {#if profile.city || profile.country}<div class="pr-about-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{[profile.city, profile.country].filter(Boolean).join(', ')}</span></div>{/if}
+              {#if profile.website}<div class="pr-about-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href={profile.website} target="_blank" rel="noopener">{profile.website.replace(/https?:\/\//, '')}</a></div>{/if}
+              <div class="pr-about-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Joined {new Date(profile.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span></div>
+            </div>
+            {#if !profile.company && !profile.city && !profile.country && !profile.website && status === 'self'}
+              <button class="pr-about-add" onclick={startEdit}>Add details</button>
+            {/if}
+          </div>
+
+          <!-- Social links -->
+          <div class="pr-about-card">
+            <h4>Links</h4>
+            {#if profile.github_url || profile.linkedin_url || profile.twitter_url}
+              <div class="pr-about-links">
+                {#if profile.github_url}<a href={profile.github_url} target="_blank" rel="noopener" class="pr-about-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg> GitHub</a>{/if}
+                {#if profile.linkedin_url}<a href={profile.linkedin_url} target="_blank" rel="noopener" class="pr-about-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn</a>{/if}
+                {#if profile.twitter_url}<a href={profile.twitter_url} target="_blank" rel="noopener" class="pr-about-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X</a>{/if}
+              </div>
+            {:else}
+              <p class="pr-about-empty">{status === 'self' ? 'Connect your social accounts.' : 'No links added.'}</p>
+              {#if status === 'self'}<button class="pr-about-add" onclick={startEdit}>Add links</button>{/if}
+            {/if}
+          </div>
+
+          <!-- Skills -->
+          <div class="pr-about-card">
+            <h4>Skills</h4>
+            {#if parseList(profile.skills).length > 0}
+              <div class="pr-tags">{#each parseList(profile.skills) as skill}<span class="pr-tag">{skill}</span>{/each}</div>
+            {:else}
+              <p class="pr-about-empty">{status === 'self' ? 'Showcase your expertise.' : 'No skills listed.'}</p>
+              {#if status === 'self'}<button class="pr-about-add" onclick={startEdit}>Add skills</button>{/if}
+            {/if}
+          </div>
+
+          <!-- Experience -->
+          <div class="pr-about-card">
+            <h4>Experience</h4>
+            {#if parseEntries(profile.work_history).length > 0}
+              {#each parseEntries(profile.work_history) as entry}<div class="pr-entry"><span class="pr-entry-dot"></span><div>{entry}</div></div>{/each}
+            {:else}
+              <p class="pr-about-empty">{status === 'self' ? 'Add your work experience.' : 'No experience listed.'}</p>
+              {#if status === 'self'}<button class="pr-about-add" onclick={startEdit}>Add experience</button>{/if}
+            {/if}
+          </div>
+
+          <!-- Education -->
+          <div class="pr-about-card">
+            <h4>Education</h4>
+            {#if parseEntries(profile.education).length > 0}
+              {#each parseEntries(profile.education) as entry}<div class="pr-entry"><span class="pr-entry-dot ed"></span><div>{entry}</div></div>{/each}
+            {:else}
+              <p class="pr-about-empty">{status === 'self' ? 'Add your education.' : 'No education listed.'}</p>
+              {#if status === 'self'}<button class="pr-about-add" onclick={startEdit}>Add education</button>{/if}
+            {/if}
+          </div>
+
+          <!-- Certifications -->
           {#if parseEntries(profile.certifications).length > 0}
-            <div class="pr-about-card"><h4>Certifications</h4>{#each parseEntries(profile.certifications) as cert}<div class="pr-entry"><span class="pr-entry-dot cert"></span><div>{cert}</div></div>{/each}</div>
+            <div class="pr-about-card">
+              <h4>Certifications</h4>
+              {#each parseEntries(profile.certifications) as cert}<div class="pr-entry"><span class="pr-entry-dot cert"></span><div>{cert}</div></div>{/each}
+            </div>
           {/if}
-          {#if parseList(profile.languages).length > 0}
-            <div class="pr-about-card"><h4>Languages</h4><div class="pr-tags">{#each parseList(profile.languages) as lang}<span class="pr-tag lang">{lang}</span>{/each}</div></div>
+
+          <!-- Languages -->
+          {#if parseList(profile.languages).length > 0 || status === 'self'}
+            <div class="pr-about-card">
+              <h4>Languages</h4>
+              {#if parseList(profile.languages).length > 0}
+                <div class="pr-tags">{#each parseList(profile.languages) as lang}<span class="pr-tag lang">{lang}</span>{/each}</div>
+              {:else}
+                <p class="pr-about-empty">Add languages you speak.</p>
+                <button class="pr-about-add" onclick={startEdit}>Add languages</button>
+              {/if}
+            </div>
           {/if}
-          {#if parseList(profile.interests).length > 0}
-            <div class="pr-about-card"><h4>Interests</h4><div class="pr-tags">{#each parseList(profile.interests) as i}<span class="pr-tag int">{i}</span>{/each}</div></div>
+
+          <!-- Interests -->
+          {#if parseList(profile.interests).length > 0 || status === 'self'}
+            <div class="pr-about-card">
+              <h4>Interests</h4>
+              {#if parseList(profile.interests).length > 0}
+                <div class="pr-tags">{#each parseList(profile.interests) as i}<span class="pr-tag int">{i}</span>{/each}</div>
+              {:else}
+                <p class="pr-about-empty">What are you passionate about?</p>
+                <button class="pr-about-add" onclick={startEdit}>Add interests</button>
+              {/if}
+            </div>
           {/if}
         </div>
 
@@ -784,6 +866,37 @@
   .pr-logout-wrap { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--pr-bd); }
   .pr-logout-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 10px 24px; border-radius: 24px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; transition: all 0.15s; }
   .pr-logout-btn:hover { background: rgba(239,68,68,0.08); border-color: #ef4444; }
+
+  /* More button (X standard "...") */
+  .pr-more-wrap { position:relative; }
+  .pr-more-btn { width:34px;height:34px;border-radius:50%;background:none;border:1px solid var(--bd);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s; }
+  .pr-more-btn:hover { border-color:var(--t2);color:var(--t1);background:var(--hv); }
+  .pr-more-dropdown { position:absolute;top:calc(100% + 6px);right:0;min-width:240px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px 0;z-index:100; }
+  .pr-more-item { display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;color:var(--t1);font-size:14px;cursor:pointer;font-family:inherit;text-align:left; }
+  .pr-more-item:hover { background:var(--hv); }
+  .pr-more-item.pr-more-danger { color:#ef4444; }
+  .pr-more-divider { height:1px;background:var(--bd);margin:4px 0; }
+
+  /* Follow button (X standard) */
+  .pr-btn-follow { background:var(--gold);color:#000;border:2px solid var(--gold);font-weight:700; }
+  .pr-btn-follow:hover { filter:brightness(1.1); }
+  .pr-btn-follow.following { background:transparent;color:var(--t2);border-color:var(--bd); }
+  .pr-btn-follow.following:hover { border-color:rgba(239,68,68,0.5);color:#ef4444; }
+
+  /* About section cards */
+  .pr-about-bio { font-size:15px;line-height:1.6;color:var(--t1);margin:0;white-space:pre-wrap; }
+  .pr-about-empty { font-size:14px;color:var(--t3);margin:0 0 8px; }
+  .pr-about-add { background:none;border:none;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:inherit; }
+  .pr-about-add:hover { text-decoration:underline; }
+  .pr-about-details { display:flex;flex-direction:column;gap:12px; }
+  .pr-about-row { display:flex;align-items:center;gap:10px;font-size:14px;color:var(--t2); }
+  .pr-about-row svg { color:var(--t3);flex-shrink:0; }
+  .pr-about-row a { color:var(--gold);text-decoration:none; }
+  .pr-about-row a:hover { text-decoration:underline; }
+  .pr-about-links { display:flex;flex-direction:column;gap:10px; }
+  .pr-about-link { display:flex;align-items:center;gap:10px;font-size:14px;color:var(--t1);text-decoration:none;padding:8px 12px;border-radius:10px;border:1px solid var(--bd);transition:border-color 0.15s; }
+  .pr-about-link:hover { border-color:var(--gold); }
+  .pr-about-link svg { color:var(--t2);flex-shrink:0; }
 
   /* Edit profile modal (X standard) */
   .pr-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000; }
