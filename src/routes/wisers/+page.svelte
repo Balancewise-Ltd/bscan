@@ -531,6 +531,7 @@
                   <span class="w-post-handle">@{post.username}</span>
                   <span class="w-post-dot">·</span>
                   <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                  {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
                 </div>
                 {#if $auth.token}
                   <div class="w-post-menu-wrap" onclick={(e) => e.stopPropagation()}>
@@ -686,12 +687,15 @@
               </div>
               <div class="w-post-right">
                 <div class="w-post-meta">
-                  <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
-                  <span class="w-post-handle">@{post.username}</span>
-                  <span class="w-post-dot">·</span>
-                  <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                  <div class="w-post-meta-left">
+                    <a href="/wisers/{post.username}" class="w-post-author">{post.display_name || post.user_name}</a>
+                    <span class="w-post-handle">@{post.username}</span>
+                    <span class="w-post-dot">·</span>
+                    <span class="w-post-time">{timeAgo(post.created_at)}</span>
+                    {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
+                  </div>
                 </div>
-                <div class="w-post-body">{post.content}</div>
+                <div class="w-post-body">{@html renderContent(post.content)}</div>
                 <div class="w-post-actions">
                   <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -943,12 +947,14 @@
   .w-post { display: flex; gap: 12px; padding: 16px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 10px; }
   .w-post:hover { border-color: rgba(245,166,35,0.2); }
   .w-post-right { flex: 1; min-width: 0; }
-  .w-post-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .w-post-meta { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; position: relative; }
+  .w-post-meta-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; flex-wrap: wrap; }
   .w-post-author { font-weight: 700; font-size: 14px; color: var(--wt); text-decoration: none; }
   .w-post-author:hover { text-decoration: underline; }
   .w-post-handle { font-size: 13px; color: var(--wt2); }
   .w-post-dot { color: var(--wt3); }
   .w-post-time { font-size: 12px; color: var(--wt3); }
+  .w-post-edited { font-size: 11px; color: var(--wt3); font-style: italic; }
   .w-verify { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; }
   .w-verify svg { width: 16px; height: 16px; }
   .w-verify.v-free svg { fill: #555; }
@@ -964,14 +970,16 @@
   .w-action:hover { background: var(--whover); color: var(--wt); }
   .w-action-del { margin-left: auto; }
   .w-action-del:hover { color: #ef4444; }
-  .w-post-menu-wrap { position: relative; margin-left: auto; }
-  .w-post-menu-btn { color: var(--wt3); }
-  .w-post-menu-btn:hover { color: var(--wt1); }
-  .w-post-menu-dropdown { position: absolute; right: 0; top: 28px; background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 10px; min-width: 140px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); overflow: hidden; }
-  .w-post-menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--wt1); font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+  .w-post-menu-wrap { position: relative; margin-left: auto; flex-shrink: 0; }
+  .w-post-menu-btn { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--wt3); background: none; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; opacity: 0; font-family: inherit; }
+  .w-post:hover .w-post-menu-btn, .w-post-menu-btn:focus { opacity: 1; }
+  .w-post-menu-btn:hover { background: rgba(29,155,240,0.1); color: #1d9bf0; }
+  .w-post-menu-dropdown { position: absolute; right: 0; top: 34px; background: #16161e; border: 1px solid #2a2a3a; border-radius: 12px; min-width: 260px; z-index: 100; box-shadow: 0 0 8px rgba(0,0,0,0.3), 0 12px 36px rgba(0,0,0,0.5); overflow: hidden; padding: 4px 0; }
+  .w-post-menu-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: none; border: none; color: var(--wt1); font-size: 14px; cursor: pointer; text-align: left; font-family: inherit; transition: background 0.12s; }
   .w-post-menu-dropdown button:hover { background: rgba(255,255,255,0.06); }
   .w-post-menu-dropdown .w-menu-danger { color: #ef4444; }
   .w-post-menu-dropdown .w-menu-danger:hover { background: rgba(239,68,68,0.08); }
+  .w-menu-divider { height: 1px; background: #2a2a3a; margin: 4px 0; }
 
   .w-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
   .w-comment { padding: 6px 0; font-size: 13px; }
