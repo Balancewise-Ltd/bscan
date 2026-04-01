@@ -1126,11 +1126,12 @@
   .w-feed-tabs button { padding: 5px 12px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; }
   .w-feed-tabs button.active { background: var(--wgold); color: #000; border-color: var(--wgold); }
   .w-emoji-wrap { position: relative; }
-  .w-emoji-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; }
+  .w-emoji-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; line-height: 1; }
   .w-emoji-btn:hover { background: var(--whover); }
-  .w-emoji-picker { position: absolute; bottom: 40px; left: 0; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-  .w-emoji-item { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 6px; text-align: center; }
-  .w-emoji-item:hover { background: var(--whover); }
+  .w-emoji-picker { position: absolute; bottom: calc(100% + 8px); right: 0; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 14px; padding: 10px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 0; width: 300px; max-height: 220px; overflow-y: auto; z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+  .w-emoji-item { background: none; border: none; font-size: 22px; cursor: pointer; padding: 6px 2px; border-radius: 8px; text-align: center; line-height: 1; transition: background 0.1s, transform 0.1s; }
+  .w-emoji-item:hover { background: var(--whover); transform: scale(1.2); }
+  .w-emoji-item:active { transform: scale(0.95); }
   .w-char { font-size: 11px; color: var(--wt3); }
   .w-post-btn { padding: 7px 20px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
   .w-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -1401,8 +1402,10 @@
     /* Join CTA */
     .w-join-cta { margin: 0; border-radius: 0; padding: 32px 20px; }
 
-    /* Emoji picker */
-    .w-emoji-picker { right: -40px; width: 260px; }
+    /* Emoji picker — fixed bottom sheet on mobile */
+    .w-emoji-picker { position: fixed; bottom: 0; left: 0; right: 0; top: auto; width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; padding: 12px 8px calc(env(safe-area-inset-bottom, 0px) + 12px); max-height: 40vh; grid-template-columns: repeat(8, 1fr); gap: 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.5); }
+    .w-emoji-item { font-size: 24px; padding: 8px 2px; }
+    .w-emoji-backdrop { background: rgba(0,0,0,0.4); }
 
     /* Hide nav when keyboard open */
     .w:has(textarea:focus) .w-mobile-nav,
