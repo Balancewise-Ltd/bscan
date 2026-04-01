@@ -490,7 +490,6 @@
               </div>
               <div class="w-post-body">{post.content}</div>
                 {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
-              {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
                 <div class="w-scan-card">
                   <span>{post.scan_url}</span>
