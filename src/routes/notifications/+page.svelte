@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { markNotifsRead } from '$lib/stores/wisers-ws';
   import { auth } from '$lib/stores/auth';
+  import WisersMobileNav from '$lib/components/WisersMobileNav.svelte';
   import * as api from '$lib/api/client';
 
   let notifications = $state<any[]>([]);
@@ -94,27 +95,9 @@
   </div>
 </div>
 
-<nav class="w-mn-nav">
-  <a href="/wisers" class="w-mn-item">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span>Home</span>
-  </a>
-  <a href="/wisers/communities" class="w-mn-item">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span>Groups</span>
-  </a>
-  <a href="/wisers" class="w-mn-create-link">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </a>
-  <a href="/wisers/messages" class="w-mn-item">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    <span>Inbox</span>
-  </a>
-  <a href="/wisers/mentorship" class="w-mn-item">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    <span>Profile</span>
-  </a>
-</nav>
+
+<WisersMobileNav />
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
   .n { --nb: #0a0a0f; --nc: #111117; --nt: #e4e6ea; --nt2: #8a8d91; --nt3: #606770; --nbd: #1e1e2a; --ncard: #16161f; --ngold: #f5a623;
@@ -140,12 +123,4 @@
   .n-time { font-size: 10px; color: var(--nt3); }
   .n-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ngold); }
 
-  .w-mn-nav { display: none; }
-  @media (max-width: 768px) {
-    .w-mn-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: #0a0a0f; border-top: 1px solid #1e1e2a; z-index: 200; align-items: center; justify-content: space-around; padding: 0 4px; padding-bottom: env(safe-area-inset-bottom, 0); -webkit-backdrop-filter: none; backdrop-filter: none; }
-    :global(.page) { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0)) !important; }
-    .w-mn-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #606770; text-decoration: none; font-size: 10px; font-weight: 500; padding: 6px 12px; -webkit-tap-highlight-color: transparent; }
-    .w-mn-item:active { opacity: 0.7; }
-    .w-mn-create-link { width: 48px; height: 48px; border-radius: 50%; background: #f5a623; border: 3px solid #0a0a0f; display: flex; align-items: center; justify-content: center; margin-top: -20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-decoration: none; -webkit-tap-highlight-color: transparent; }
-  }
-</style>
+  </style>
