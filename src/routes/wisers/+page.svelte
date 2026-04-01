@@ -32,6 +32,8 @@
   let actionMsg = $state('');
   let openPostMenu = $state<number | null>(null);
   let showUserMenu = $state(false);
+  let showCreateSheet = $state(false);
+  let mobileTab = $state('home');
   let bookmarkedPosts = $state<Set<number>>(new Set());
   let editingPost = $state<number | null>(null);
   let editContent = $state('');
@@ -71,7 +73,7 @@
     loading = false;
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
-      document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; });
+      document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; showCreateSheet = false; });
     }
     if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
@@ -912,6 +914,57 @@
   </div>
 </div>
 
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="w-mobile-nav">
+    <button class="w-mn-item" class:active={mobileTab === 'home'} onclick={() => { mobileTab = 'home'; activeView = 'feed'; loadFeed(); }}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={mobileTab === 'home' ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <a href="/wisers/communities" class="w-mn-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Groups</span>
+    </a>
+    <button class="w-mn-create" onclick={(e) => { e.stopPropagation(); showCreateSheet = !showCreateSheet; }} aria-label="Create">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <a href="/wisers/messages" class="w-mn-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Inbox</span>
+      {#if $wsUnreadDMs > 0}<span class="w-mn-badge">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
+    </a>
+    <a href="/wisers/{$auth.user?.username || 'me'}" class="w-mn-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <!-- CREATE BOTTOM SHEET -->
+  {#if showCreateSheet}
+    <div class="w-sheet-overlay" onclick={() => showCreateSheet = false} role="presentation"></div>
+    <div class="w-create-sheet">
+      <div class="w-sheet-handle"></div>
+      <div class="w-sheet-title">Create</div>
+      <button class="w-sheet-item" onclick={() => { showCreateSheet = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <div class="w-sheet-icon" style="background:rgba(59,130,246,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="w-sheet-label"><div class="w-sheet-name">Post</div><div class="w-sheet-desc">Share an update with your network</div></div>
+      </button>
+      <button class="w-sheet-item" onclick={() => { showCreateSheet = false; isMilestone = true; window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <div class="w-sheet-icon" style="background:rgba(245,166,35,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M12 8v13"/></svg></div>
+        <div class="w-sheet-label"><div class="w-sheet-name">Milestone</div><div class="w-sheet-desc">Celebrate an achievement</div></div>
+      </button>
+      <a href="/wisers/communities" class="w-sheet-item" onclick={() => showCreateSheet = false}>
+        <div class="w-sheet-icon" style="background:rgba(16,185,129,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="w-sheet-label"><div class="w-sheet-name">Community Post</div><div class="w-sheet-desc">Post in a community group</div></div>
+      </a>
+      <a href="/wisers/mentorship" class="w-sheet-item" onclick={() => showCreateSheet = false}>
+        <div class="w-sheet-icon" style="background:rgba(124,58,237,0.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg></div>
+        <div class="w-sheet-label"><div class="w-sheet-name">Find a Mentor</div><div class="w-sheet-desc">Connect with someone who has been there</div></div>
+      </a>
+    </div>
+  {/if}
+
+</div>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
@@ -1064,14 +1117,8 @@
 
   @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
-  @media (max-width: 1024px) { .w-sidebar-right { display: none; } }
-  @media (max-width: 768px) {
-    .w-sidebar-left { display: none; }
-    .w-body { flex-direction: column; }
-    .w-main { border: none; }
-    .w-topbar-inner { padding: 0 8px; }
-    .w-search-wrap { max-width: 200px; }
-  }
+  
+  
 
   @keyframes rocketUp {
     0% { transform: translateY(0) rotate(var(--rot, -20deg)); opacity: 1; }
@@ -1164,4 +1211,238 @@
   .w-milestone-type { font-size: 11px; color: var(--wt3); text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border: 1px solid var(--wbd); border-radius: 6px; }
   .w-emoji-backdrop { position: fixed; inset: 0; z-index: 49; }
   .w-emoji-picker { z-index: 50; }
+
+  /* ============================================ */
+  /* MOBILE BOTTOM NAV                            */
+  /* ============================================ */
+  .w-mobile-nav { display: none; }
+  .w-create-sheet, .w-sheet-overlay { display: none; }
+
+  /* ============================================ */
+  /* TABLET                                       */
+  /* ============================================ */
+  @media (max-width: 1024px) {
+    .w-sidebar-right { display: none; }
+  }
+
+  /* ============================================ */
+  /* MOBILE FIRST — 768px and below               */
+  /* ============================================ */
+  @media (max-width: 768px) {
+    /* Hide desktop elements */
+    .w-sidebar-left { display: none; }
+    .w-sidebar-right { display: none; }
+
+    /* Layout */
+    .w-body { flex-direction: column; padding-bottom: 72px; }
+    .w-main { border: none; padding: 0; min-width: 0; width: 100%; }
+
+    /* Topbar — simplified */
+    .w-topbar { position: sticky; top: 0; z-index: 100; }
+    .w-topbar-inner { padding: 0 12px; gap: 8px; height: 50px; }
+    .w-logo { font-size: 20px; font-weight: 800; }
+    .w-logo span { display: none; }
+    .w-search-wrap { flex: 1; max-width: none; }
+    .w-search-wrap input { font-size: 14px; padding: 8px 12px 8px 34px; border-radius: 20px; height: 36px; }
+    .w-topbar-btn { width: 34px; height: 34px; flex-shrink: 0; }
+    .w-notif-btn { display: none; }
+    .w-avatar-sm, .w-avatar-btn { width: 30px; height: 30px; font-size: 12px; }
+    .w-user-dropdown { right: -4px; top: 40px; min-width: 200px; }
+
+    /* Composer — full width, card style */
+    .w-composer { margin: 0; border-radius: 0; border-left: none; border-right: none; padding: 12px 14px; }
+    .w-composer-top { gap: 10px; }
+    .w-composer-top .w-avatar-sm { display: none; }
+    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; }
+    .w-composer-bottom { gap: 6px; flex-wrap: nowrap; align-items: center; }
+    .w-feed-tabs { order: -1; }
+    .w-feed-tabs button { font-size: 12px; padding: 5px 12px; border-radius: 16px; }
+    .w-post-btn { padding: 8px 18px; font-size: 13px; border-radius: 18px; margin-left: auto; }
+    .w-char { display: none; }
+    .w-img-btn, .w-milestone-btn, .w-emoji-btn { padding: 6px; }
+    .w-img-preview { border-radius: 10px; margin: 8px 0; }
+    .w-img-preview img { max-height: 200px; }
+
+    /* Milestone form */
+    .w-milestone-form { margin: 8px 0; padding: 10px; border-radius: 10px; }
+    .w-milestone-row { flex-direction: column; gap: 8px; }
+    .w-milestone-select { width: 100%; }
+
+    /* Posts — edge to edge, no border radius */
+    .w-post { border-radius: 0; border-left: none; border-right: none; margin-bottom: 0; border-bottom: 1px solid var(--wbd); padding: 14px 14px; }
+    .w-post:hover { background: transparent; }
+    .w-post-header { gap: 10px; }
+    .w-avatar-md { width: 40px; height: 40px; font-size: 15px; }
+    .w-post-body { font-size: 15px; line-height: 1.55; }
+    .w-post-img img { border-radius: 10px; max-height: 400px; }
+    .w-milestone-card { padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; }
+    .w-milestone-val { font-size: 15px; }
+
+    /* Post actions — spread evenly */
+    .w-post-actions { padding: 8px 0 0; gap: 0; justify-content: space-around; }
+    .w-action { padding: 8px 12px; border-radius: 8px; gap: 6px; font-size: 13px; }
+    .w-action span { font-size: 13px; }
+
+    /* Three-dot menu */
+    .w-post-menu-wrap { position: static; }
+    .w-post-menu { right: 14px; top: auto; min-width: 200px; }
+
+    /* Comments */
+    .w-comments { padding: 8px 0; }
+    .w-comment-input { font-size: 14px; }
+
+    /* Join CTA */
+    .w-join-cta { margin: 0; border-radius: 0; padding: 32px 20px; }
+
+    /* Emoji picker */
+    .w-emoji-picker { right: -40px; width: 260px; }
+
+    /* ================================ */
+    /* MOBILE BOTTOM NAV               */
+    /* ================================ */
+    .w-mobile-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--wcard);
+      border-top: 1px solid var(--wbd);
+      z-index: 200;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 4px;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .w-mn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      color: var(--wt3);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .w-mn-item.active { color: var(--wgold); }
+    .w-mn-item:active { background: var(--whover); }
+    .w-mn-badge {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+
+    /* Centre create button */
+    .w-mn-create {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--wgold);
+      border: none;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-top: -20px;
+      box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s;
+    }
+    .w-mn-create:active { transform: scale(0.92); }
+
+    /* ================================ */
+    /* CREATE BOTTOM SHEET             */
+    /* ================================ */
+    .w-sheet-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 300;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .w-create-sheet {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--wcard);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      z-index: 301;
+      padding: 8px 16px 24px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+      animation: sheetUp 0.25s ease-out;
+    }
+    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .w-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--wbd); margin: 4px auto 12px; }
+    .w-sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; padding: 0 4px; }
+    .w-sheet-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 8px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: inherit;
+      background: none;
+      border: none;
+      width: 100%;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      text-align: left;
+    }
+    .w-sheet-item:active { background: var(--whover); }
+    .w-sheet-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .w-sheet-label { flex: 1; }
+    .w-sheet-name { font-weight: 600; font-size: 15px; }
+    .w-sheet-desc { font-size: 12px; color: var(--wt3); margin-top: 2px; }
+  }
+
+  /* ============================================ */
+  /* SMALL PHONES — 380px and below               */
+  /* ============================================ */
+  @media (max-width: 380px) {
+    .w-topbar-inner { padding: 0 8px; }
+    .w-logo { font-size: 18px; }
+    .w-search-wrap input { font-size: 13px; height: 32px; }
+    .w-post { padding: 12px 10px; }
+    .w-post-body { font-size: 14px; }
+    .w-action { padding: 6px 8px; }
+    .w-mn-item { padding: 6px 8px; font-size: 9px; }
+    .w-mn-create { width: 44px; height: 44px; }
+  }
 </style>
