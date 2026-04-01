@@ -1,12 +1,16 @@
 <script lang="ts">
   import WisersMobileNav from '$lib/components/WisersMobileNav.svelte';
   import { auth } from '$lib/stores/auth';
+  import { page } from '$app/stores';
   let { children } = $props();
+
+  // Feed page (/wisers exactly) has its own mobile nav with create sheet
+  const isFeed = $derived($page.url.pathname === '/wisers' || $page.url.pathname === '/wisers/');
 </script>
 
 {@render children()}
 
-{#if $auth.token}
+{#if $auth.token && !isFeed}
   <WisersMobileNav />
 {/if}
 
