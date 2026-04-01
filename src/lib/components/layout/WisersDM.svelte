@@ -13,6 +13,8 @@
   let sending = $state(false);
   let messagesEl: HTMLDivElement | undefined = $state();
   let pollInterval: any;
+  let typingUser = $state('');
+  let typingTimeout: any = null;
 
   let isVisible = $derived(
     !!$auth.token &&
@@ -84,10 +86,22 @@
       }
     };
     window.addEventListener('wisers:new_message', handler);
+
+    const typingHandler = (e: any) => {
+      if (!activeConv || e.detail.from !== activeConv.other_username) return;
+      typingUser = activeConv.other_display_name || activeConv.other_username || '';
+      if (typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => { typingUser = ''; }, 3000);
+    };
+    window.addEventListener('wisers:typing', typingHandler);
+
     pollInterval = setInterval(() => {
       if ($auth.token && isVisible) loadConversations();
     }, 15000);
-    return () => window.removeEventListener('wisers:new_message', handler);
+    return () => {
+      window.removeEventListener('wisers:new_message', handler);
+      window.removeEventListener('wisers:typing', typingHandler);
+    };
   });
 
   onDestroy(() => { if (pollInterval) clearInterval(pollInterval); });
@@ -121,6 +135,13 @@
             <span class="fdm-time">{timeAgo(msg.created_at)}</span>
           </div>
         {/each}
+        {#if typingUser}
+          <div class="fdm-msg">
+            <div class="fdm-msgbubble fdm-typing">
+              <span class="fdm-dot"></span><span class="fdm-dot"></span><span class="fdm-dot"></span>
+            </div>
+          </div>
+        {/if}
       </div>
       <div class="fdm-input-row">
         <input class="fdm-input" bind:value={newMsg} placeholder="Aa" onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && send()} />
@@ -199,4 +220,9 @@
   .fdm-input:focus { border-color: #f5a623; }
   .fdm-send { width: 34px; height: 34px; border-radius: 50%; background: #f5a623; color: #000; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .fdm-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  .fdm-typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+  .fdm-dot { width: 6px; height: 6px; border-radius: 50%; background: #8a8d91; animation: fdm-pulse 1s infinite; flex-shrink: 0; }
+  .fdm-dot:nth-child(2) { animation-delay: 0.2s; }
+  .fdm-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes fdm-pulse { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
 </style>
