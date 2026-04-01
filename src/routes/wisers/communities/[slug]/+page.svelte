@@ -161,7 +161,7 @@
             <div class="cd-post-header">
               <a href="/wisers/{post.username}" class="cd-avatar">{#if post.avatar_url}<img src={post.avatar_url} alt="" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
               <div class="cd-post-meta">
-                <a href="/wisers/{post.username}" class="cd-post-author">{post.display_name || post.user_name}</a>
+                <a href="/wisers/{post.username}" class="cd-post-author">{post.display_name || post.user_name}</a><span class="cd-badge" style="fill:#f5a623"><svg viewBox="0 0 22 22" width="16" height="16"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.635-.08 1.293.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.604-.274 1.26-.144 1.896.13.636.433 1.221.878 1.69.47.446 1.055.752 1.69.883.635.13 1.294.083 1.902-.141.27.587.7 1.086 1.24 1.44s1.167.551 1.813.568c.645-.017 1.27-.213 1.81-.567.54-.355.97-.854 1.244-1.44.607.223 1.264.27 1.897.14.634-.131 1.218-.437 1.687-.883.445-.47.75-1.054.882-1.69.13-.635.083-1.292-.14-1.896.587-.274 1.084-.705 1.438-1.246.355-.54.552-1.17.57-1.817z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="white"/></svg></span>
                 <span class="cd-post-handle">@{post.username} · {timeAgo(post.created_at)}</span>
               </div>
             </div>
@@ -382,6 +382,8 @@
   .cd-about-creator:hover { text-decoration: underline; }
   .cd-about-creator-badge { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--cd-gold), #e09100); color: #000; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
   .cd-about-category { background: rgba(245,166,35,0.1); color: var(--cd-gold); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-left: auto; }
+
+  .cd-badge { display:inline-flex;vertical-align:middle;margin-left:2px; }
 
   @media (max-width: 700px) {
     .cd-about-grid { grid-template-columns: 1fr; }

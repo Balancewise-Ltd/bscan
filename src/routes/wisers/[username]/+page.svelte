@@ -31,6 +31,13 @@
   let avatarToast = $state<{ msg: string; type: 'success'|'error' } | null>(null);
   let showAvatarConfirm = $state(false);
   let pendingAvatarUrl = $state('');
+  let showEntryForm = $state(false);
+  let showGoalForm = $state(false);
+  let entryForm = $state({ title: '', description: '', entry_type: 'milestone', metric_name: '', metric_value: '', metric_unit: '' });
+  let goalForm = $state({ title: '', target_value: '', unit: '', deadline: '' });
+  let journeySaving = $state(false);
+  let editingGoalId = $state<number | null>(null);
+  let editGoalValue = $state('');
   let theme = $state<'dark'|'light'>('dark');
   let journeyData = $state<any>({ entries: [], goals: [] });
   let userCommunities = $state<any[]>([]);
@@ -87,6 +94,41 @@
       editing = false; actionMsg = 'Saved!';
     } catch { actionMsg = 'Failed'; }
     saving = false; setTimeout(() => actionMsg = '', 3000);
+  }
+
+  async function submitEntry() {
+    if (!entryForm.title.trim()) return;
+    journeySaving = true;
+    try {
+      const data: any = { title: entryForm.title, description: entryForm.description || undefined, entry_type: entryForm.entry_type };
+      if (entryForm.metric_name) { data.metric_name = entryForm.metric_name; data.metric_value = parseFloat(entryForm.metric_value) || 0; data.metric_unit = entryForm.metric_unit; }
+      await api.addJourneyEntry(data);
+      journeyData = await api.getJourney($page.params.username);
+      showEntryForm = false;
+      entryForm = { title: '', description: '', entry_type: 'milestone', metric_name: '', metric_value: '', metric_unit: '' };
+    } catch {}
+    journeySaving = false;
+  }
+  async function submitGoal() {
+    if (!goalForm.title.trim()) return;
+    journeySaving = true;
+    try {
+      await api.addJourneyGoal({ title: goalForm.title, target_value: parseFloat(goalForm.target_value) || undefined, unit: goalForm.unit || undefined, deadline: goalForm.deadline || undefined });
+      journeyData = await api.getJourney($page.params.username);
+      showGoalForm = false;
+      goalForm = { title: '', target_value: '', unit: '', deadline: '' };
+    } catch {}
+    journeySaving = false;
+  }
+  async function deleteEntry(entryId: number) {
+    if (!confirm('Delete this entry?')) return;
+    try { await api.deleteJourneyEntry(entryId); journeyData = await api.getJourney($page.params.username); } catch {}
+  }
+  async function saveGoalProgress(goalId: number) {
+    const val = parseFloat(editGoalValue);
+    if (isNaN(val)) return;
+    try { await api.updateJourneyGoal(goalId, { current_value: val }); journeyData = await api.getJourney($page.params.username); } catch {}
+    editingGoalId = null; editGoalValue = '';
   }
 
   function avatarSrc(url: string | null): string | null {
@@ -668,34 +710,154 @@
 
       {:else if activeTab === 'journey'}
         <div class="pr-journey">
-          {#if journeyData.goals.length > 0}
-            <h4 class="pr-j-heading">Goals</h4>
-            {#each journeyData.goals as goal}
-              <div class="pr-j-goal">
-                <div class="pr-j-goal-top"><span class="pr-j-goal-title">{goal.title}</span><span class="pr-j-goal-status" class:achieved={goal.status === 'achieved'}>{goal.status}</span></div>
-                <div class="pr-j-progress-bar"><div class="pr-j-progress-fill" style="width:{goal.target_value ? Math.min(100, (goal.current_value / goal.target_value) * 100) : 0}%"></div></div>
-                <div class="pr-j-goal-nums">{goal.current_value} / {goal.target_value} {goal.unit}</div>
+          <!-- Goals Section -->
+          <div class="pr-j-section">
+            <div class="pr-j-section-header">
+              <h4 class="pr-j-heading">Goals</h4>
+              {#if status === 'self'}<button class="pr-j-add-btn" onclick={() => showGoalForm = true}>+ Set Goal</button>{/if}
+            </div>
+            {#if journeyData.goals.length > 0}
+              {#each journeyData.goals as goal}
+                <div class="pr-j-goal">
+                  <div class="pr-j-goal-top">
+                    <span class="pr-j-goal-title">{goal.title}</span>
+                    <span class="pr-j-goal-status" class:achieved={goal.status === 'achieved'}>{goal.status}</span>
+                  </div>
+                  <div class="pr-j-progress-bar"><div class="pr-j-progress-fill" style="width:{goal.target_value ? Math.min(100, (goal.current_value / goal.target_value) * 100) : 0}%"></div></div>
+                  <div class="pr-j-goal-bottom">
+                    <span class="pr-j-goal-nums">{goal.current_value ?? 0} / {goal.target_value} {goal.unit}</span>
+                    {#if goal.deadline}<span class="pr-j-goal-deadline">Due {new Date(goal.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>{/if}
+                  </div>
+                  {#if status === 'self'}
+                    <div class="pr-j-goal-actions">
+                      {#if editingGoalId === goal.id}
+                        <div class="pr-j-inline-edit">
+                          <input type="number" class="pr-j-inline-input" placeholder="New value" bind:value={editGoalValue} onkeydown={(e) => { if (e.key === 'Enter') saveGoalProgress(goal.id); }} />
+                          <button class="pr-j-inline-save" onclick={() => saveGoalProgress(goal.id)}>Save</button>
+                          <button class="pr-j-inline-cancel" onclick={() => { editingGoalId = null; editGoalValue = ''; }}>Cancel</button>
+                        </div>
+                      {:else}
+                        <button class="pr-j-action-btn" onclick={() => { editingGoalId = goal.id; editGoalValue = String(goal.current_value ?? 0); }}>Update Progress</button>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            {:else}
+              <div class="pr-j-empty-card">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <p>{status === 'self' ? 'Set your first goal to track progress.' : 'No goals set yet.'}</p>
+                {#if status === 'self'}<button class="pr-j-add-btn" onclick={() => showGoalForm = true}>Set a Goal</button>{/if}
               </div>
-            {/each}
-          {/if}
-          {#if journeyData.entries.length > 0}
-            <h4 class="pr-j-heading">Timeline</h4>
-            {#each journeyData.entries as entry}
-              <div class="pr-j-entry">
-                <div class="pr-j-entry-dot"></div>
-                <div class="pr-j-entry-body">
-                  <div class="pr-j-entry-title">{entry.title}</div>
-                  {#if entry.description}<p class="pr-j-entry-desc">{entry.description}</p>{/if}
-                  {#if entry.metric_name}<div class="pr-j-metric">{entry.metric_name}: {entry.metric_value} {entry.metric_unit}</div>{/if}
-                  <span class="pr-j-entry-time">{new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            {/if}
+          </div>
+
+          <!-- Timeline Section -->
+          <div class="pr-j-section">
+            <div class="pr-j-section-header">
+              <h4 class="pr-j-heading">Timeline</h4>
+              {#if status === 'self'}<button class="pr-j-add-btn" onclick={() => showEntryForm = true}>+ Add Entry</button>{/if}
+            </div>
+            {#if journeyData.entries.length > 0}
+              <div class="pr-j-timeline">
+                {#each journeyData.entries as entry}
+                  <div class="pr-j-entry">
+                    <div class="pr-j-entry-dot"></div>
+                    <div class="pr-j-entry-body">
+                      <div class="pr-j-entry-top">
+                        <div class="pr-j-entry-title">{entry.title}</div>
+                        {#if status === 'self'}<button class="pr-j-del-btn" title="Delete entry" onclick={() => deleteEntry(entry.id)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12z"/></svg>
+                        </button>{/if}
+                      </div>
+                      {#if entry.description}<p class="pr-j-entry-desc">{entry.description}</p>{/if}
+                      {#if entry.metric_name}<div class="pr-j-metric">{entry.metric_name}: {entry.metric_value} {entry.metric_unit}</div>{/if}
+                      <span class="pr-j-entry-time">{new Date(entry.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="pr-j-empty-card">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+                <p>{status === 'self' ? 'Record milestones, wins, and lessons learned.' : 'No journey entries yet.'}</p>
+                {#if status === 'self'}<button class="pr-j-add-btn" onclick={() => showEntryForm = true}>Add Entry</button>{/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Add Entry Modal -->
+        {#if showEntryForm}
+          <div class="pr-modal-overlay" onclick={() => showEntryForm = false}></div>
+          <div class="pr-modal pr-j-modal">
+            <div class="pr-modal-header">
+              <button class="pr-modal-close" onclick={() => showEntryForm = false}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <h3>Add Journey Entry</h3>
+              <button class="pr-modal-save" onclick={submitEntry} disabled={journeySaving || !entryForm.title.trim()}>{journeySaving ? 'Saving...' : 'Add'}</button>
+            </div>
+            <div class="pr-modal-body">
+              <div class="pr-j-form">
+                <label class="pr-j-label">Title *
+                  <input type="text" class="pr-j-input" placeholder="e.g. Hit 100 customers" bind:value={entryForm.title} />
+                </label>
+                <label class="pr-j-label">Description
+                  <textarea class="pr-j-textarea" rows="3" placeholder="What happened? What did you learn?" bind:value={entryForm.description}></textarea>
+                </label>
+                <label class="pr-j-label">Type
+                  <select class="pr-j-input" bind:value={entryForm.entry_type}>
+                    <option value="milestone">Milestone</option>
+                    <option value="lesson">Lesson Learned</option>
+                    <option value="win">Win</option>
+                    <option value="challenge">Challenge</option>
+                    <option value="update">Update</option>
+                  </select>
+                </label>
+                <div class="pr-j-metric-group">
+                  <label class="pr-j-label pr-j-flex1">Metric Name
+                    <input type="text" class="pr-j-input" placeholder="e.g. Revenue" bind:value={entryForm.metric_name} />
+                  </label>
+                  <label class="pr-j-label pr-j-flex1">Value
+                    <input type="number" class="pr-j-input" placeholder="0" bind:value={entryForm.metric_value} />
+                  </label>
+                  <label class="pr-j-label" style="flex:0.6">Unit
+                    <input type="text" class="pr-j-input" placeholder="GBP" bind:value={entryForm.metric_unit} />
+                  </label>
                 </div>
               </div>
-            {/each}
-          {/if}
-          {#if journeyData.goals.length === 0 && journeyData.entries.length === 0}
-            <div class="pr-empty">No journey entries yet.</div>
-          {/if}
-        </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Add Goal Modal -->
+        {#if showGoalForm}
+          <div class="pr-modal-overlay" onclick={() => showGoalForm = false}></div>
+          <div class="pr-modal pr-j-modal">
+            <div class="pr-modal-header">
+              <button class="pr-modal-close" onclick={() => showGoalForm = false}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <h3>Set a Goal</h3>
+              <button class="pr-modal-save" onclick={submitGoal} disabled={journeySaving || !goalForm.title.trim()}>{journeySaving ? 'Setting...' : 'Set'}</button>
+            </div>
+            <div class="pr-modal-body">
+              <div class="pr-j-form">
+                <label class="pr-j-label">Goal Title *
+                  <input type="text" class="pr-j-input" placeholder="e.g. Reach 1000 monthly revenue" bind:value={goalForm.title} />
+                </label>
+                <div class="pr-j-metric-group">
+                  <label class="pr-j-label pr-j-flex1">Target Value
+                    <input type="number" class="pr-j-input" placeholder="1000" bind:value={goalForm.target_value} />
+                  </label>
+                  <label class="pr-j-label" style="flex:0.6">Unit
+                    <input type="text" class="pr-j-input" placeholder="GBP" bind:value={goalForm.unit} />
+                  </label>
+                </div>
+                <label class="pr-j-label">Deadline
+                  <input type="date" class="pr-j-input" bind:value={goalForm.deadline} />
+                </label>
+              </div>
+            </div>
+          </div>
+        {/if}
 
       {:else if activeTab === 'communities'}
         <div class="pr-communities">
@@ -921,6 +1083,46 @@
   .pr-j-entry-desc { font-size: 13px; color: var(--pr-t2); margin: 4px 0; line-height: 1.5; }
   .pr-j-metric { font-size: 13px; color: var(--pr-gold); font-weight: 600; margin: 4px 0; }
   .pr-j-entry-time { font-size: 12px; color: var(--pr-t3); }
+
+  /* Journey enhancements */
+  .pr-j-section { margin-bottom: 20px; }
+  .pr-j-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .pr-j-section-header .pr-j-heading { margin: 0; }
+  .pr-j-add-btn { background: none; border: 1px solid var(--pr-gold); color: var(--pr-gold); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .pr-j-add-btn:hover { background: var(--pr-gold); color: #000; }
+  .pr-j-empty-card { text-align: center; padding: 32px 20px; background: var(--pr-card); border: 1px solid var(--pr-bd); border-radius: 14px; color: var(--pr-t3); }
+  .pr-j-empty-card svg { margin-bottom: 12px; opacity: 0.4; }
+  .pr-j-empty-card p { font-size: 14px; margin: 0 0 14px; }
+  .pr-j-goal-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .pr-j-goal-deadline { font-size: 12px; color: var(--pr-t3); }
+  .pr-j-goal-actions { margin-top: 10px; }
+  .pr-j-action-btn { background: none; border: 1px solid var(--pr-bd); color: var(--pr-t2); padding: 5px 14px; border-radius: 16px; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .pr-j-action-btn:hover { border-color: var(--pr-gold); color: var(--pr-gold); }
+  .pr-j-inline-edit { display: flex; gap: 8px; align-items: center; }
+  .pr-j-inline-input { width: 100px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--pr-bd); background: var(--pr-bg); color: var(--pr-t1); font-size: 13px; font-family: inherit; }
+  .pr-j-inline-save { background: var(--pr-gold); color: #000; border: none; padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .pr-j-inline-cancel { background: none; border: 1px solid var(--pr-bd); color: var(--pr-t3); padding: 5px 14px; border-radius: 16px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .pr-j-entry-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .pr-j-del-btn { background: none; border: none; color: var(--pr-t3); cursor: pointer; padding: 2px; opacity: 0; transition: opacity 0.15s, color 0.15s; }
+  .pr-j-entry:hover .pr-j-del-btn { opacity: 1; }
+  .pr-j-del-btn:hover { color: #ef4444; }
+  .pr-j-timeline { border-left: 2px solid var(--pr-bd); margin-left: 4px; padding-left: 0; }
+  .pr-j-timeline .pr-j-entry { border-bottom: none; padding: 0 0 16px 0; margin-left: -6px; }
+  .pr-j-timeline .pr-j-entry:last-child { padding-bottom: 0; }
+
+  /* Journey modal/form */
+  .pr-j-modal { max-width: 480px; }
+  .pr-j-form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+  .pr-j-label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--pr-t2); }
+  .pr-j-input { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--pr-bd); background: var(--pr-bg); color: var(--pr-t1); font-size: 14px; font-family: inherit; transition: border-color 0.15s; }
+  .pr-j-input:focus { border-color: var(--pr-gold); outline: none; }
+  .pr-j-textarea { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--pr-bd); background: var(--pr-bg); color: var(--pr-t1); font-size: 14px; font-family: inherit; resize: vertical; transition: border-color 0.15s; }
+  .pr-j-textarea:focus { border-color: var(--pr-gold); outline: none; }
+  .pr-j-metric-group { display: flex; gap: 10px; }
+  .pr-j-flex1 { flex: 1; }
+  .pr-j-submit { padding: 12px; border-radius: 24px; border: none; background: var(--pr-gold); color: #000; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+  .pr-j-submit:hover { opacity: 0.9; }
+  .pr-j-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Communities */
   .pr-communities { display: flex; flex-direction: column; gap: 10px; }
