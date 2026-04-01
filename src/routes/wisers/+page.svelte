@@ -19,6 +19,9 @@
   let postImage = $state<File | null>(null);
   let postImagePreview = $state('');
   let uploading = $state(false);
+  let isMilestone = $state(false);
+  let milestoneType = $state('revenue');
+  let milestoneValue = $state('');
   let posting = $state(false);
   let showEmoji = $state(false);
   const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','📈','📉','🛠️','💻','🌐','🔍','📱','🤖','🧠','💭','📌','📎','✨','🙏','🤝','👋','✌️','🤞','💀','🤡','👑','🦾'];
@@ -130,7 +133,7 @@
   }
 
   async function submitPost() {
-    if ((!newPost.trim() && !postImage) || posting) return;
+    if ((!newPost.trim() && !postImage && !(isMilestone && milestoneValue.trim())) || posting) return;
     posting = true;
     try {
       let imageUrl = '';
@@ -140,8 +143,12 @@
         imageUrl = res.url;
         uploading = false;
       }
-      await api.createPost(newPost.trim() || '📷', 'text', '', 0, imageUrl);
-      newPost = ''; postImage = null; postImagePreview = '';
+      if (isMilestone && milestoneValue.trim()) {
+        await api.createMilestone({ content: newPost.trim() || milestoneValue, milestone_type: milestoneType, milestone_value: milestoneValue, image_url: imageUrl });
+      } else {
+        await api.createPost(newPost.trim() || '📷', 'text', '', 0, imageUrl);
+      }
+      newPost = ''; postImage = null; postImagePreview = ''; isMilestone = false; milestoneValue = '';
       await loadFeed();
     } catch { uploading = false; }
     posting = false;
@@ -479,14 +486,34 @@
           <div class="w-composer">
             <div class="w-composer-top">
               <div class="w-avatar-sm w-avatar-gold">{initial($auth.user?.name || '')}</div>
-              <textarea bind:value={newPost} placeholder="What's on your mind?" maxlength="2000" rows="2"></textarea>
+              <textarea bind:value={newPost} placeholder={isMilestone ? "Share your milestone story..." : "What's on your mind?"} maxlength="2000" rows="2"></textarea>
             </div>
+            {#if isMilestone}
+            <div class="w-milestone-form">
+              <div class="w-milestone-badge">🏆 Milestone Post</div>
+              <div class="w-milestone-row">
+                <select bind:value={milestoneType} class="w-milestone-select">
+                  <option value="revenue">Revenue</option>
+                  <option value="users">Users/Customers</option>
+                  <option value="launch">Product Launch</option>
+                  <option value="funding">Funding</option>
+                  <option value="growth">Growth</option>
+                  <option value="personal">Personal Win</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="text" bind:value={milestoneValue} class="w-milestone-input" placeholder="e.g. Hit £1,000 MRR" maxlength="100" />
+              </div>
+            </div>
+            {/if}
             {#if postImagePreview}<div class="w-img-preview"><img src={postImagePreview} alt="Preview" /><button class="w-img-remove" onclick={removeImage}>✕</button></div>{/if}
             <div class="w-composer-bottom">
               <div class="w-feed-tabs">
                 <button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>Everyone</button>
                 <button class:active={feedType === 'friends'} onclick={() => { feedType = 'friends'; loadFeed(); }}>Friends</button>
               </div>
+              <button class="w-milestone-btn" class:active={isMilestone} onclick={() => isMilestone = !isMilestone} type="button" title="Milestone post">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={isMilestone ? '#f5a623' : 'none'} stroke={isMilestone ? '#f5a623' : 'currentColor'} stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M12 8v13"/></svg>
+              </button>
               <button class="w-img-btn" onclick={() => document.getElementById('post-img-input')?.click()} type="button" title="Add image">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
               </button>
@@ -502,7 +529,7 @@
               {/if}
             </div>
             <span class="w-char">{newPost.length}/2000</span>
-              <button class="w-post-btn" onclick={submitPost} disabled={posting || (!newPost.trim() && !postImage)}>{uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
+              <button class="w-post-btn" onclick={submitPost} disabled={posting || (!newPost.trim() && !postImage && !(isMilestone && milestoneValue.trim()))}>{uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
             </div>
           </div>
         {:else}
@@ -582,6 +609,13 @@
                   </div>
                 {/if}
               </div>
+              {#if post.milestone_type && post.milestone_value}
+              <div class="w-milestone-card">
+                <span class="w-milestone-icon">🏆</span>
+                <span class="w-milestone-val">{post.milestone_value}</span>
+                <span class="w-milestone-type">{post.milestone_type}</span>
+              </div>
+              {/if}
               <div class="w-post-body">{@html renderContent(post.content)}</div>
               {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
@@ -695,7 +729,14 @@
                     {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
                   </div>
                 </div>
-                <div class="w-post-body">{@html renderContent(post.content)}</div>
+                {#if post.milestone_type && post.milestone_value}
+              <div class="w-milestone-card">
+                <span class="w-milestone-icon">🏆</span>
+                <span class="w-milestone-val">{post.milestone_value}</span>
+                <span class="w-milestone-type">{post.milestone_type}</span>
+              </div>
+              {/if}
+              <div class="w-post-body">{@html renderContent(post.content)}</div>
                 <div class="w-post-actions">
                   <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -1103,4 +1144,23 @@
   .w-ud-divider { height: 1px; background: var(--wbd); margin: 4px 0; }
   .w-ud-danger { color: #ef4444 !important; }
   .w-ud-danger:hover { background: rgba(239,68,68,0.06) !important; }
+  /* Milestone toggle */
+  .w-milestone-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; }
+  .w-milestone-btn:hover { color: var(--wgold); background: rgba(255,255,255,0.06); }
+  .w-milestone-btn.active { color: var(--wgold); }
+
+  /* Milestone form */
+  .w-milestone-form { background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02)); border: 1px solid rgba(245,166,35,0.2); border-radius: 12px; padding: 12px; margin: 8px 0; }
+  .w-milestone-badge { font-size: 12px; font-weight: 700; color: var(--wgold); margin-bottom: 8px; }
+  .w-milestone-row { display: flex; gap: 8px; }
+  .w-milestone-select { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 8px 10px; color: var(--wt); font-size: 13px; font-family: inherit; flex-shrink: 0; }
+  .w-milestone-input { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 8px 12px; color: var(--wt); font-size: 14px; font-family: inherit; flex: 1; }
+  .w-milestone-input:focus, .w-milestone-select:focus { outline: none; border-color: var(--wgold); }
+  .w-milestone-input::placeholder { color: var(--wt3); }
+
+  /* Milestone card in feed */
+  .w-milestone-card { display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, rgba(245,166,35,0.12), rgba(245,166,35,0.04)); border: 1px solid rgba(245,166,35,0.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+  .w-milestone-icon { font-size: 22px; }
+  .w-milestone-val { font-weight: 700; font-size: 16px; color: var(--wgold); flex: 1; }
+  .w-milestone-type { font-size: 11px; color: var(--wt3); text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border: 1px solid var(--wbd); border-radius: 6px; }
 </style>

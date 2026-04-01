@@ -27,9 +27,13 @@
   let openPostMenu = $state<number | null>(null);
   let showProfileMore = $state(false);
   let avatarUploading = $state(false);
+  let avatarToast = $state<{ msg: string; type: 'success'|'error' } | null>(null);
+  let showAvatarConfirm = $state(false);
+  let pendingAvatarUrl = $state('');
   let theme = $state<'dark'|'light'>('dark');
   let journeyData = $state<any>({ entries: [], goals: [] });
   let userCommunities = $state<any[]>([]);
+  let mediaImages = $derived(posts.filter(p => p.image_url).map(p => ({ url: p.image_url, id: p.id, created_at: p.created_at })));
 
   onMount(() => {
     const saved = localStorage.getItem('wisers-theme');
@@ -117,13 +121,46 @@
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); return; }
     avatarUploading = true;
     try {
       const res = await api.uploadAvatar(file);
-      if (res.url) { profile.avatar_url = res.url; if ($auth.user) $auth.user.avatar_url = res.url; }
-    } catch { alert('Upload failed'); }
+      if (res.url) {
+        profile.avatar_url = res.url;
+        if ($auth.user) $auth.user.avatar_url = res.url;
+        pendingAvatarUrl = res.url;
+        showToast('Profile picture updated!', 'success');
+        showAvatarConfirm = true;
+      }
+    } catch {
+      showToast('Upload failed. Please try again.', 'error');
+    }
     avatarUploading = false;
+    input.value = '';
+  }
+
+  function showToast(msg: string, type: 'success'|'error') {
+    avatarToast = { msg, type };
+    setTimeout(() => avatarToast = null, 4000);
+  }
+
+  async function postAvatarToFeed() {
+    if (!pendingAvatarUrl) return;
+    try {
+      await api.createPost('Updated my profile picture', 'text', '', 0, pendingAvatarUrl);
+      // Reload posts to include the new one
+      try { posts = ((await api.getUserPosts(profile.username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
+      showToast('Posted to your feed!', 'success');
+    } catch {
+      showToast('Could not post to feed', 'error');
+    }
+    showAvatarConfirm = false;
+    pendingAvatarUrl = '';
+  }
+
+  function skipAvatarPost() {
+    showAvatarConfirm = false;
+    pendingAvatarUrl = '';
   }
 
   function handleLogout() {
