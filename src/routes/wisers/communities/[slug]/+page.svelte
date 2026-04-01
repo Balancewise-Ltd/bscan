@@ -36,11 +36,19 @@
   }
 
   async function handleJoin() {
-    try { await api.joinCommunity(slug); community = await api.getCommunity(slug); } catch {}
+    try {
+      await api.joinCommunity(slug);
+      community = { ...community, is_member: true, my_role: 'member', member_count: (community.member_count || 0) + 1 };
+    } catch (e: any) {
+      if (e.status === 409) community = { ...community, is_member: true };
+    }
   }
   async function handleLeave() {
     if (!confirm('Leave this community?')) return;
-    try { await api.leaveCommunity(slug); community = await api.getCommunity(slug); } catch {}
+    try {
+      await api.leaveCommunity(slug);
+      community = { ...community, is_member: false, my_role: null, member_count: Math.max(0, (community.member_count || 1) - 1) };
+    } catch {}
   }
 
   async function submitPost() {
@@ -98,7 +106,10 @@
         </div>
         {#if $auth.token}
           {#if community.is_member}
-            <button class="cd-leave" onclick={handleLeave}>Leave</button>
+            <button class="cd-joined" onclick={handleLeave}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Joined
+            </button>
           {:else}
             <button class="cd-join" onclick={handleJoin}>Join</button>
           {/if}
@@ -213,6 +224,8 @@
   .cd-desc { font-size: 14px; color: var(--cd-t2); margin: 12px 0 0; line-height: 1.5; }
   .cd-join { background: var(--cd-gold); color: #000; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .cd-join:hover { filter: brightness(0.9); }
+  .cd-joined { background: none; border: 1.5px solid #10b981; color: #10b981; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; flex-shrink: 0; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .cd-joined:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.06); }
   .cd-leave { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .cd-leave:hover { background: rgba(239,68,68,0.1); }
   .cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cd-bd); padding-bottom: 12px; margin-bottom: 16px; }
