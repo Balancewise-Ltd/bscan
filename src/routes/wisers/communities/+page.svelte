@@ -105,7 +105,7 @@
               </div>
             </div>
             {#if $auth.token && !myCommunities.some(m => m.id === c.id)}
-              <button class="wc-join" onclick|stopPropagation={() => handleJoin(c.slug)}>Join</button>
+              <button class="wc-join" onclick={(e) => { e.stopPropagation(); handleJoin(c.slug); }}>Join</button>
             {:else if myCommunities.some(m => m.id === c.id)}
               <span class="wc-joined">Joined</span>
             {/if}

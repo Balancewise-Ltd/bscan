@@ -117,7 +117,7 @@
             <div class="cd-img-preview"><img src={postImagePreview} alt="" /><button onclick={removeImage}>✕</button></div>
           {/if}
           <div class="cd-composer-bar">
-            <button class="cd-photo-btn" onclick={() => document.getElementById('cd-img-input')?.click()}>
+            <button class="cd-photo-btn" aria-label="Add image" onclick={() => document.getElementById('cd-img-input')?.click()}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
             </button>
             <input id="cd-img-input" type="file" accept="image/*" onchange={handleImageSelect} style="display:none" />
