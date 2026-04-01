@@ -356,4 +356,5 @@
   .mt-decline-btn:hover { border-color: #ef4444; color: #ef4444; }
 
   @media (max-width: 640px) { .mt-inner { padding: 20px 16px; } .mt-grid { grid-template-columns: 1fr; } .mt-role-selector { flex-direction: column; } }
+  :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
 </style>

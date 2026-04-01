@@ -385,4 +385,5 @@
   @media (max-width: 700px) {
     .cd-about-grid { grid-template-columns: 1fr; }
   }
+  :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
 </style>

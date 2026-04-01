@@ -33,6 +33,7 @@
   let openPostMenu = $state<number | null>(null);
   let showUserMenu = $state(false);
   let showCreateSheet = $state(false);
+  let showPwaPrompt = $state(false);
   let mobileTab = $state('home');
   let bookmarkedPosts = $state<Set<number>>(new Set());
   let editingPost = $state<number | null>(null);
@@ -74,6 +75,14 @@
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
       document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; showCreateSheet = false; });
+
+    // Show PWA install prompt for iOS Safari (not standalone)
+    const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+    const isStandalone = ('standalone' in navigator && (navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches;
+    const dismissed = localStorage.getItem('wisers-pwa-dismissed');
+    if (isIos && !isStandalone && !dismissed) {
+      setTimeout(() => { showPwaPrompt = true; }, 5000);
+    }
     }
     if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
@@ -914,6 +923,20 @@
   </div>
 </div>
 
+  <!-- PWA INSTALL PROMPT -->
+  {#if showPwaPrompt}
+    <div class="w-pwa-prompt">
+      <button class="w-pwa-close" onclick={() => { showPwaPrompt = false; localStorage.setItem('wisers-pwa-dismissed', '1'); }} aria-label="Dismiss">✕</button>
+      <div class="w-pwa-content">
+        <div class="w-pwa-icon">W</div>
+        <div>
+          <div class="w-pwa-title">Add Wisers to Home Screen</div>
+          <div class="w-pwa-desc">Tap <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> then "Add to Home Screen"</div>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   <!-- MOBILE BOTTOM NAV -->
   <nav class="w-mobile-nav">
     <button class="w-mn-item" class:active={mobileTab === 'home'} onclick={() => { mobileTab = 'home'; activeView = 'feed'; loadFeed(); }}>
@@ -962,8 +985,6 @@
       </a>
     </div>
   {/if}
-
-</div>
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
@@ -1059,7 +1080,7 @@
   .w-scan-score { font-size: 18px; font-weight: 800; }
   .w-scan-score.good { color: #10b981; } .w-scan-score.warn { color: #f59e0b; } .w-scan-score.bad { color: #ef4444; }
   .w-post-actions { display: flex; gap: 16px; margin-top: 10px; }
-  .w-action { display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--wt3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
+  .w-action { -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--wt3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
   .w-action:hover { background: var(--whover); color: var(--wt); }
   .w-action-del { margin-left: auto; }
   .w-action-del:hover { color: #ef4444; }
@@ -1253,7 +1274,7 @@
     .w-composer { margin: 0; border-radius: 0; border-left: none; border-right: none; padding: 12px 14px; }
     .w-composer-top { gap: 10px; }
     .w-composer-top .w-avatar-sm { display: none; }
-    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; }
+    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
     .w-composer-bottom { gap: 6px; flex-wrap: nowrap; align-items: center; }
     .w-feed-tabs { order: -1; }
     .w-feed-tabs button { font-size: 12px; padding: 5px 12px; border-radius: 16px; }
@@ -1280,7 +1301,7 @@
 
     /* Post actions — spread evenly */
     .w-post-actions { padding: 8px 0 0; gap: 0; justify-content: space-around; }
-    .w-action { padding: 8px 12px; border-radius: 8px; gap: 6px; font-size: 13px; }
+    .w-action { -webkit-tap-highlight-color: transparent; padding: 8px 12px; border-radius: 8px; gap: 6px; font-size: 13px; }
     .w-action span { font-size: 13px; }
 
     /* Three-dot menu */
@@ -1296,6 +1317,12 @@
 
     /* Emoji picker */
     .w-emoji-picker { right: -40px; width: 260px; }
+
+    /* Hide nav when keyboard open */
+    .w:has(textarea:focus) .w-mobile-nav,
+    .w:has(input:focus) .w-mobile-nav { opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+    .w:has(textarea:focus) .w-body,
+    .w:has(input:focus) .w-body { padding-bottom: 0; }
 
     /* ================================ */
     /* MOBILE BOTTOM NAV               */
@@ -1432,6 +1459,26 @@
     .w-sheet-desc { font-size: 12px; color: var(--wt3); margin-top: 2px; }
   }
 
+  /* PWA install prompt */
+    .w-pwa-prompt {
+      position: fixed;
+      bottom: 72px;
+      left: 12px;
+      right: 12px;
+      background: var(--wcard);
+      border: 1px solid var(--wbd);
+      border-radius: 16px;
+      padding: 14px 16px;
+      z-index: 199;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      animation: sheetUp 0.3s ease-out;
+    }
+    .w-pwa-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--wt3); font-size: 16px; cursor: pointer; }
+    .w-pwa-content { display: flex; align-items: center; gap: 14px; }
+    .w-pwa-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--wgold); color: #000; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .w-pwa-title { font-weight: 600; font-size: 14px; }
+    .w-pwa-desc { font-size: 12px; color: var(--wt3); margin-top: 2px; }
+
   /* ============================================ */
   /* SMALL PHONES — 380px and below               */
   /* ============================================ */
@@ -1441,7 +1488,7 @@
     .w-search-wrap input { font-size: 13px; height: 32px; }
     .w-post { padding: 12px 10px; }
     .w-post-body { font-size: 14px; }
-    .w-action { padding: 6px 8px; }
+    .w-action { -webkit-tap-highlight-color: transparent; padding: 6px 8px; }
     .w-mn-item { padding: 6px 8px; font-size: 9px; }
     .w-mn-create { width: 44px; height: 44px; }
   }

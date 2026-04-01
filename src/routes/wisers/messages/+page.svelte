@@ -441,4 +441,5 @@
   .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--wt, #e8e6e3); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 13px; }
   .m-friend-btn:hover { background: rgba(245,166,35,0.1); border-color: rgba(245,166,35,0.3); }
   .m-friend-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e8941a); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; flex-shrink: 0; }
+  :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
 </style>

@@ -364,4 +364,5 @@
     .cp-grid { grid-template-columns: 1fr; }
     .cp-title { font-size: 24px; }
   }
+  :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
 </style>
