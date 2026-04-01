@@ -535,14 +535,7 @@
         </div>
       {/if}
     {/if}
-  {#if $auth.token && status === 'self'}
-      <div class="pr-logout-wrap">
-        <button class="pr-logout-btn" onclick={handleLogout}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Log out
-        </button>
-      </div>
-    {/if}
+
   </div>
 {/if}
 </div>

@@ -27,6 +27,7 @@
   let postComments = $state<Record<number, any[]>>({});
   let actionMsg = $state('');
   let openPostMenu = $state<number | null>(null);
+  let showUserMenu = $state(false);
   let bookmarkedPosts = $state<Set<number>>(new Set());
   let editingPost = $state<number | null>(null);
   let editContent = $state('');
@@ -66,7 +67,7 @@
     loading = false;
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
-      document.addEventListener('click', () => { openPostMenu = null; });
+      document.addEventListener('click', () => { openPostMenu = null; showUserMenu = false; });
     }
     if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
   });
@@ -106,6 +107,13 @@
       prevNotifCount = count;
       notifCount = count;
     } catch {}
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    auth.set({ token: null, user: null });
+    if (typeof window !== 'undefined') window.location.href = '/wisers';
   }
 
   async function loadFeed() {
@@ -376,7 +384,32 @@
           {/if}
         </button>
         {#if $auth.user}
-          <a href="/wisers/{$auth.user.username || 'me'}" class="w-avatar-sm">{initial($auth.user.name || $auth.user.email)}</a>
+          <div class="w-user-menu-wrap">
+            <button class="w-avatar-sm w-avatar-btn" onclick={() => showUserMenu = !showUserMenu} aria-label="User menu">
+              {initial($auth.user.name || $auth.user.email)}
+            </button>
+            {#if showUserMenu}
+              <div class="w-user-dropdown" role="menu">
+                <a href="/wisers/{$auth.user.username || 'me'}" class="w-ud-item" onclick={() => showUserMenu = false}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Profile
+                </a>
+                <a href="/account" class="w-ud-item" onclick={() => showUserMenu = false}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Settings
+                </a>
+                <a href="/wisers/communities" class="w-ud-item" onclick={() => showUserMenu = false}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Communities
+                </a>
+                <div class="w-ud-divider"></div>
+                <button class="w-ud-item w-ud-danger" onclick={() => { showUserMenu = false; handleLogout(); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Log out
+                </button>
+              </div>
+            {/if}
+          </div>
         {:else}
           <a href="/account" class="w-login-btn">Join Wisers</a>
         {/if}
@@ -1054,4 +1087,12 @@
   .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; }
   .wc-sidebar-link { display: block; background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px 16px; color: #f5a623; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 12px; text-align: center; transition: border-color 0.15s; }
   .wc-sidebar-link:hover { border-color: #f5a623; }
+  .w-user-menu-wrap { position: relative; }
+  .w-avatar-btn { cursor: pointer; border: none; background: linear-gradient(135deg, var(--wgold), #e09100); font-family: inherit; }
+  .w-user-dropdown { position: absolute; right: 0; top: 44px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 14px; min-width: 200px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.4); overflow: hidden; }
+  .w-ud-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: none; border: none; color: var(--wt); font-size: 14px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .w-ud-item:hover { background: var(--whover); }
+  .w-ud-divider { height: 1px; background: var(--wbd); margin: 4px 0; }
+  .w-ud-danger { color: #ef4444 !important; }
+  .w-ud-danger:hover { background: rgba(239,68,68,0.06) !important; }
 </style>
