@@ -4,10 +4,10 @@
   import { page } from '$app/stores';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
+  import { timeAgo } from '$lib/utils/time';
 
   let conversations = $state<any[]>([]);
   let friendsList = $state<any[]>([]);
-  let showNewChat = $state(false);
   let searchQuery = $state('');
   let typingUser = $state('');
   let typingTimeout: any = null;
@@ -160,18 +160,6 @@
     localStorage.setItem('wisers-theme', theme);
   }
 
-  function timeAgo(d: string) {
-    if (!d) return '';
-    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
-    const now = new Date();
-    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-
   function timeFull(d: string) {
     return new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
@@ -242,13 +230,12 @@
           {#if friendsList.length > 0}
             <p style="font-size: 13px; margin-top: 8px;">Start chatting with a friend:</p>
             {#each friendsList as f}
-              <button class="m-friend-btn" onclick={() => { startChatWith(f.username); showNewChat = false; }}>
+              <button class="m-friend-btn" onclick={() => { startChatWith(f.username); }}>
                 <span class="m-friend-avatar">{(f.display_name || f.username || '?')[0].toUpperCase()}</span>
                 <span>{f.display_name || f.username}</span>
               </button>
             {/each}
           {/if}
-          <p style="display:none"></p>
             <p class="m-empty-sub">Message a friend to get started</p>
           </div>
         {:else}
@@ -266,13 +253,18 @@
                 </div>
               </div>
               {#if conv.my_unread > 0}<span class="m-conv-badge">{conv.my_unread}</span>{/if}
-              <button class="m-conv-action" title={conv.my_unread > 0 ? "Already unread" : "Mark as unread"} onclick={async (e) => {
+              <button class="m-conv-action" title={conv.my_unread > 0 ? "Mark as read" : "Mark as unread"} onclick={async (e) => {
                 e.stopPropagation();
-                if (conv.my_unread > 0) return;
                 try {
-                  await api.markConvUnread(conv.id);
-                  conv.my_unread = 1;
-                  wsUnreadDMs.update(n => n + 1);
+                  if (conv.my_unread > 0) {
+                    await api.markConvRead(conv.id);
+                    wsUnreadDMs.update(n => Math.max(0, n - conv.my_unread));
+                    conv.my_unread = 0;
+                  } else {
+                    await api.markConvUnread(conv.id);
+                    conv.my_unread = 1;
+                    wsUnreadDMs.update(n => n + 1);
+                  }
                 } catch {}
               }}>
                 {#if conv.my_unread > 0}

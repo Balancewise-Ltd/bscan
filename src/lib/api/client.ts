@@ -1038,13 +1038,9 @@ export async function updateMessagesPrivacy(value: string): Promise<any> {
 	return request('/api/community/profile/update', { method: 'PATCH', body: JSON.stringify({ messages_from: value }) });
 }
 
-export async function rocketPost(postId: number): Promise<any> {
-	return request('/api/community/rocket/' + postId, { method: 'POST' });
-}
-
-export async function repostPost(postId: number): Promise<any> {
-	return request('/api/community/repost/' + postId, { method: 'POST' });
-}
+// Aliases for toggleRocket/toggleRepost (used by profile page)
+export const rocketPost = toggleRocket;
+export const repostPost = toggleRepost;
 
 export async function getComments(postId: number): Promise<any> {
 	return request('/api/community/comments/' + postId);

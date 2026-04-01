@@ -3,6 +3,7 @@
   import { connectWS, wsNotifCount, wsUnreadDMs } from '$lib/stores/wisers-ws';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
+  import { timeAgo } from '$lib/utils/time';
 
   let activeView = $state<'feed' | 'explore' | 'friends' | 'messages' | 'bookmarks' | 'activity'>('feed');
   let friends = $state<any[]>([]);
@@ -234,15 +235,6 @@
     try { await api.unfriend(username); friends = (await api.getFriends()).friends || []; } catch {}
   }
 
-  function timeAgo(d: string) {
-    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-    if (s < 60) return s + 's';
-    if (s < 3600) return Math.floor(s / 60) + 'm';
-    if (s < 86400) return Math.floor(s / 3600) + 'h';
-    if (s < 604800) return Math.floor(s / 86400) + 'd';
-    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  });
-  }
 
   function launchRockets() {
     if (typeof document === 'undefined') return;

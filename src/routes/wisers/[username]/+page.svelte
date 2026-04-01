@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
+  import { timeAgo } from '$lib/utils/time';
 
   let profile = $state<any>(null);
   let posts = $state<any[]>([]);
@@ -93,17 +94,6 @@
     return url.startsWith('http') ? url : 'https://api-bscan.balancewises.io/avatars/' + url;
   }
   function initial(n: string) { return (n || '?')[0].toUpperCase(); }
-  function timeAgo(d: string) {
-    if (!d) return '';
-    const date = new Date(d.endsWith('Z') || d.includes('+') ? d : d + 'Z');
-    const now = new Date();
-    const s = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
   function planColor(p: string) { return p === 'agency' ? '#f5a623' : p === 'pro' ? '#3b82f6' : '#555'; }
   function parseList(s: string) { return (s || '').split(',').map(i => i.trim()).filter(Boolean); }
   function parseEntries(s: string) { return (s || '').split('\n').filter(l => l.trim()); }
