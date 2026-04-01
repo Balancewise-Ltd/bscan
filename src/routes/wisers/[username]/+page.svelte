@@ -434,6 +434,7 @@
       <!-- Tabs -->
       <div class="pr-tabs">
         <button class="pr-tab" class:active={activeTab === 'posts'} onclick={() => activeTab = 'posts'}>Posts</button>
+        <button class="pr-tab" class:active={activeTab === 'media'} onclick={() => activeTab = 'media'}>Media</button>
         <button class="pr-tab" class:active={activeTab === 'about'} onclick={() => activeTab = 'about'}>About</button>
         <button class="pr-tab" class:active={activeTab === 'journey'} onclick={() => activeTab = 'journey'}>Journey</button>
         <button class="pr-tab" class:active={activeTab === 'communities'} onclick={() => activeTab = 'communities'}>Communities</button>
@@ -552,6 +553,22 @@
             {/if}
           </div>
         {/each}{/if}
+      {:else if activeTab === 'media'}
+        <div class="pr-media-grid">
+          {#if mediaImages.length === 0}
+            <div class="pr-media-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <p>{status === 'self' ? 'Photos you share will appear here.' : 'No photos yet.'}</p>
+            </div>
+          {:else}
+            {#each mediaImages as img}
+              <a href="/wisers/{profile.username}" class="pr-media-item" onclick={(e) => { e.preventDefault(); activeTab = 'posts'; }}>
+                <img src={img.url} alt="" loading="lazy" />
+              </a>
+            {/each}
+          {/if}
+        </div>
+
       {:else if activeTab === 'about'}
         <div class="pr-about-section">
           <!-- Bio -->
@@ -732,6 +749,33 @@
       {/if}
     {/if}
 
+  </div>
+{/if}
+
+<!-- Avatar toast notification -->
+{#if avatarToast}
+  <div class="pr-avatar-toast" class:success={avatarToast.type === 'success'} class:error={avatarToast.type === 'error'}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      {#if avatarToast.type === 'success'}<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      {:else}<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>{/if}
+    </svg>
+    <span>{avatarToast.msg}</span>
+  </div>
+{/if}
+
+<!-- Post to feed confirmation -->
+{#if showAvatarConfirm}
+  <div class="pr-confirm-overlay" onclick={skipAvatarPost}></div>
+  <div class="pr-confirm-dialog">
+    <div class="pr-confirm-preview">
+      {#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{/if}
+    </div>
+    <h3>Post to your feed?</h3>
+    <p>Let your followers know you updated your profile picture.</p>
+    <div class="pr-confirm-actions">
+      <button class="pr-confirm-skip" onclick={skipAvatarPost}>Skip</button>
+      <button class="pr-confirm-post" onclick={postAvatarToFeed}>Post</button>
+    </div>
   </div>
 {/if}
 </div>
@@ -973,8 +1017,37 @@
   .w-menu-divider { height:1px;background:var(--bd,#1e1e2a);margin:4px 0; }
   .pr-post-edited { font-size:11px;color:var(--t3,#606770);font-style:italic; }
 
+  /* Media gallery (X/Facebook standard) */
+  .pr-media-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px; }
+  .pr-media-item { aspect-ratio:1;overflow:hidden;border-radius:4px;cursor:pointer;position:relative; }
+  .pr-media-item img { width:100%;height:100%;object-fit:cover;transition:transform 0.2s; }
+  .pr-media-item:hover img { transform:scale(1.05); }
+  .pr-media-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--t3);text-align:center; }
+  .pr-media-empty svg { color:var(--bd);margin-bottom:12px; }
+  .pr-media-empty p { font-size:14px;margin:0; }
+
+  /* Avatar toast */
+  .pr-avatar-toast { position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:2000;animation:toastIn 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-family:inherit; }
+  .pr-avatar-toast.success { background:#10b981;color:#fff; }
+  .pr-avatar-toast.error { background:#ef4444;color:#fff; }
+  @keyframes toastIn { from { opacity:0;transform:translateX(-50%) translateY(20px); } to { opacity:1;transform:translateX(-50%) translateY(0); } }
+
+  /* Avatar post confirmation dialog */
+  .pr-confirm-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1500; }
+  .pr-confirm-dialog { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-width:calc(100vw - 32px);background:var(--card,#111117);border-radius:20px;z-index:1501;text-align:center;padding:28px 24px;box-shadow:0 12px 48px rgba(0,0,0,0.5); }
+  .pr-confirm-preview { width:80px;height:80px;border-radius:50%;overflow:hidden;margin:0 auto 16px;border:3px solid var(--gold,#f5a623); }
+  .pr-confirm-preview img { width:100%;height:100%;object-fit:cover; }
+  .pr-confirm-dialog h3 { font-size:18px;font-weight:800;margin:0 0 8px;color:var(--t1,#e4e6ea); }
+  .pr-confirm-dialog p { font-size:14px;color:var(--t2,#8a8d91);margin:0 0 20px;line-height:1.5; }
+  .pr-confirm-actions { display:flex;gap:10px;justify-content:center; }
+  .pr-confirm-skip { padding:10px 24px;border-radius:20px;border:1px solid var(--bd,#1e1e2a);background:none;color:var(--t2,#8a8d91);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit; }
+  .pr-confirm-skip:hover { border-color:var(--t2,#8a8d91);color:var(--t1,#e4e6ea); }
+  .pr-confirm-post { padding:10px 24px;border-radius:20px;border:none;background:var(--gold,#f5a623);color:#000;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit; }
+  .pr-confirm-post:hover { filter:brightness(1.1); }
+
   @media(max-width:600px) {
     .pr-modal { width:100%;max-width:100%;height:100%;max-height:100%;border-radius:0;top:0;left:0;transform:none; }
     .w-post-menu-btn { opacity:1; }
+    .pr-media-grid { grid-template-columns:repeat(3,1fr);gap:2px; }
   }
 </style>
