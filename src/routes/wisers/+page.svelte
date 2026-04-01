@@ -734,6 +734,7 @@
             </div>
           </article>
         {/each}
+        {/if}
 
       <!-- EXPLORE VIEW -->
       {:else if activeView === 'explore'}
@@ -772,9 +773,7 @@
             {/each}
           </div>
         {/if}
-
-      <!-- FRIENDS VIEW -->
-      {/if}
+        {/if}
 
       {:else if activeView === 'bookmarks'}
         <h2 class="w-section-title">Saved Posts</h2>
@@ -913,6 +912,7 @@
           </div>
         {/if}
       {/if}
+    </main>
 
     <!-- RIGHT SIDEBAR -->
     <aside class="w-sidebar-right">
