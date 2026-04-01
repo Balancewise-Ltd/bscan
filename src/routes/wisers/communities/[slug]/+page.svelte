@@ -185,17 +185,95 @@
       {/if}
 
     {:else}
-      <div class="cd-about">
-        <h3>About</h3>
-        <p>{community.description || 'No description.'}</p>
-        {#if community.rules}
-          <h3>Rules</h3>
-          <p class="cd-rules">{community.rules}</p>
-        {/if}
-        <div class="cd-about-meta">
-          <div>Created by <a href="/wisers/{community.creator_username}">@{community.creator_username}</a></div>
-          <div>Category: {community.category}</div>
-          <div>Privacy: {community.privacy}</div>
+      <div class="cd-about-grid">
+        <!-- Description card -->
+        <div class="cd-about-card cd-about-desc-card">
+          <div class="cd-about-card-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <h3>About this community</h3>
+          </div>
+          <p class="cd-about-desc-text">{community.description || 'No description yet.'}</p>
+        </div>
+
+        <!-- Stats card -->
+        <div class="cd-about-card">
+          <div class="cd-about-card-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <h3>Community stats</h3>
+          </div>
+          <div class="cd-about-stats">
+            <div class="cd-about-stat">
+              <div class="cd-about-stat-num">{community.member_count || 0}</div>
+              <div class="cd-about-stat-label">Members</div>
+            </div>
+            <div class="cd-about-stat">
+              <div class="cd-about-stat-num">{community.post_count || 0}</div>
+              <div class="cd-about-stat-label">Posts</div>
+            </div>
+            <div class="cd-about-stat">
+              <div class="cd-about-stat-num">{community.privacy === 'public' ? 'Public' : 'Private'}</div>
+              <div class="cd-about-stat-label">Visibility</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rules card -->
+        <div class="cd-about-card">
+          <div class="cd-about-card-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h3>Community rules</h3>
+          </div>
+          {#if community.rules}
+            <div class="cd-about-rules">
+              {#each community.rules.split('\n').filter((r: string) => r.trim()) as rule, i}
+                <div class="cd-about-rule">
+                  <span class="cd-about-rule-num">{i + 1}</span>
+                  <span>{rule.trim()}</span>
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="cd-about-rules">
+              <div class="cd-about-rule"><span class="cd-about-rule-num">1</span><span>Be respectful and supportive of all members</span></div>
+              <div class="cd-about-rule"><span class="cd-about-rule-num">2</span><span>No spam, self-promotion, or off-topic content</span></div>
+              <div class="cd-about-rule"><span class="cd-about-rule-num">3</span><span>Share knowledge and help others grow</span></div>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Details card -->
+        <div class="cd-about-card">
+          <div class="cd-about-card-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <h3>Details</h3>
+          </div>
+          <div class="cd-about-details">
+            <div class="cd-about-detail-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Created by</span>
+              <a href="/wisers/{community.creator_username}" class="cd-about-creator">
+                <span class="cd-about-creator-badge">{initial(community.creator_username)}</span>
+                Wiser @{community.creator_username}
+              </a>
+            </div>
+            <div class="cd-about-detail-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              <span>Category</span>
+              <strong class="cd-about-category">{community.category}</strong>
+            </div>
+            <div class="cd-about-detail-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">{#if community.privacy === 'public'}<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>{:else}<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{/if}</svg>
+              <span>Privacy</span>
+              <strong>{community.privacy === 'public' ? 'Open to everyone' : 'Invite only'}</strong>
+            </div>
+            {#if community.created_at}
+              <div class="cd-about-detail-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Created</span>
+                <strong>{new Date(community.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     {/if}
@@ -211,7 +289,7 @@
   .cd-page.light { --cd-bg: #ffffff; --cd-card: #ffffff; --cd-t: #1c1e21; --cd-t2: #606770; --cd-t3: #8a8d91; --cd-bd: #dddfe2; --cd-gold: #d4a017; --cd-hover: rgba(0,0,0,0.04); }
   :global(body) { margin: 0; }
   :global(.page) { padding: 0 !important; }
-  .cd-inner { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+  .cd-inner { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
   .cd-loading { text-align: center; color: var(--cd-t3); padding: 60px; }
   .cd-back { color: var(--cd-gold); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
   .cd-back:hover { text-decoration: underline; }
@@ -263,10 +341,41 @@
   .cd-m-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .cd-m-name { font-weight: 600; font-size: 14px; }
   .cd-m-role { font-size: 12px; color: var(--cd-t3); text-transform: capitalize; }
-  .cd-about { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 20px; }
-  .cd-about h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: var(--cd-gold); }
-  .cd-about p { font-size: 14px; color: var(--cd-t2); line-height: 1.6; margin: 0 0 16px; }
-  .cd-rules { white-space: pre-wrap; }
-  .cd-about-meta { font-size: 13px; color: var(--cd-t3); display: flex; flex-direction: column; gap: 4px; }
-  .cd-about-meta a { color: var(--cd-gold); text-decoration: none; }
+  /* About grid */
+  .cd-about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .cd-about-card { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 16px; padding: 24px; }
+  .cd-about-desc-card { grid-column: 1 / -1; }
+  .cd-about-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .cd-about-card-head svg { color: var(--cd-gold); flex-shrink: 0; }
+  .cd-about-card-head h3 { font-size: 16px; font-weight: 700; margin: 0; color: var(--cd-t); }
+  .cd-about-desc-text { font-size: 15px; color: var(--cd-t2); line-height: 1.7; margin: 0; white-space: pre-wrap; }
+
+  /* Stats */
+  .cd-about-stats { display: flex; gap: 0; }
+  .cd-about-stat { flex: 1; text-align: center; padding: 16px 8px; border-right: 1px solid var(--cd-bd); }
+  .cd-about-stat:last-child { border-right: none; }
+  .cd-about-stat-num { font-size: 24px; font-weight: 800; color: var(--cd-t); }
+  .cd-about-stat-label { font-size: 12px; color: var(--cd-t3); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Rules */
+  .cd-about-rules { display: flex; flex-direction: column; gap: 0; }
+  .cd-about-rule { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 14px; color: var(--cd-t2); line-height: 1.5; }
+  .cd-about-rule:last-child { border-bottom: none; }
+  .cd-about-rule-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(245,166,35,0.12); color: var(--cd-gold); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* Details */
+  .cd-about-details { display: flex; flex-direction: column; gap: 0; }
+  .cd-about-detail-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 14px; color: var(--cd-t2); }
+  .cd-about-detail-row:last-child { border-bottom: none; }
+  .cd-about-detail-row svg { color: var(--cd-t3); flex-shrink: 0; }
+  .cd-about-detail-row span:nth-child(2) { min-width: 80px; }
+  .cd-about-detail-row strong { color: var(--cd-t); margin-left: auto; }
+  .cd-about-creator { display: flex; align-items: center; gap: 8px; color: var(--cd-gold); text-decoration: none; font-weight: 600; margin-left: auto; }
+  .cd-about-creator:hover { text-decoration: underline; }
+  .cd-about-creator-badge { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--cd-gold), #e09100); color: #000; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .cd-about-category { background: rgba(245,166,35,0.1); color: var(--cd-gold); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-left: auto; }
+
+  @media (max-width: 700px) {
+    .cd-about-grid { grid-template-columns: 1fr; }
+  }
 </style>
