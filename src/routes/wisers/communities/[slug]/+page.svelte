@@ -15,8 +15,13 @@
   let posting = $state(false);
   let postImage = $state<File|null>(null);
   let postImagePreview = $state('');
+  let theme = $state<'dark'|'light'>('dark');
 
   onMount(async () => {
+    const saved = localStorage.getItem('wisers-theme');
+    if (saved === 'light') { theme = 'light'; }
+    else if (!saved && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) { theme = 'light'; }
+    if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-wisers-theme', theme); document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f'; }
     slug = $page.params.slug;
     try {
       community = await api.getCommunity(slug);
@@ -76,14 +81,15 @@
 
 <svelte:head><title>{community?.name || 'Community'} — Wisers</title></svelte:head>
 
-<div class="cd-page">
+<div class="cd-page" class:light={theme === "light"}>
+  <div class="cd-inner">
   {#if loading}
     <div class="cd-loading">Loading...</div>
   {:else if !community}
     <div class="cd-loading">Community not found.</div>
   {:else}
     <div class="cd-hero">
-      <a href="/wisers/communities" class="cd-back">← Communities</a>
+      <a href="/wisers/communities" class="cd-back"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Communities</a>
       <div class="cd-hero-top">
         <div class="cd-icon">{initial(community.name)}</div>
         <div class="cd-hero-info">
@@ -183,63 +189,71 @@
       </div>
     {/if}
   {/if}
+  </div>
 </div>
 
 <style>
-  .cd-page { max-width: 680px; margin: 0 auto; padding: 24px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #e2e8f0; min-height: 100vh; }
-  .cd-loading { text-align: center; color: #475569; padding: 60px; }
-  .cd-back { color: #f5a623; text-decoration: none; font-size: 14px; }
+  .cd-page { width: 100%; min-height: 100vh; margin: 0; padding: 0;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--cd-t); background: var(--cd-bg);
+    --cd-bg: #0a0a0f; --cd-card: #111117; --cd-t: #e4e6ea; --cd-t2: #8a8d91; --cd-t3: #606770; --cd-bd: #1e1e2a; --cd-gold: #f5a623; --cd-hover: rgba(255,255,255,0.04); }
+  .cd-page.light { --cd-bg: #ffffff; --cd-card: #ffffff; --cd-t: #1c1e21; --cd-t2: #606770; --cd-t3: #8a8d91; --cd-bd: #dddfe2; --cd-gold: #d4a017; --cd-hover: rgba(0,0,0,0.04); }
+  :global(body) { margin: 0; }
+  :global(.page) { padding: 0 !important; }
+  .cd-inner { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+  .cd-loading { text-align: center; color: var(--cd-t3); padding: 60px; }
+  .cd-back { color: var(--cd-gold); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
   .cd-back:hover { text-decoration: underline; }
-  .cd-hero { background: #141420; border: 1px solid #1e293b; border-radius: 16px; padding: 20px; margin: 12px 0 16px; }
+  .cd-hero { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 16px; padding: 20px; margin: 12px 0 16px; }
   .cd-hero-top { display: flex; align-items: center; gap: 14px; }
   .cd-icon { width: 60px; height: 60px; border-radius: 16px; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; font-size: 26px; flex-shrink: 0; }
   .cd-hero-info { flex: 1; }
-  .cd-hero-info h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.3px; }
-  .cd-meta { font-size: 13px; color: #64748b; margin-top: 4px; }
-  .cd-desc { font-size: 14px; color: #94a3b8; margin: 12px 0 0; line-height: 1.5; }
-  .cd-join { background: #f5a623; color: #000; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
-  .cd-join:hover { background: #e09100; }
+  .cd-hero-info h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.3px; color: var(--cd-t); }
+  .cd-meta { font-size: 13px; color: var(--cd-t3); margin-top: 4px; }
+  .cd-desc { font-size: 14px; color: var(--cd-t2); margin: 12px 0 0; line-height: 1.5; }
+  .cd-join { background: var(--cd-gold); color: #000; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+  .cd-join:hover { filter: brightness(0.9); }
   .cd-leave { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .cd-leave:hover { background: rgba(239,68,68,0.1); }
-  .cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid #1e293b; padding-bottom: 12px; margin-bottom: 16px; }
-  .cd-tabs button { background: none; border: none; color: #64748b; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
-  .cd-tabs button.active { color: #f5a623; background: rgba(245,166,35,0.1); }
-  .cd-composer { background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px; margin-bottom: 16px; }
-  .cd-composer textarea { width: 100%; background: transparent; border: none; color: #e2e8f0; font-size: 15px; resize: none; font-family: inherit; box-sizing: border-box; }
+  .cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cd-bd); padding-bottom: 12px; margin-bottom: 16px; }
+  .cd-tabs button { background: none; border: none; color: var(--cd-t3); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  .cd-tabs button.active { color: var(--cd-gold); background: rgba(245,166,35,0.1); }
+  .cd-composer { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 14px; margin-bottom: 16px; }
+  .cd-composer textarea { width: 100%; background: transparent; border: none; color: var(--cd-t); font-size: 15px; resize: none; font-family: inherit; box-sizing: border-box; }
   .cd-composer textarea:focus { outline: none; }
   .cd-composer-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .cd-photo-btn { background: none; border: none; color: #64748b; cursor: pointer; padding: 4px; }
-  .cd-photo-btn:hover { color: #f5a623; }
-  .cd-char { font-size: 12px; color: #475569; margin-left: auto; }
-  .cd-post-btn { background: #f5a623; color: #000; border: none; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .cd-photo-btn { background: none; border: none; color: var(--cd-t3); cursor: pointer; padding: 4px; }
+  .cd-photo-btn:hover { color: var(--cd-gold); }
+  .cd-char { font-size: 12px; color: var(--cd-t3); margin-left: auto; }
+  .cd-post-btn { background: var(--cd-gold); color: #000; border: none; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
   .cd-post-btn:disabled { opacity: 0.5; }
   .cd-img-preview { position: relative; margin: 8px 0; border-radius: 12px; overflow: hidden; }
   .cd-img-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; }
   .cd-img-preview button { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 14px; }
-  .cd-join-prompt { text-align: center; color: #64748b; padding: 20px; background: #141420; border: 1px solid #1e293b; border-radius: 14px; margin-bottom: 16px; font-size: 14px; }
-  .cd-empty { text-align: center; color: #475569; padding: 40px; }
-  .cd-post { background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 16px; margin-bottom: 10px; }
+  .cd-join-prompt { text-align: center; color: var(--cd-t3); padding: 20px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; margin-bottom: 16px; font-size: 14px; }
+  .cd-empty { text-align: center; color: var(--cd-t3); padding: 40px; }
+  .cd-post { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 16px; margin-bottom: 10px; }
   .cd-post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .cd-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; text-decoration: none; font-size: 16px; flex-shrink: 0; overflow: hidden; }
   .cd-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .cd-post-author { font-weight: 600; color: #e2e8f0; text-decoration: none; font-size: 14px; }
-  .cd-post-author:hover { color: #f5a623; }
-  .cd-post-handle { color: #64748b; font-size: 13px; }
-  .cd-milestone { background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05)); border: 1px solid rgba(245,166,35,0.3); border-radius: 10px; padding: 10px 14px; font-weight: 700; color: #f5a623; margin-bottom: 8px; font-size: 15px; }
+  .cd-post-author { font-weight: 600; color: var(--cd-t); text-decoration: none; font-size: 14px; }
+  .cd-post-author:hover { color: var(--cd-gold); }
+  .cd-post-handle { color: var(--cd-t3); font-size: 13px; }
+  .cd-milestone { background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05)); border: 1px solid rgba(245,166,35,0.3); border-radius: 10px; padding: 10px 14px; font-weight: 700; color: var(--cd-gold); margin-bottom: 8px; font-size: 15px; }
   .cd-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .cd-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .cd-post-img img { width: 100%; max-height: 500px; object-fit: cover; display: block; }
   .cd-members { display: flex; flex-direction: column; gap: 8px; }
-  .cd-member { display: flex; align-items: center; gap: 12px; padding: 12px; background: #141420; border: 1px solid #1e293b; border-radius: 12px; text-decoration: none; color: inherit; }
-  .cd-member:hover { border-color: #f5a623; }
+  .cd-member { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 12px; text-decoration: none; color: inherit; }
+  .cd-member:hover { border-color: var(--cd-gold); }
   .cd-m-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 18px; overflow: hidden; flex-shrink: 0; }
   .cd-m-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .cd-m-name { font-weight: 600; font-size: 14px; }
-  .cd-m-role { font-size: 12px; color: #64748b; text-transform: capitalize; }
-  .cd-about { background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 20px; }
-  .cd-about h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #f5a623; }
-  .cd-about p { font-size: 14px; color: #94a3b8; line-height: 1.6; margin: 0 0 16px; }
+  .cd-m-role { font-size: 12px; color: var(--cd-t3); text-transform: capitalize; }
+  .cd-about { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 20px; }
+  .cd-about h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: var(--cd-gold); }
+  .cd-about p { font-size: 14px; color: var(--cd-t2); line-height: 1.6; margin: 0 0 16px; }
   .cd-rules { white-space: pre-wrap; }
-  .cd-about-meta { font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 4px; }
-  .cd-about-meta a { color: #f5a623; text-decoration: none; }
+  .cd-about-meta { font-size: 13px; color: var(--cd-t3); display: flex; flex-direction: column; gap: 4px; }
+  .cd-about-meta a { color: var(--cd-gold); text-decoration: none; }
 </style>
