@@ -53,7 +53,15 @@
 
   onMount(async () => {
     const saved = localStorage.getItem('wisers-theme');
-    if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
+    if (saved === 'light') {
+      theme = 'light';
+    } else if (!saved && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      theme = 'light';
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-wisers-theme', theme);
+      document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f';
+    }
     await Promise.all([loadCommunities(), loadMine()]);
     loading = false;
   });
@@ -101,6 +109,7 @@
 <svelte:head><title>Communities — Wisers</title></svelte:head>
 
 <div class="cp" class:light={theme === "light"}>
+  <div class="cp-inner">
   <a href="/wisers" class="cp-back">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     Feed
@@ -262,10 +271,11 @@
       </div>
     {/if}
   {/if}
+  </div>
 </div>
 
 <style>
-  .cp { max-width: 900px; margin: 0 auto; padding: 40px 48px; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--cp-t); background: var(--cp-bg); min-height: 100vh;
+  .cp { width: 100%; min-height: 100vh; margin: 0; padding: 0; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--cp-t); background: var(--cp-bg); min-height: 100vh;
     --cp-bg: #0a0a0f; --cp-card: #111117; --cp-t: #e4e6ea; --cp-t2: #8a8d91; --cp-t3: #606770; --cp-bd: #1e1e2a; --cp-gold: #f5a623; --cp-hover: rgba(255,255,255,0.04); }
   .cp.light { --cp-bg: #ffffff; --cp-card: #ffffff; --cp-t: #1c1e21; --cp-t2: #606770; --cp-t3: #8a8d91; --cp-bd: #dddfe2; --cp-gold: #d4a017; --cp-hover: rgba(0,0,0,0.04); }
   .cp-back { font-size: 13px; color: var(--cp-gold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
@@ -343,9 +353,14 @@
   .cp-submit:disabled { opacity: 0.4; cursor: not-allowed; }
   .cp-submit:hover:not(:disabled) { filter: brightness(0.9); }
 
+  /* Full bleed */
+  :global(body) { margin: 0; }
+  :global(.page) { padding: 0 !important; }
+  .cp-inner { max-width: 900px; margin: 0 auto; padding: 40px 48px; }
+
   /* Mobile */
   @media (max-width: 640px) {
-    .cp { padding: 20px 16px; }
+    .cp-inner { padding: 20px 16px; }
     .cp-grid { grid-template-columns: 1fr; }
     .cp-title { font-size: 24px; }
   }
