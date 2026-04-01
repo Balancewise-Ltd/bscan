@@ -1048,4 +1048,6 @@
   .w-img-remove:hover { background: #ef4444; }
   .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; }
+  .wc-sidebar-link { display: block; background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px 16px; color: #f5a623; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 12px; text-align: center; transition: border-color 0.15s; }
+  .wc-sidebar-link:hover { border-color: #f5a623; }
 </style>
