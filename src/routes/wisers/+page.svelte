@@ -1402,10 +1402,8 @@
     /* Join CTA */
     .w-join-cta { margin: 0; border-radius: 0; padding: 32px 20px; }
 
-    /* Emoji picker — fixed bottom sheet on mobile */
-    .w-emoji-picker { position: fixed; bottom: 0; left: 0; right: 0; top: auto; width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; padding: 12px 8px calc(env(safe-area-inset-bottom, 0px) + 12px); max-height: 40vh; grid-template-columns: repeat(8, 1fr); gap: 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.5); }
-    .w-emoji-item { font-size: 24px; padding: 8px 2px; }
-    .w-emoji-backdrop { background: rgba(0,0,0,0.4); }
+    /* Hide emoji picker on mobile — native keyboard has emojis */
+    .w-emoji-wrap { display: none; }
 
     /* Hide nav when keyboard open */
     .w:has(textarea:focus) .w-mobile-nav,

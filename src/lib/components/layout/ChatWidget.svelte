@@ -357,8 +357,7 @@
 
 	.chat-send:hover { background: #c88600; }
 
-	@media (max-width: 640px) {
-		.chat-widget { bottom: 16px; right: 16px; }
-		.chat-window { width: calc(100vw - 32px); }
+	@media (max-width: 768px) {
+		.chat-widget { display: none !important; }
 	}
 </style>
