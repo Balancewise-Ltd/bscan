@@ -376,7 +376,7 @@
         <input type="text" class="w-search" placeholder="Search wisers..." bind:value={searchQuery} onkeydown={(e) => e.key === 'Enter' && search()} />
       </div>
       <div class="w-topbar-right">
-        <a href="/wisers/messages" class="w-topbar-btn w-notif-btn" title="Messages" >
+        <a href="/wisers/messages" class="w-topbar-btn w-msg-topbar-btn" title="Messages" >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           {#if $wsUnreadDMs > 0}<span class="w-notif-badge">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
         </a>
@@ -948,7 +948,7 @@
       <span>Groups</span>
     </a>
     <button class="w-mn-create" onclick={(e) => { e.stopPropagation(); showCreateSheet = !showCreateSheet; }} aria-label="Create">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
     <a href="/wisers/messages" class="w-mn-item">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -1267,6 +1267,7 @@
     .w-search-wrap input { font-size: 14px; padding: 8px 12px 8px 34px; border-radius: 20px; height: 36px; }
     .w-topbar-btn { width: 34px; height: 34px; flex-shrink: 0; }
     .w-notif-btn { display: none; }
+    .w-msg-topbar-btn { display: none; }
     .w-avatar-sm, .w-avatar-btn { width: 30px; height: 30px; font-size: 12px; }
     .w-user-dropdown { right: -4px; top: 40px; min-width: 200px; }
 
@@ -1407,10 +1408,10 @@
       display: block;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.75);
       z-index: 300;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .w-create-sheet {
       display: flex;
