@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { auth } from '$lib/stores/auth';
+  import * as api from '$lib/api/client';
   import { wsNotifCount, wsUnreadDMs } from '$lib/stores/wisers-ws';
   import { page } from '$app/stores';
 
@@ -30,15 +31,13 @@
     deleting = true;
     error = '';
     try {
-      /* In a real implementation, this would call the API to delete the account */
-      await new Promise(r => setTimeout(r, 1000));
-      /* After deletion: clear auth, redirect to landing */
-      /* auth.logout(); goto('/'); */
-      error = 'Account deletion is not yet enabled. Contact support@balancewises.io for help.';
-    } catch {
-      error = 'Something went wrong. Please try again or contact support.';
+      await api.deleteAccount();
+      auth.logout();
+      goto('/');
+    } catch (err: any) {
+      error = err?.message || err?.detail || 'Something went wrong. Please try again or contact support.';
+      deleting = false;
     }
-    deleting = false;
   }
 
   function initial(name: string) {

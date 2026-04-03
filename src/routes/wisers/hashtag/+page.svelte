@@ -60,7 +60,7 @@
             </div>
           </div>
           <div class="ht-body">{post.content}</div>
-          {#if post.image_url}<div class="ht-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
+          {#if post.image_url}<div class="ht-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>{/if}
         </div>
       {/each}
     </div>

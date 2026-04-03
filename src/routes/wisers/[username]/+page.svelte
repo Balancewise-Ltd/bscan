@@ -41,7 +41,13 @@
   let theme = $state<'dark'|'light'>('dark');
   let journeyData = $state<any>({ entries: [], goals: [] });
   let userCommunities = $state<any[]>([]);
-  let mediaImages = $derived(posts.filter(p => p.image_url).map(p => ({ url: p.image_url, id: p.id, created_at: p.created_at })));
+  let mediaImages = $derived(posts.filter(p => p.image_url || p.media?.some((m: any) => m.type === 'image')).flatMap(p => {
+    const imgs: { url: string; id: number; created_at: string }[] = [];
+    if (p.image_url) imgs.push({ url: p.image_url, id: p.id, created_at: p.created_at });
+    if (p.media) p.media.filter((m: any) => m.type === 'image').forEach((m: any) => imgs.push({ url: m.url, id: p.id, created_at: p.created_at }));
+    return imgs;
+  }));
+  function formatFileSize(b: number) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(1) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
 
   onMount(() => {
     const saved = localStorage.getItem('wisers-theme');
@@ -164,10 +170,10 @@
     avatarUploading = true;
     try {
       const res = await api.uploadAvatar(file);
-      if (res.url) {
-        profile.avatar_url = res.url;
-        if ($auth.user) $auth.user.avatar_url = res.url;
-        pendingAvatarUrl = res.url;
+      if (res.avatar_url) {
+        profile.avatar_url = res.avatar_url;
+        if ($auth.user) $auth.user.avatar_url = res.avatar_url;
+        pendingAvatarUrl = res.avatar_url;
         showToast('Profile picture updated!', 'success');
         showAvatarConfirm = true;
       }
@@ -537,7 +543,27 @@
               <textarea class="pr-edit-box" bind:value={editingContent} rows="3"></textarea>
             {:else}
               <div class="pr-post-body">{@html renderContent(post.content)}</div>
-            {#if post.image_url}<div class="pr-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
+            {#if post.image_url}<div class="pr-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>{/if}
+            {#if post.media?.length}
+              <div class="pr-post-media">
+                {#each post.media.filter((m: any) => m.type === 'image') as m}
+                  <div class="pr-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type === 'video') as m}
+                  <div class="pr-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type === 'audio') as m}
+                  <div class="pr-media-audio"><span>🎵</span><audio src={m.url} controls preload="metadata"></audio></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type !== 'image' && m.type !== 'video' && m.type !== 'audio') as m}
+                  <a href={m.url} target="_blank" rel="noopener" class="pr-media-doc">
+                    <span>📄</span>
+                    <div class="pr-media-doc-info"><div class="pr-media-doc-name">{m.filename || 'File'}</div>{#if m.size}<div class="pr-media-doc-size">{formatFileSize(m.size)}</div>{/if}</div>
+                    <span class="pr-media-doc-dl">↓</span>
+                  </a>
+                {/each}
+              </div>
+            {/if}
             {/if}
             <div class="pr-post-ft">
               <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
@@ -1143,6 +1169,28 @@
   /* Post image */
   .pr-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .pr-post-img img { width: 100%; max-height: 500px; object-fit: cover; display: block; border-radius: 12px; }
+
+  /* Media grid & rendering */
+  .pr-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
+  .pr-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; max-height: 300px; }
+  .pr-grid-3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 400px; }
+  .pr-grid-3 .pr-grid-item:first-child { grid-row: 1 / 3; }
+  .pr-grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 300px; }
+  .pr-grid-item { overflow: hidden; border-radius: 12px; }
+  .pr-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+  .pr-media-video { border-radius: 12px; overflow: hidden; margin-top: 6px; }
+  .pr-media-video video { width: 100%; max-height: 500px; background: #000; }
+  .pr-media-audio { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--wcard, #111117); border: 1px solid var(--wbd, #1e1e2a); border-radius: 12px; margin-top: 6px; }
+  .pr-media-audio audio { flex: 1; min-width: 0; height: 32px; }
+  .pr-media-doc { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--wcard, #111117); border: 1px solid var(--wbd, #1e1e2a); border-radius: 12px; text-decoration: none; color: var(--wt, #e4e6ea); margin-top: 6px; transition: border-color 0.15s; }
+  .pr-media-doc:hover { border-color: var(--wgold, #f5a623); }
+  .pr-media-doc-info { flex: 1; min-width: 0; }
+  .pr-media-doc-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-media-doc-size { font-size: 12px; color: var(--wt2, #8a8d91); }
+  .pr-media-doc-dl { color: var(--wt2, #8a8d91); font-size: 18px; }
+  .w.light .pr-media-doc { background: #f0f2f5; border-color: #dddfe2; }
+  .w.light .pr-media-doc:hover { border-color: #d4a017; }
+  .w.light .pr-media-audio { background: #f0f2f5; border-color: #dddfe2; }
 
   /* About section */
   .pr-about-section { display: flex; flex-direction: column; gap: 16px; }

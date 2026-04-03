@@ -4,6 +4,7 @@
   import { auth } from '$lib/stores/auth';
   import { wsNotifCount, wsUnreadDMs } from '$lib/stores/wisers-ws';
   import { page } from '$app/stores';
+  import * as api from '$lib/api/client';
 
   let theme = $state<'dark' | 'light'>('dark');
 
@@ -25,6 +26,8 @@
   let showActivityStatus = $state(true);
 
   let saving = $state(false);
+  let savingNotifs = $state(false);
+  let savingPrivacy = $state(false);
   let toast = $state('');
   let toastTimer: any = null;
 
@@ -41,33 +44,129 @@
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
 
-    if ($auth.user) {
-      displayName = $auth.user.name || '';
-      bio = ($auth.user as any).bio || '';
-      username = $auth.user.username || '';
-    }
+    /* Fetch real profile data */
+    (async () => {
+      try {
+        const me = await api.getMe();
+        if (me) {
+          displayName = me.name || '';
+          username = me.username || '';
+          bio = (me as any).bio || '';
+        }
+      } catch {
+        /* fall back to auth store */
+        if ($auth.user) {
+          displayName = $auth.user.name || '';
+          bio = ($auth.user as any).bio || '';
+          username = $auth.user.username || '';
+        }
+      }
+
+      /* Also try getProfile for richer data (bio, etc.) */
+      try {
+        const profile = await api.getProfile();
+        if (profile) {
+          if (profile.bio) bio = profile.bio;
+          if (profile.display_name) displayName = profile.display_name;
+          if (profile.username) username = profile.username;
+          if (profile.messages_from) whoCanMessage = profile.messages_from;
+        }
+      } catch { /* ignore — getMe data is sufficient */ }
+
+      /* Fetch notification preferences */
+      try {
+        const settings = await api.getUserSettings();
+        if (settings) {
+          if (typeof settings.notif_likes === 'boolean') notifLikes = settings.notif_likes;
+          if (typeof settings.notif_comments === 'boolean') notifComments = settings.notif_comments;
+          if (typeof settings.notif_friend_requests === 'boolean') notifFriendReqs = settings.notif_friend_requests;
+          if (typeof settings.notif_messages === 'boolean') notifMessages = settings.notif_messages;
+          if (typeof settings.notif_email === 'boolean') notifEmail = settings.notif_email;
+        }
+      } catch { /* ignore — defaults are fine */ }
+    })();
 
     return () => { document.body.classList.remove('wisers-page'); };
   });
 
   async function saveProfile() {
+    if (!$auth.user) { showToast('Please sign in first'); return; }
     saving = true;
     try {
-      /* In a real implementation, this would call the API */
-      await new Promise(r => setTimeout(r, 600));
+      await api.updateProfile($auth.user.email, {
+        display_name: displayName,
+        username: username,
+        bio: bio,
+      });
+      await auth.refresh();
       showToast('Profile updated');
-    } catch {
-      showToast('Failed to save');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save profile');
     }
     saving = false;
   }
 
   async function saveNotifications() {
-    showToast('Notification preferences saved');
+    savingNotifs = true;
+    try {
+      await api.updateUserSettings({
+        notif_likes: notifLikes,
+        notif_comments: notifComments,
+        notif_friend_requests: notifFriendReqs,
+        notif_messages: notifMessages,
+        notif_email: notifEmail,
+      });
+      showToast('Notification preferences saved');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save notification preferences');
+    }
+    savingNotifs = false;
   }
 
   async function savePrivacy() {
-    showToast('Privacy settings saved');
+    savingPrivacy = true;
+    try {
+      await api.updateMessagesPrivacy(whoCanMessage);
+      showToast('Privacy settings saved');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save privacy settings');
+    }
+    savingPrivacy = false;
+  }
+
+  let confirmDelete = $state(false);
+  let deleting = $state(false);
+  let loggingOutAll = $state(false);
+
+  async function handleDeleteAccount() {
+    if (!confirmDelete) {
+      confirmDelete = true;
+      showToast('Click again to confirm account deletion');
+      setTimeout(() => { confirmDelete = false; }, 5000);
+      return;
+    }
+    deleting = true;
+    try {
+      await api.deleteAccount();
+      auth.logout();
+      goto('/');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete account');
+    }
+    deleting = false;
+    confirmDelete = false;
+  }
+
+  async function handleLogoutAll() {
+    loggingOutAll = true;
+    try {
+      await api.logoutAll();
+      auth.logout();
+      goto('/account');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to log out all devices');
+    }
+    loggingOutAll = false;
   }
 
   function initial(name: string) {
@@ -192,7 +291,7 @@
               <div class="w-toggle-label">Likes</div>
               <div class="w-toggle-desc">Get notified when someone likes your post</div>
             </div>
-            <button class="w-toggle" class:on={notifLikes} onclick={() => notifLikes = !notifLikes} role="switch" aria-checked={notifLikes}>
+            <button class="w-toggle" class:on={notifLikes} onclick={() => { notifLikes = !notifLikes; saveNotifications(); }} role="switch" aria-checked={notifLikes}>
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -201,7 +300,7 @@
               <div class="w-toggle-label">Comments</div>
               <div class="w-toggle-desc">Get notified when someone comments on your post</div>
             </div>
-            <button class="w-toggle" class:on={notifComments} onclick={() => notifComments = !notifComments} role="switch" aria-checked={notifComments}>
+            <button class="w-toggle" class:on={notifComments} onclick={() => { notifComments = !notifComments; saveNotifications(); }} role="switch" aria-checked={notifComments}>
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -210,7 +309,7 @@
               <div class="w-toggle-label">Friend Requests</div>
               <div class="w-toggle-desc">Get notified when someone sends you a friend request</div>
             </div>
-            <button class="w-toggle" class:on={notifFriendReqs} onclick={() => notifFriendReqs = !notifFriendReqs} role="switch" aria-checked={notifFriendReqs}>
+            <button class="w-toggle" class:on={notifFriendReqs} onclick={() => { notifFriendReqs = !notifFriendReqs; saveNotifications(); }} role="switch" aria-checked={notifFriendReqs}>
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -219,7 +318,7 @@
               <div class="w-toggle-label">Messages</div>
               <div class="w-toggle-desc">Get notified for new direct messages</div>
             </div>
-            <button class="w-toggle" class:on={notifMessages} onclick={() => notifMessages = !notifMessages} role="switch" aria-checked={notifMessages}>
+            <button class="w-toggle" class:on={notifMessages} onclick={() => { notifMessages = !notifMessages; saveNotifications(); }} role="switch" aria-checked={notifMessages}>
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -228,11 +327,11 @@
               <div class="w-toggle-label">Email Notifications</div>
               <div class="w-toggle-desc">Receive a daily email digest of activity</div>
             </div>
-            <button class="w-toggle" class:on={notifEmail} onclick={() => notifEmail = !notifEmail} role="switch" aria-checked={notifEmail}>
+            <button class="w-toggle" class:on={notifEmail} onclick={() => { notifEmail = !notifEmail; saveNotifications(); }} role="switch" aria-checked={notifEmail}>
               <div class="w-toggle-knob"></div>
             </button>
           </div>
-          <button class="w-save-btn" onclick={saveNotifications}>Save Notifications</button>
+          <button class="w-save-btn" onclick={saveNotifications} disabled={savingNotifs}>{savingNotifs ? 'Saving...' : 'Save Notifications'}</button>
         </section>
 
         <!-- PRIVACY SECTION -->
@@ -265,7 +364,7 @@
               <div class="w-toggle-knob"></div>
             </button>
           </div>
-          <button class="w-save-btn" onclick={savePrivacy}>Save Privacy</button>
+          <button class="w-save-btn" onclick={savePrivacy} disabled={savingPrivacy}>{savingPrivacy ? 'Saving...' : 'Save Privacy'}</button>
         </section>
 
         <!-- DANGER ZONE -->
@@ -275,10 +374,14 @@
             <h2>Danger Zone</h2>
           </div>
           <p class="w-danger-text">Once you delete your account, there is no going back. All your posts, connections, and data will be permanently removed.</p>
-          <a href="/settings/delete-account" class="w-danger-link">
+          <button class="w-danger-link" onclick={handleDeleteAccount} disabled={deleting} style="cursor:pointer;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Delete Account
-          </a>
+            {deleting ? 'Deleting...' : confirmDelete ? 'Click again to confirm' : 'Delete Account'}
+          </button>
+          <button class="w-danger-link" onclick={handleLogoutAll} disabled={loggingOutAll} style="cursor:pointer;margin-top:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            {loggingOutAll ? 'Logging out...' : 'Log out all devices'}
+          </button>
         </section>
 
       </div>

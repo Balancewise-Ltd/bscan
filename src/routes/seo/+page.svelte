@@ -86,13 +86,8 @@
 		const token = safeGetStorage('bscan_token');
 		if (!token) return null;
 		const url = domain.includes('://') ? domain : `https://${domain}`;
-		const res = await fetch('https://api-bscan.balancewises.io/api/crawl/deep', {
-			method: 'POST',
-			headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-			body: JSON.stringify({ url, max_pages: 1 })
-		});
-		if (!res.ok) return null;
-		return res.json();
+		const res = await api.deepCrawl(url, 1);
+		return res;
 	}
 
 	// ── SEO History ──────────────────────────────────────
@@ -193,12 +188,7 @@
 		gscLoading = true;
 		gscError = '';
 		try {
-			const token = safeGetStorage('bscan_token');
-			if (!token) { gscError = 'Please sign in first.'; gscLoading = false; return; }
-			const res = await fetch('https://api-bscan.balancewises.io/api/seo/gsc/connect', {
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
-			const d = await res.json();
+			const d = await api.gscConnect();
 			const safe = safeRedirect(d.auth_url);
 			if (safe) window.location.href = safe;
 			else gscError = 'Could not connect — invalid redirect URL.';

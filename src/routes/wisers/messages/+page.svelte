@@ -5,8 +5,11 @@
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
   import { timeAgo } from '$lib/utils/time';
+  import { hasKeyPair, generateAndStoreKeyPair, uploadPublicKey, fetchAndCachePublicKey, encryptMessage, decryptMessage } from '$lib/stores/encryption';
 
   let conversations = $state<any[]>([]);
+  let e2eActive = $state(false);
+  let recipientPubKey = $state<Uint8Array | null>(null);
   let friendsList = $state<any[]>([]);
   let searchQuery = $state('');
   let typingUser = $state('');
@@ -25,6 +28,9 @@
   let newConvUser = $state('');
   let showNewConv = $state(false);
   let theme = $state<'dark' | 'light'>('dark');
+  let attachment = $state<any>(null);
+  let uploading = $state(false);
+  let fileInput: HTMLInputElement | undefined = $state(undefined);
   const filteredConvs = $derived(
     searchQuery.trim()
       ? conversations.filter(c =>
@@ -60,7 +66,15 @@
   });
 
   onMount(async () => {
-    if ($auth.token) { connectWS($auth.token); fetchUnreadCounts($auth.token); }
+    if ($auth.token) {
+      connectWS($auth.token);
+      fetchUnreadCounts($auth.token);
+      // E2E: generate keypair on first use
+      if (!hasKeyPair()) {
+        generateAndStoreKeyPair();
+        await uploadPublicKey($auth.token);
+      }
+    }
     if (typeof document !== 'undefined') document.body.classList.add('wisers-page');
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
@@ -116,22 +130,70 @@
     activeConv = convId;
     await loadMessages(convId);
     const conv = conversations.find((c: any) => c.id === convId);
-    if (conv && $auth.token) markConvRead($auth.token, convId, conv.my_unread || 0);
+    if (conv && $auth.token) {
+      markConvRead($auth.token, convId, conv.my_unread || 0);
+      // E2E: fetch recipient's public key
+      const otherId = conv.user_a === $auth.user?.id ? conv.user_b : conv.user_a;
+      if (otherId && hasKeyPair()) {
+        recipientPubKey = await fetchAndCachePublicKey(otherId, $auth.token);
+        e2eActive = !!recipientPubKey;
+      } else {
+        recipientPubKey = null;
+        e2eActive = false;
+      }
+    }
   }
 
   async function send() {
-    if (!newMsg.trim() || sending || !activeConv) return;
+    if ((!newMsg.trim() && !attachment) || sending || !activeConv) return;
     sending = true;
     const conv = conversations.find(c => c.id === activeConv);
     if (conv) {
       try {
-        await api.sendMessage(conv.other_username, newMsg.trim());
+        let content = newMsg.trim();
+        let encryptedContent: string | undefined;
+        let nonce: string | undefined;
+        // E2E: encrypt if both parties have keys
+        if (e2eActive && recipientPubKey && content) {
+          const enc = encryptMessage(content, recipientPubKey);
+          if (enc) {
+            encryptedContent = enc.encrypted;
+            nonce = enc.nonce;
+          }
+        }
+        await api.sendMessage(conv.other_username, content, attachment?.id, encryptedContent, nonce);
         newMsg = '';
+        attachment = null;
         await loadMessages(activeConv);
         await loadConversations();
       } catch {}
     }
     sending = false;
+  }
+
+  async function handleFileSelect(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+    uploading = true;
+    try {
+      const res = await api.uploadMedia(file);
+      attachment = res;
+    } catch (err: any) {
+      alert(err.message || 'Upload failed');
+    }
+    uploading = false;
+    if (target) target.value = '';
+  }
+
+  function removeAttachment() {
+    attachment = null;
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
   }
 
   async function startNewConv() {
@@ -287,8 +349,8 @@
             <a href="/wisers/{getActiveConv().other_username}" class="m-chat-user">
               <div class="m-conv-avatar">{initial(getActiveConv().other_display_name || getActiveConv().other_name)}</div>
               <div>
-                <div class="m-chat-name">@{getActiveConv().other_username}</div>
-                <div class="m-chat-real">{getActiveConv().other_display_name || getActiveConv().other_name}</div>
+                <div class="m-chat-name">@{getActiveConv().other_username} {#if e2eActive}<span class="m-e2e-lock" title="End-to-end encrypted">&#x1f512;</span>{/if}</div>
+                <div class="m-chat-real">{getActiveConv().other_display_name || getActiveConv().other_name}{#if e2eActive}<span class="m-e2e-badge">End-to-end encrypted</span>{/if}</div>
               </div>
             </a>
           </div>
@@ -302,7 +364,37 @@
           {#each messages as msg (msg.id)}
             <div class="m-msg" class:mine={msg.sender_id === $auth.user?.id}>
               <div class="m-msg-bubble">
-                <div class="m-msg-text">{msg.content}</div>
+                {#if msg.attachment}
+                  <div class="m-msg-attachment">
+                    {#if msg.attachment.type === 'image'}
+                      <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer">
+                        <img src={msg.attachment.thumbnail_url || msg.attachment.url} alt={msg.attachment.filename || 'Image'} class="m-msg-img" />
+                      </a>
+                    {:else if msg.attachment.type === 'video'}
+                      <!-- svelte-ignore a11y_media_has_caption -->
+                      <video src={msg.attachment.url} controls class="m-msg-video" preload="metadata"></video>
+                    {:else if msg.attachment.type === 'audio'}
+                      <div class="m-msg-audio-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        <!-- svelte-ignore a11y_media_has_caption -->
+                        <audio src={msg.attachment.url} controls class="m-msg-audio" preload="metadata"></audio>
+                      </div>
+                    {:else}
+                      <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" class="m-msg-doc">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <div class="m-msg-doc-info">
+                          <span class="m-msg-doc-name">{msg.attachment.filename || 'File'}</span>
+                          {#if msg.attachment.size}<span class="m-msg-doc-size">{formatFileSize(msg.attachment.size)}</span>{/if}
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      </a>
+                    {/if}
+                  </div>
+                {/if}
+                {#if msg.encrypted_content && msg.nonce && recipientPubKey}
+                  {@const dec = decryptMessage(msg.encrypted_content, msg.nonce, recipientPubKey)}
+                  <div class="m-msg-text">{dec || '[Encrypted message]'}</div>
+                {:else if msg.content}<div class="m-msg-text">{msg.content}</div>{/if}
                 <span class="m-msg-time">
                   {timeFull(msg.created_at)}
                   {#if msg.sender_id === $auth.user?.id}
@@ -315,8 +407,49 @@
         </div>
 
         {#if typingUser}<div class="m-typing"><span class="m-typing-dots"></span> {typingUser} is typing...</div>{/if}
+        <!-- Attachment preview -->
+        {#if uploading}
+          <div class="m-attach-preview">
+            <div class="m-attach-uploading">
+              <div class="m-attach-spinner"></div>
+              <span>Uploading...</span>
+            </div>
+          </div>
+        {/if}
+        {#if attachment}
+          <div class="m-attach-preview">
+            <div class="m-attach-card">
+              {#if attachment.type === 'image'}
+                <img src={attachment.thumbnail_url || attachment.url} alt={attachment.filename} class="m-attach-thumb" />
+              {:else if attachment.type === 'video'}
+                <div class="m-attach-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+              {:else if attachment.type === 'audio'}
+                <div class="m-attach-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </div>
+              {:else}
+                <div class="m-attach-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+              {/if}
+              <div class="m-attach-info">
+                <span class="m-attach-name">{attachment.filename}</span>
+                <span class="m-attach-size">{formatFileSize(attachment.size)}</span>
+              </div>
+              <button class="m-attach-remove" onclick={removeAttachment} type="button" title="Remove attachment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        {/if}
         <!-- Input -->
         <div class="m-input-bar">
+          <input type="file" class="m-file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" bind:this={fileInput} onchange={handleFileSelect} />
+          <button class="m-attach-btn" onclick={() => fileInput?.click()} type="button" title="Attach file" disabled={uploading}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
           <div class="m-emoji-wrap">
           <button class="m-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
           {#if showEmoji}
@@ -340,7 +473,7 @@
                 lastTypingSent = now;
               }
             }} />
-          <button class="m-send" onclick={send} disabled={sending || !newMsg.trim()}>
+          <button class="m-send" onclick={send} disabled={sending || (!newMsg.trim() && !attachment)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -408,6 +541,8 @@
   .m-chat-user:hover .m-chat-name { text-decoration: underline; }
   .m-chat-name { font-size: 16px; font-weight: 700; }
   .m-chat-real { font-size: 13px; color: var(--mt2); }
+  .m-e2e-lock { font-size: 12px; margin-left: 4px; }
+  .m-e2e-badge { display: inline-block; font-size: 10px; color: var(--mgold); margin-left: 6px; font-weight: 600; }
 
   .m-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
   .m-msg-empty { text-align: center; color: var(--mt3); font-size: 15px; padding: 40px; }
@@ -450,9 +585,46 @@
     .m-chat-back { display: flex; }
     .m-emoji-wrap { display: none; }
   }
-  .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--wt, #e8e6e3); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 15px; }
+  .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: none; border: 1px solid var(--mbd); border-radius: 8px; color: var(--mt); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 15px; }
   .m-friend-btn:hover { background: rgba(245,166,35,0.1); border-color: rgba(245,166,35,0.3); }
   .m-friend-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e8941a); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; flex-shrink: 0; }
   :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
+
+  /* Attachment button */
+  .m-file-input { display: none; }
+  .m-attach-btn { background: none; border: none; color: var(--mt2); cursor: pointer; padding: 4px 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .m-attach-btn:hover { color: var(--mgold); background: var(--mhover); }
+  .m-attach-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Attachment preview in compose */
+  .m-attach-preview { padding: 8px 16px 0; background: var(--mcard); }
+  .m-attach-card { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--mc); border: 1px solid var(--mbd); border-radius: 12px; max-width: 320px; }
+  .m-attach-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .m-attach-icon { width: 40px; height: 40px; border-radius: 8px; background: var(--mmine); color: var(--mgold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .m-attach-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .m-attach-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-attach-size { font-size: 12px; color: var(--mt3); }
+  .m-attach-remove { background: none; border: none; color: var(--mt3); cursor: pointer; padding: 4px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .m-attach-remove:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+  /* Upload spinner */
+  .m-attach-uploading { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--mc); border: 1px solid var(--mbd); border-radius: 12px; max-width: 200px; font-size: 13px; color: var(--mt2); }
+  .m-attach-spinner { width: 18px; height: 18px; border: 2px solid var(--mbd); border-top-color: var(--mgold); border-radius: 50%; animation: attachSpin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes attachSpin { to { transform: rotate(360deg); } }
+
+  /* Message attachment rendering */
+  .m-msg-attachment { margin-bottom: 6px; }
+  .m-msg-img { max-width: 200px; border-radius: 10px; display: block; cursor: pointer; }
+  .m-msg-img:hover { opacity: 0.9; }
+  .m-msg-video { max-width: 250px; border-radius: 10px; display: block; }
+  .m-msg-audio-wrap { display: flex; align-items: center; gap: 8px; color: var(--mt2); }
+  .m-msg-audio { max-width: 220px; height: 32px; }
+  .m-msg-doc { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--mc); border: 1px solid var(--mbd); border-radius: 10px; text-decoration: none; color: var(--mt); max-width: 250px; }
+  .m-msg-doc:hover { border-color: var(--mgold); }
+  .m-msg-doc svg:first-child { color: var(--mgold); flex-shrink: 0; }
+  .m-msg-doc svg:last-child { color: var(--mt3); flex-shrink: 0; }
+  .m-msg-doc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .m-msg-doc-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-msg-doc-size { font-size: 11px; color: var(--mt3); }
 
   </style>

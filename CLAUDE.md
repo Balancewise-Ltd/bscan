@@ -162,25 +162,23 @@ DATABASE_URL=postgresql+asyncpg://bscan_user:bscan_pg_2026_secure@localhost:6432
 
 ## WebSocket Protocol
 
-**Connect:** `wss://api-bscan.balancewises.io/ws/{user_id}?token={jwt}`
+**Connect:** `wss://api-bscan.balancewises.io/api/community/ws?token={jwt}`
 Multi-tab: `Dict[str, List[WebSocket]]` per user.
 
 **Server → Client:**
 ```json
-{"type": "dm", "sender_id": "...", "content": "...", "conversation_id": 5}
-{"type": "notification", "title": "...", "body": "...", "url": "/wisers/..."}
-{"type": "typing", "sender_id": "...", "conversation_id": 5}
-{"type": "unread", "unread": 3}
-{"type": "notif_count", "count": 7}
+{"action": "new_message", "sender_id": "...", "content": "...", "conversation_id": 5}
+{"action": "new_notification", "title": "...", "body": "...", "url": "/wisers/..."}
+{"action": "typing", "sender_id": "...", "conversation_id": 5}
+{"action": "pong"}
 ```
 **Client → Server:**
 ```json
-{"type": "dm", "to_user_id": "...", "content": "..."}
-{"type": "typing", "to_user_id": "...", "conversation_id": 5}
-{"type": "mark_read", "conversation_id": 5}
+{"action": "ping"}
+{"action": "typing", "to_user_id": "...", "conversation_id": 5}
 ```
 
-**Frontend store (`wisers-ws.ts`):** `wsLastMessage` (writable, watched by `$effect` in DM page), `wsUnreadDMs`/`wsNotifCount` (badge counts), `connectWS(userId, token)`, `sendTyping()`.
+**Frontend store (`wisers-ws.ts`):** `wsLastMessage` (writable, watched by `$effect` in DM page), `wsUnreadDMs`/`wsNotifCount` (badge counts), `connectWS(token)`, `sendTyping(toUserId, conversationId?)`.
 
 ---
 

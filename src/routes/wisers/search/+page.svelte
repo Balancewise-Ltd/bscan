@@ -168,7 +168,7 @@
               <span class="ws-time">{timeAgo(post.created_at)}</span>
             </div>
             <div class="ws-post-body">{@html renderContent(post.content)}</div>
-            {#if post.image_url}<img src={post.image_url} alt="" class="ws-post-img" loading="lazy" />{/if}
+            {#if post.image_url}<img src={post.image_url} alt="" class="ws-post-img" loading="lazy" onerror={(e) => { e.currentTarget.style.display = 'none'; }} />{/if}
           </a>
         {/each}
       {/if}

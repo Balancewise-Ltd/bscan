@@ -136,6 +136,7 @@
 
       <div class="help-footer">
         <p>Can't find what you're looking for?</p>
+        <a href="https://help.wisrs.com" target="_blank" rel="noopener" class="help-contact" style="margin-right:8px">Visit Full Help Centre</a>
         <a href="/support" class="help-contact">Talk to Support</a>
       </div>
     {/if}

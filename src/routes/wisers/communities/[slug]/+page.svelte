@@ -17,6 +17,10 @@
   let postImage = $state<File|null>(null);
   let postImagePreview = $state('');
   let joining = $state(false);
+  let mediaAttachments = $state<{ file: File; preview: string; status: 'uploading'|'done'|'failed'; id?: string; type: string; name: string; size: number }[]>([]);
+  const MAX_MEDIA_FILES = 4;
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  const ACCEPTED_TYPES = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
   let theme = $state<'dark'|'light'>('dark');
   let showSettings = $state(false);
   let settingsName = $state('');
@@ -96,17 +100,61 @@
     } catch {}
   }
 
+  function formatFileSize(b: number) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(1) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
+
+  function handleMediaSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = input.files;
+    if (!files) return;
+    const remaining = MAX_MEDIA_FILES - mediaAttachments.length;
+    if (remaining <= 0) { alert('Max ' + MAX_MEDIA_FILES + ' files'); return; }
+    const toAdd = Array.from(files).slice(0, remaining);
+    for (const file of toAdd) {
+      if (file.size > MAX_FILE_SIZE) { alert(file.name + ' exceeds 50 MB limit'); continue; }
+      const type = file.type.startsWith('image') ? 'image' : file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'document';
+      const preview = type === 'image' ? URL.createObjectURL(file) : '';
+      const entry = { file, preview, status: 'uploading' as const, type, name: file.name, size: file.size };
+      mediaAttachments = [...mediaAttachments, entry];
+      const idx = mediaAttachments.length - 1;
+      api.uploadMedia(file).then(res => {
+        mediaAttachments = mediaAttachments.map((a, i) => i === idx ? { ...a, status: 'done' as const, id: res.id } : a);
+      }).catch(() => {
+        mediaAttachments = mediaAttachments.map((a, i) => i === idx ? { ...a, status: 'failed' as const } : a);
+      });
+    }
+    input.value = '';
+  }
+
+  function removeMedia(idx: number) {
+    const a = mediaAttachments[idx];
+    if (a?.preview) URL.revokeObjectURL(a.preview);
+    mediaAttachments = mediaAttachments.filter((_, i) => i !== idx);
+  }
+
+  function retryMedia(idx: number) {
+    const a = mediaAttachments[idx];
+    if (!a) return;
+    mediaAttachments = mediaAttachments.map((m, i) => i === idx ? { ...m, status: 'uploading' as const } : m);
+    api.uploadMedia(a.file).then(res => {
+      mediaAttachments = mediaAttachments.map((m, i) => i === idx ? { ...m, status: 'done' as const, id: res.id } : m);
+    }).catch(() => {
+      mediaAttachments = mediaAttachments.map((m, i) => i === idx ? { ...m, status: 'failed' as const } : m);
+    });
+  }
+
   async function submitPost() {
-    if (!newPost.trim() || posting) return;
+    if ((!newPost.trim() && !mediaAttachments.length) || posting) return;
+    if (mediaAttachments.some(a => a.status === 'uploading')) { alert('Please wait for uploads to finish'); return; }
+    if (mediaAttachments.some(a => a.status === 'failed')) { alert('Some uploads failed. Remove or retry them.'); return; }
     posting = true;
     try {
       let imageUrl = '';
-      if (postImage) {
-        const res = await api.uploadPostImage(postImage);
-        imageUrl = res.url;
-      }
-      await api.postToCommunity(slug, { content: newPost, image_url: imageUrl });
+      if (postImage) { const res = await api.uploadPostImage(postImage); imageUrl = res.url; }
+      const mediaIds = mediaAttachments.filter(a => a.id).map(a => a.id!);
+      await api.postToCommunity(slug, { content: newPost, image_url: imageUrl, media_ids: mediaIds.length ? mediaIds : undefined });
       newPost = ''; postImage = null; postImagePreview = '';
+      mediaAttachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
+      mediaAttachments = [];
       const feed = await api.getCommunityFeedBySlug(slug);
       posts = feed.posts || [];
     } catch {}
@@ -176,13 +224,43 @@
           {#if postImagePreview}
             <div class="cd-img-preview"><img src={postImagePreview} alt="" /><button onclick={removeImage}>✕</button></div>
           {/if}
+          {#if mediaAttachments.length > 0}
+            <div class="cd-media-previews">
+              {#each mediaAttachments as a, i}
+                <div class="cd-media-thumb" class:cd-media-failed={a.status === 'failed'}>
+                  {#if a.type === 'image' && a.preview}
+                    <img class="cd-media-thumb-img" src={a.preview} alt="" />
+                  {:else}
+                    <div class="cd-media-thumb-icon">
+                      {#if a.type === 'video'}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      {:else if a.type === 'audio'}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                      {:else}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      {/if}
+                    </div>
+                  {/if}
+                  {#if a.status === 'uploading'}
+                    <div class="cd-media-overlay"><div class="cd-media-spinner"></div></div>
+                  {/if}
+                  {#if a.status === 'failed'}
+                    <div class="cd-media-overlay cd-media-fail-overlay"><button class="cd-media-retry" onclick={() => retryMedia(i)}>Retry</button></div>
+                  {/if}
+                  <button class="cd-media-remove" onclick={() => removeMedia(i)}>✕</button>
+                </div>
+              {/each}
+              <span class="cd-media-count">{mediaAttachments.length}/{MAX_MEDIA_FILES}</span>
+            </div>
+          {/if}
           <div class="cd-composer-bar">
-            <button class="cd-photo-btn" aria-label="Add image" onclick={() => document.getElementById('cd-img-input')?.click()}>
+            <button class="cd-photo-btn" aria-label="Add media" onclick={() => document.getElementById('cd-media-input')?.click()} title="Add media">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
             </button>
-            <input id="cd-img-input" type="file" accept="image/*" onchange={handleImageSelect} style="display:none" />
+            {#if mediaAttachments.length > 0}<span class="cd-media-badge">{mediaAttachments.length}</span>{/if}
+            <input id="cd-media-input" type="file" accept={ACCEPTED_TYPES} multiple onchange={handleMediaSelect} style="display:none" />
             <span class="cd-char">{newPost.length}/2000</span>
-            <button class="cd-post-btn" onclick={submitPost} disabled={posting || !newPost.trim()}>{posting ? 'Posting...' : 'Post'}</button>
+            <button class="cd-post-btn" onclick={submitPost} disabled={posting || (!newPost.trim() && !mediaAttachments.length) || mediaAttachments.some(a => a.status === 'uploading')}>{mediaAttachments.some(a => a.status === 'uploading') ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
           </div>
         </div>
       {:else}
@@ -205,7 +283,27 @@
               <div class="cd-milestone">🏆 {post.milestone_value}</div>
             {/if}
             <div class="cd-post-body">{post.content}</div>
-            {#if post.image_url}<div class="cd-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
+            {#if post.image_url}<div class="cd-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>{/if}
+            {#if post.media?.length}
+              <div class="cd-post-media">
+                {#each post.media.filter((m: any) => m.type === 'image') as m}
+                  <div class="cd-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type === 'video') as m}
+                  <div class="cd-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type === 'audio') as m}
+                  <div class="cd-media-audio"><span>🎵</span><audio src={m.url} controls preload="metadata"></audio></div>
+                {/each}
+                {#each post.media.filter((m: any) => m.type !== 'image' && m.type !== 'video' && m.type !== 'audio') as m}
+                  <a href={m.url} target="_blank" rel="noopener" class="cd-media-doc">
+                    <span>📄</span>
+                    <div class="cd-media-doc-info"><div class="cd-media-doc-name">{m.filename || 'File'}</div>{#if m.size}<div class="cd-media-doc-size">{formatFileSize(m.size)}</div>{/if}</div>
+                    <span class="cd-media-doc-dl">↓</span>
+                  </a>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/each}
       {/if}
@@ -474,6 +572,43 @@
   .cd-about-category { background: rgba(245,166,35,0.1); color: var(--cd-gold); padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: auto; }
 
   .cd-badge { display:inline-flex;vertical-align:middle;margin-left:2px; }
+
+  /* Media previews in composer */
+  .cd-media-previews { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; align-items: center; }
+  .cd-media-thumb { width: 80px; height: 80px; border-radius: 10px; border: 1px solid var(--cd-bd); overflow: hidden; position: relative; background: var(--cd-card); }
+  .cd-media-thumb-img { width: 100%; height: 100%; object-fit: cover; }
+  .cd-media-thumb-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--cd-t3); }
+  .cd-media-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+  .cd-media-fail-overlay { background: rgba(239,68,68,0.3); }
+  .cd-media-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: var(--cd-gold); border-radius: 50%; animation: cdSpin 0.7s linear infinite; }
+  @keyframes cdSpin { to { transform: rotate(360deg); } }
+  .cd-media-retry { background: rgba(255,255,255,0.9); color: #ef4444; border: none; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .cd-media-remove { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+  .cd-media-count { font-size: 11px; color: var(--cd-gold); font-weight: 700; }
+  .cd-media-badge { font-size: 10px; background: var(--cd-gold); color: #000; border-radius: 8px; padding: 1px 6px; font-weight: 700; }
+  .cd-media-failed { border-color: #ef4444; }
+
+  /* Media rendering in posts */
+  .cd-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
+  .cd-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; max-height: 300px; }
+  .cd-grid-3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 400px; }
+  .cd-grid-3 .cd-grid-item:first-child { grid-row: 1 / 3; }
+  .cd-grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 300px; }
+  .cd-grid-item { overflow: hidden; border-radius: 12px; }
+  .cd-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+  .cd-media-video { border-radius: 12px; overflow: hidden; margin-top: 6px; }
+  .cd-media-video video { width: 100%; max-height: 500px; background: #000; }
+  .cd-media-audio { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 12px; margin-top: 6px; }
+  .cd-media-audio audio { flex: 1; min-width: 0; height: 32px; }
+  .cd-media-doc { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 12px; text-decoration: none; color: var(--cd-t); margin-top: 6px; transition: border-color 0.15s; }
+  .cd-media-doc:hover { border-color: var(--cd-gold); }
+  .cd-media-doc-info { flex: 1; min-width: 0; }
+  .cd-media-doc-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cd-media-doc-size { font-size: 12px; color: var(--cd-t3); }
+  .cd-media-doc-dl { color: var(--cd-t3); font-size: 18px; }
+  .cd-page.light .cd-media-spinner { border-color: rgba(0,0,0,0.15); }
+  .cd-page.light .cd-media-doc { background: #f0f2f5; border-color: #dddfe2; }
+  .cd-page.light .cd-media-audio { background: #f0f2f5; border-color: #dddfe2; }
 
   @media (max-width: 700px) {
     .cd-about-grid { grid-template-columns: 1fr; }

@@ -8,6 +8,9 @@
   import ImageLightbox from '$lib/components/ImageLightbox.svelte';
   import OnboardingWizard from '$lib/components/OnboardingWizard.svelte';
   import WisersLanding from '$lib/components/WisersLanding.svelte';
+  import { sponsoredAd } from '$lib/ad-config';
+
+  let profileStats = $state<{ posts: number; followers: number; following: number }>({ posts: 0, followers: 0, following: 0 });
 
   let activeView = $state<'feed' | 'explore' | 'friends' | 'messages' | 'bookmarks' | 'activity'>('feed');
   let friends = $state<any[]>([]);
@@ -29,6 +32,95 @@
   let postImage = $state<File | null>(null);
   let postImagePreview = $state('');
   let uploading = $state(false);
+
+  // Multi-media upload state
+  interface MediaAttachment {
+    file: File;
+    preview: string;
+    status: 'uploading' | 'done' | 'failed';
+    mediaId: string;
+    mediaUrl: string;
+    mediaType: string;
+    filename: string;
+    size: number;
+  }
+  let mediaAttachments = $state<MediaAttachment[]>([]);
+  const MAX_MEDIA_FILES = 4;
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  const ACCEPTED_TYPES = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
+
+  function getMediaCategory(file: File): string {
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.type.startsWith('audio/')) return 'audio';
+    return 'document';
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  async function handleMediaSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    const remaining = MAX_MEDIA_FILES - mediaAttachments.length;
+    if (remaining <= 0) { alert('Max ' + MAX_MEDIA_FILES + ' files'); input.value = ''; return; }
+    const toAdd = Array.from(files).slice(0, remaining);
+    for (const file of toAdd) {
+      if (file.size > MAX_FILE_SIZE) { alert(file.name + ' exceeds 50MB limit'); continue; }
+      const category = getMediaCategory(file);
+      const preview = category === 'image' ? URL.createObjectURL(file) : '';
+      const attachment: MediaAttachment = {
+        file,
+        preview,
+        status: 'uploading',
+        mediaId: '',
+        mediaUrl: '',
+        mediaType: category,
+        filename: file.name,
+        size: file.size,
+      };
+      mediaAttachments = [...mediaAttachments, attachment];
+      const idx = mediaAttachments.length - 1;
+      api.uploadMedia(file).then((res) => {
+        mediaAttachments = mediaAttachments.map((a, i) =>
+          i === idx ? { ...a, status: 'done' as const, mediaId: res.id, mediaUrl: res.url } : a
+        );
+      }).catch(() => {
+        mediaAttachments = mediaAttachments.map((a, i) =>
+          i === idx ? { ...a, status: 'failed' as const } : a
+        );
+      });
+    }
+    input.value = '';
+  }
+
+  function removeMediaAttachment(idx: number) {
+    const a = mediaAttachments[idx];
+    if (a && a.preview) URL.revokeObjectURL(a.preview);
+    mediaAttachments = mediaAttachments.filter((_, i) => i !== idx);
+  }
+
+  function retryMediaUpload(idx: number) {
+    const a = mediaAttachments[idx];
+    if (!a || a.status !== 'failed') return;
+    mediaAttachments = mediaAttachments.map((att, i) =>
+      i === idx ? { ...att, status: 'uploading' as const } : att
+    );
+    api.uploadMedia(a.file).then((res) => {
+      mediaAttachments = mediaAttachments.map((att, i) =>
+        i === idx ? { ...att, status: 'done' as const, mediaId: res.id, mediaUrl: res.url } : att
+      );
+    }).catch(() => {
+      mediaAttachments = mediaAttachments.map((att, i) =>
+        i === idx ? { ...att, status: 'failed' as const } : att
+      );
+    });
+  }
+
   let isMilestone = $state(false);
   let milestoneType = $state('revenue');
   let milestoneValue = $state('');
@@ -99,6 +191,11 @@
       }
       // Load follow states for feed posts
       loadFollowStates();
+      // Load profile stats
+      try {
+        const me = await api.getMe();
+        profileStats = { posts: (me as any).post_count || 0, followers: (me as any).followers_count || 0, following: (me as any).following_count || 0 };
+      } catch {}
     }
     loading = false;
     if (typeof document !== 'undefined') {
@@ -188,22 +285,33 @@
   }
 
   async function submitPost() {
-    if ((!newPost.trim() && !postImage && !(isMilestone && milestoneValue.trim())) || posting) return;
+    const hasMedia = mediaAttachments.length > 0;
+    const hasLegacyImage = !!postImage;
+    if ((!newPost.trim() && !hasLegacyImage && !hasMedia && !(isMilestone && milestoneValue.trim())) || posting) return;
+    // Block if any media is still uploading
+    if (hasMedia && mediaAttachments.some(a => a.status === 'uploading')) { alert('Please wait for uploads to finish'); return; }
+    // Block if any media failed
+    if (hasMedia && mediaAttachments.some(a => a.status === 'failed')) { alert('Some uploads failed. Remove or retry them.'); return; }
     posting = true;
     try {
       let imageUrl = '';
-      if (postImage) {
+      // Legacy single image path (backward compat)
+      if (hasLegacyImage && !hasMedia) {
         uploading = true;
-        const res = await api.uploadPostImage(postImage);
+        const res = await api.uploadPostImage(postImage!);
         imageUrl = res.url;
         uploading = false;
       }
+      const mediaIds = hasMedia ? mediaAttachments.filter(a => a.status === 'done' && a.mediaId).map(a => a.mediaId) : [];
+      const defaultContent = hasMedia ? '' : (hasLegacyImage ? '📷' : '');
       if (isMilestone && milestoneValue.trim()) {
         await api.createMilestone({ content: newPost.trim() || milestoneValue, milestone_type: milestoneType, milestone_value: milestoneValue, image_url: imageUrl });
       } else {
-        await api.createPost(newPost.trim() || '📷', 'text', '', 0, imageUrl);
+        await api.createPost(newPost.trim() || defaultContent, 'text', '', 0, imageUrl, mediaIds);
       }
-      newPost = ''; postImage = null; postImagePreview = ''; isMilestone = false; milestoneValue = '';
+      // Clean up previews
+      for (const a of mediaAttachments) { if (a.preview) URL.revokeObjectURL(a.preview); }
+      newPost = ''; postImage = null; postImagePreview = ''; isMilestone = false; milestoneValue = ''; mediaAttachments = [];
       showToast('Post created');
       await loadFeed();
     } catch { uploading = false; }
@@ -625,6 +733,13 @@
           <div class="w-avatar-lg">{initial($auth.user.name || $auth.user.email)}</div>
           <div class="w-profile-name">{$auth.user.name}</div>
           <div class="w-profile-handle">@{$auth.user.username || 'you'}</div>
+          <div class="w-profile-stats">
+            <div class="w-stat"><span class="w-stat-num">{profileStats.posts}</span><span class="w-stat-label">Posts</span></div>
+            <div class="w-stat-sep"></div>
+            <div class="w-stat"><span class="w-stat-num">{profileStats.followers}</span><span class="w-stat-label">Followers</span></div>
+            <div class="w-stat-sep"></div>
+            <div class="w-stat"><span class="w-stat-num">{profileStats.following}</span><span class="w-stat-label">Following</span></div>
+          </div>
         </a>
       {/if}
       <nav class="w-sidebar-nav">
@@ -661,12 +776,12 @@
           <a href="/wisers/messages" class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Messages
-          {#if $wsUnreadDMs > 0}<span class="w-count" style="background:#ef4444;color:#fff;">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
+          {#if $wsUnreadDMs > 0}<span class="w-count w-badge-amber">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
         </a>
         <a href="/notifications" class="w-sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
           Notifications
-          {#if $wsNotifCount > 0}<span class="w-count" style="background:#ef4444;color:#fff;">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
+          {#if $wsNotifCount > 0}<span class="w-count w-badge-amber">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
         </a>{/if}
       </nav>
       <div class="w-sidebar-divider"></div>
@@ -778,6 +893,42 @@
             </div>
             {/if}
             {#if postImagePreview}<div class="w-img-preview"><img src={postImagePreview} alt="Preview" /><button class="w-img-remove" onclick={removeImage}>✕</button></div>{/if}
+            {#if mediaAttachments.length > 0}
+            <div class="w-media-previews">
+              {#each mediaAttachments as att, idx}
+                <div class="w-media-thumb" class:w-media-uploading={att.status === 'uploading'} class:w-media-failed={att.status === 'failed'}>
+                  {#if att.mediaType === 'image' && att.preview}
+                    <img src={att.preview} alt={att.filename} class="w-media-thumb-img" />
+                  {:else if att.mediaType === 'video'}
+                    <div class="w-media-thumb-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      <span class="w-media-thumb-name">{att.filename}</span>
+                    </div>
+                  {:else if att.mediaType === 'audio'}
+                    <div class="w-media-thumb-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                      <span class="w-media-thumb-name">{att.filename}</span>
+                    </div>
+                  {:else}
+                    <div class="w-media-thumb-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span class="w-media-thumb-name">{att.filename}</span>
+                      <span class="w-media-thumb-size">{formatFileSize(att.size)}</span>
+                    </div>
+                  {/if}
+                  {#if att.status === 'uploading'}
+                    <div class="w-media-thumb-overlay"><div class="w-media-spinner"></div></div>
+                  {/if}
+                  {#if att.status === 'failed'}
+                    <div class="w-media-thumb-overlay w-media-fail-overlay">
+                      <button class="w-media-retry-btn" onclick={() => retryMediaUpload(idx)} type="button">Retry</button>
+                    </div>
+                  {/if}
+                  <button class="w-img-remove" onclick={() => removeMediaAttachment(idx)} type="button">✕</button>
+                </div>
+              {/each}
+            </div>
+            {/if}
             <div class="w-composer-bottom">
               <div class="w-feed-tabs">
                 <button class:active={feedType === 'all'} onclick={() => { feedType = 'all'; loadFeed(); }}>Everyone</button>
@@ -792,9 +943,11 @@
               <button class="w-sched-btn" class:active={showScheduler} onclick={() => showScheduler = !showScheduler} type="button" title="Schedule post">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={showScheduler ? '#f5a623' : 'currentColor'} stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </button>
-              <button class="w-img-btn" onclick={() => document.getElementById('post-img-input')?.click()} type="button" title="Add image">
+              <button class="w-img-btn" onclick={() => document.getElementById('post-media-input')?.click()} type="button" title="Add media">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                {#if mediaAttachments.length > 0}<span class="w-media-count">{mediaAttachments.length}/{MAX_MEDIA_FILES}</span>{/if}
               </button>
+              <input id="post-media-input" type="file" accept={ACCEPTED_TYPES} onchange={handleMediaSelect} multiple style="display:none" />
               <input id="post-img-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,.heic,.heif" onchange={handleImageSelect} style="display:none" />
               <div class="w-emoji-wrap">
               <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
@@ -808,7 +961,7 @@
               {/if}
             </div>
             <span class="w-char">{newPost.length}/2000</span>
-              <button class="w-post-btn" onclick={submitPost} disabled={posting || (!newPost.trim() && !postImage && !(isMilestone && milestoneValue.trim()))}>{uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
+              <button class="w-post-btn" onclick={submitPost} disabled={posting || uploading || mediaAttachments.some(a => a.status === 'uploading') || (!newPost.trim() && !postImage && mediaAttachments.length === 0 && !(isMilestone && milestoneValue.trim()))}>{mediaAttachments.some(a => a.status === 'uploading') ? 'Uploading...' : uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
             </div>
           </div>
         {:else}
@@ -858,7 +1011,7 @@
                   <span class="w-post-time">{timeAgo(post.created_at)}</span>
                   {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
                 </div>
-                {#if $auth.token && post.username !== $auth.user?.username}
+                {#if $auth.token && post.username !== $auth.user?.username && post.user_id !== $auth.user?.id}
                   <button class="w-follow-inline" class:following={followStates[post.username]} onclick={() => toggleFeedFollow(post.username)}>
                     {followStates[post.username] ? 'Following' : 'Follow'}
                   </button>
@@ -925,7 +1078,30 @@
               {/if}
               <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
-              {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
+              {#if post.image_url && post.image_url.trim()}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
+              {#if post.media?.filter((m: any) => m.url && m.url.trim()).length}
+                <div class="w-post-media" class:w-media-grid-2={post.media.filter((m: any) => m.type === 'image' && m.url).length === 2} class:w-media-grid-3={post.media.filter((m: any) => m.type === 'image' && m.url).length === 3} class:w-media-grid-4={post.media.filter((m: any) => m.type === 'image' && m.url).length >= 4}>
+                  {#each post.media.filter((m: any) => m.url && m.url.trim()) as m}
+                    {#if m.type === 'image'}
+                      <div class="w-media-item"><img src={m.url} alt="" loading="lazy" onclick={() => openLightbox(m.url)} onerror={(e) => { const item = e.currentTarget.parentElement; if (item) { item.style.display = 'none'; const container = item.parentElement; if (container && !container.querySelector('.w-media-item:not([style*="display: none"])')) container.style.display = 'none'; } }} style="cursor:zoom-in" /></div>
+                    {:else if m.type === 'video'}
+                      <div class="w-media-item w-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                    {:else if m.type === 'document'}
+                      <a href={m.url} target="_blank" rel="noopener" class="w-media-doc">
+                        <span class="w-doc-icon">📄</span>
+                        <span class="w-doc-info"><span class="w-doc-name">{m.filename}</span><span class="w-doc-size">{formatFileSize(m.size)}</span></span>
+                        <span class="w-doc-dl">↓</span>
+                      </a>
+                    {:else if m.type === 'audio'}
+                      <div class="w-media-audio">
+                        <span class="w-audio-icon">🎵</span>
+                        <span class="w-audio-name">{m.filename}</span>
+                        <audio src={m.url} controls preload="metadata"></audio>
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
                 <div class="w-scan-card">
                   <span>{post.scan_url}</span>
@@ -934,7 +1110,7 @@
               {/if}
               {#if linkPreviews[post.id]?.title || linkPreviews[post.id]?.image}
                 <a href={linkPreviews[post.id]?.url} target="_blank" rel="noopener" class="w-link-preview">
-                  {#if linkPreviews[post.id]?.image}<img src={linkPreviews[post.id]?.image} alt="" class="w-lp-img" />{/if}
+                  {#if linkPreviews[post.id]?.image}<img src={linkPreviews[post.id]?.image} alt="" class="w-lp-img" onerror={(e) => { e.currentTarget.style.display = 'none'; }} />{/if}
                   <div class="w-lp-text">
                     <div class="w-lp-title">{linkPreviews[post.id]?.title || ''}</div>
                     {#if linkPreviews[post.id]?.description}<div class="w-lp-desc">{linkPreviews[post.id]?.description}</div>{/if}
@@ -1171,8 +1347,9 @@
         {#if trendingTags.length > 0}
           <div class="w-card w-trending">
             <h3 class="w-card-title">Trending</h3>
-            {#each trendingTags.slice(0, 8) as tag}
+            {#each trendingTags.slice(0, 8) as tag, i}
               <a href="/wisers?tag={tag.tag}" class="w-trending-item">
+                <span class="w-trending-rank">{i + 1}</span>
                 <span class="w-trending-tag">#{tag.tag}</span>
                 <span class="w-trending-count">{tag.post_count} posts</span>
               </a>
@@ -1189,7 +1366,7 @@
                 <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
                 <div class="w-suggest-real">{u.display_name || u.name}</div>
               </div>
-              <button class="w-connect-sm" onclick={() => sendRequest(u.username)}>Add</button>
+              <button class="w-connect-sm w-follow-sm" onclick={() => sendRequest(u.username)}>Follow</button>
             </div>
           {/each}
         </div>
@@ -1222,6 +1399,15 @@
               <span class="w-pending-label">Pending</span>
             </div>
           {/each}
+        </div>
+      {/if}
+      {#if sponsoredAd.active}
+        <div class="w-widget w-ad-block">
+          <div class="w-ad-label">Sponsored</div>
+          {#if sponsoredAd.image_url}<img src={sponsoredAd.image_url} alt="" class="w-ad-img" />{/if}
+          <h4 class="w-ad-title">{sponsoredAd.title}</h4>
+          <p class="w-ad-desc">{sponsoredAd.description}</p>
+          <a href={sponsoredAd.cta_url} target="_blank" rel="noopener" class="w-ad-cta">{sponsoredAd.cta_text}</a>
         </div>
       {/if}
       <div class="w-widget w-footer">
@@ -1423,12 +1609,20 @@
   .w-sidebar-back { font-size: 14px; color: var(--wt3); text-decoration: none; padding: 10px 14px; }
   .w-sidebar-back:hover { color: var(--wgold); }
 
+  .w-profile-stats { display: flex; align-items: center; gap: 0; margin-top: 12px; width: 100%; justify-content: center; }
+  .w-stat { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .w-stat-num { font-size: 16px; font-weight: 800; color: var(--wt); }
+  .w-stat-label { font-size: 12px; color: var(--wt3); margin-top: 1px; }
+  .w-stat-sep { width: 1px; height: 24px; background: var(--wbd); }
+  .w-badge-amber { background: #e8940c !important; color: #0f1724 !important; font-weight: 700; font-size: 12px; min-width: 20px; text-align: center; }
+
   .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); overflow-y: auto; height: 100%; }
 
   .w-sidebar-right { width: 280px; padding: 16px 12px; height: 100%; overflow-y: auto; flex-shrink: 0; }
 
   .w-composer { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .w-composer-top { display: flex; gap: 10px; }
+  .w-composer-top { display: flex; gap: 12px; align-items: flex-start; }
+  .w-composer-top .w-avatar-sm { width: 40px; height: 40px; font-size: 17px; }
   .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 17px; resize: none; outline: none; font-family: inherit; min-height: 50px; }
   .w-composer textarea::placeholder { color: var(--wt3); }
   .w-composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
@@ -1533,8 +1727,8 @@
   .w-suggest-info { flex: 1; min-width: 0; }
   .w-suggest-name { font-size: 14px; font-weight: 600; color: var(--wgold); text-decoration: none; }
   .w-suggest-real { font-size: 13px; color: var(--wt3); }
-  .w-connect-sm { height: 30px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
-  .w-connect-sm:hover { background: var(--wgold); color: #000; }
+  .w-connect-sm { padding: 8px 20px; border-radius: 20px; border: none; background: #e8940c; color: #0f1724; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
+  .w-connect-sm:hover { background: #d07e0a; }
   .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 13px; width: auto; padding: 6px 12px; border-radius: 12px; }
   .w-footer { font-size: 13px; color: var(--wt3); }
   .w-footer a { color: var(--wt3); text-decoration: none; }
@@ -1577,6 +1771,15 @@
   .w-trending-item:hover { background: rgba(255,255,255,0.04); }
   .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 16px; }
   .w-trending-count { color: var(--wt3); font-size: 14px; }
+  .w-trending-rank { font-size: 11px; font-weight: 700; color: #3d4554; min-width: 16px; }
+  .w-follow-sm { font-weight: 700; }
+  .w-ad-block { border: 1px solid rgba(232,148,12,0.2); }
+  .w-ad-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--wt3); margin-bottom: 8px; }
+  .w-ad-img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
+  .w-ad-title { font-size: 15px; font-weight: 700; color: var(--wt); margin: 0 0 6px; }
+  .w-ad-desc { font-size: 13px; color: var(--wt2); margin: 0 0 12px; line-height: 1.4; }
+  .w-ad-cta { display: inline-block; padding: 8px 20px; border-radius: 20px; background: #e8940c; color: #0f1724; font-weight: 700; font-size: 14px; text-decoration: none; }
+  .w-ad-cta:hover { background: #d07e0a; }
   .w-activity-header { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px; }
   .w-activity-count { font-size:14px;color:var(--wt3,#606770); }
   .w-activity-list { display:flex;flex-direction:column; }
@@ -1607,8 +1810,74 @@
   .w-img-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid var(--wbd); }
   .w-img-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
   .w-img-remove:hover { background: #ef4444; }
+
+  /* Multi-media upload previews */
+  .w-media-previews { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .w-media-thumb { position: relative; width: 100px; height: 100px; border-radius: 10px; overflow: hidden; border: 1px solid var(--wbd); background: var(--wcard); flex-shrink: 0; }
+  .w-media-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .w-media-thumb-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 8px; text-align: center; color: var(--wt2); gap: 4px; }
+  .w-media-thumb-icon svg { opacity: 0.7; flex-shrink: 0; }
+  .w-media-thumb-name { font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; color: var(--wt); }
+  .w-media-thumb-size { font-size: 9px; color: var(--wt3); }
+  .w-media-thumb-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+  .w-media-fail-overlay { background: rgba(239,68,68,0.3); }
+  .w-media-spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-top-color: var(--wgold); border-radius: 50%; animation: mediaSpin 0.7s linear infinite; }
+  @keyframes mediaSpin { to { transform: rotate(360deg); } }
+  .w-media-retry-btn { background: rgba(255,255,255,0.9); color: #ef4444; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .w-media-retry-btn:hover { background: #fff; }
+  .w-media-uploading { opacity: 0.7; }
+  .w-media-failed { border-color: #ef4444; }
+  .w-media-count { font-size: 10px; color: var(--wgold); font-weight: 700; margin-left: 2px; }
+  .w.light .w-media-thumb { border-color: var(--wbd); background: #f5f5f5; }
+  .w.light .w-media-retry-btn { background: rgba(0,0,0,0.8); color: #fff; }
+  .w.light .w-media-retry-btn:hover { background: #000; }
+
   .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; }
+
+  /* ═══ MULTI-MEDIA RENDERING ═══ */
+  .w-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
+  .w-media-item { overflow: hidden; border-radius: 12px; }
+  .w-media-item img { width: 100%; max-height: 500px; object-fit: cover; display: block; cursor: zoom-in; }
+
+  /* 2-image grid: side by side */
+  .w-media-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .w-media-grid-2 .w-media-item img { max-height: 300px; }
+
+  /* 3-image grid: large left, two stacked right */
+  .w-media-grid-3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; }
+  .w-media-grid-3 .w-media-item:first-child { grid-row: 1 / 3; }
+  .w-media-grid-3 .w-media-item img { width: 100%; height: 100%; max-height: 400px; object-fit: cover; }
+
+  /* 4+ image grid: 2x2 */
+  .w-media-grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; }
+  .w-media-grid-4 .w-media-item img { max-height: 240px; }
+
+  /* Video */
+  .w-media-video { border-radius: 12px; overflow: hidden; }
+  .w-media-video video { width: 100%; max-height: 500px; border-radius: 12px; display: block; background: #000; }
+
+  /* Document card */
+  .w-media-doc { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 14px 16px; background: var(--wc, #111117); border: 1px solid var(--wbd); border-radius: 12px; text-decoration: none; color: var(--wt); transition: border-color 0.15s; }
+  .w-media-doc:hover { border-color: var(--wgold); }
+  .w-doc-icon { font-size: 28px; flex-shrink: 0; }
+  .w-doc-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .w-doc-name { font-size: 15px; font-weight: 600; color: var(--wt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .w-doc-size { font-size: 13px; color: var(--wt2); margin-top: 2px; }
+  .w-doc-dl { font-size: 22px; color: var(--wgold); flex-shrink: 0; font-weight: 700; }
+
+  /* Audio player */
+  .w-media-audio { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 12px 16px; background: var(--wc, #111117); border: 1px solid var(--wbd); border-radius: 12px; }
+  .w-audio-icon { font-size: 22px; flex-shrink: 0; }
+  .w-audio-name { font-size: 14px; font-weight: 600; color: var(--wt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 1; }
+  .w-media-audio audio { flex: 1; min-width: 0; height: 36px; }
+
+  /* Light theme overrides for media */
+  .w.light .w-media-doc { background: #f0f2f5; border-color: #dddfe2; }
+  .w.light .w-media-doc:hover { border-color: #d4a017; }
+  .w.light .w-media-audio { background: #f0f2f5; border-color: #dddfe2; }
+  .w.light .w-media-spinner { border-color: rgba(0,0,0,0.15); }
+
   .wc-sidebar-link { display: block; background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px 16px; color: #f5a623; text-decoration: none; font-weight: 700; font-size: 16px; margin-bottom: 12px; text-align: center; transition: border-color 0.15s; }
   .wc-sidebar-link:hover { border-color: #f5a623; }
   .w-user-menu-wrap { position: relative; }
@@ -1754,6 +2023,14 @@
     .w-avatar-md { width: 40px; height: 40px; font-size: 15px; }
     .w-post-body { font-size: 17px; line-height: 1.55; }
     .w-post-img img { border-radius: 10px; max-height: 400px; }
+    .w-post-media { border-radius: 10px; }
+    .w-media-item { border-radius: 10px; }
+    .w-media-item img { max-height: 400px; }
+    .w-media-video video { border-radius: 10px; max-height: 400px; }
+    .w-media-grid-3 .w-media-item img { max-height: 300px; }
+    .w-media-grid-4 .w-media-item img { max-height: 200px; }
+    .w-media-doc { padding: 12px 14px; }
+    .w-media-audio { padding: 10px 14px; }
     .w-milestone-card { padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; }
     .w-milestone-val { font-size: 17px; }
 

@@ -712,6 +712,11 @@ export async function gscPages(site_url: string, days: number = 28): Promise<any
 	});
 }
 
+/** Connect GSC — returns { auth_url } for redirect */
+export async function gscConnect(): Promise<{ auth_url: string }> {
+	return request('/api/seo/gsc/connect');
+}
+
 /** Disconnect GSC */
 export async function gscDisconnect(): Promise<any> {
 	return request('/api/seo/gsc/disconnect', { method: 'DELETE' });
@@ -872,8 +877,16 @@ export async function uploadPostImage(file: File): Promise<{ url: string }> {
   return res.json();
 }
 
-export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0, imageUrl: string = ''): Promise<any> {
-	return request('/api/community/posts', { method: 'POST', body: JSON.stringify({ content, post_type: postType, scan_url: scanUrl, scan_score: scanScore, image_url: imageUrl }) });
+export async function uploadMedia(file: File): Promise<{id: string, url: string, thumbnail_url: string, type: string, filename: string, size: number, content_type: string, width: number, height: number, duration: number}> {
+  const fd = new FormData();
+  fd.append('file', file);
+  return request('/api/media/upload', { method: 'POST', body: fd });
+}
+
+export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0, imageUrl: string = '', mediaIds: string[] = []): Promise<any> {
+	const body: Record<string, any> = { content, post_type: postType, scan_url: scanUrl, scan_score: scanScore, image_url: imageUrl };
+	if (mediaIds.length > 0) body.media_ids = mediaIds;
+	return request('/api/community/posts', { method: 'POST', body: JSON.stringify(body) });
 }
 export async function deletePost(id: number): Promise<any> {
 	return request(`/api/community/posts/${id}`, { method: 'DELETE' });
@@ -901,8 +914,12 @@ export async function getConversations(): Promise<any> {
 export async function getMessages(convId: number, markRead: boolean = false): Promise<any> {
   return request('/api/community/conversations/' + convId + '/messages?mark_read=' + markRead);
 }
-export async function sendMessage(username: string, content: string): Promise<any> {
-	return request(`/api/community/messages/${username}`, { method: 'POST', body: JSON.stringify({ content }) });
+export async function sendMessage(username: string, content: string, mediaId?: string, encryptedContent?: string, nonce?: string): Promise<any> {
+	const body: Record<string, any> = { content };
+	if (mediaId) body.media_id = mediaId;
+	if (encryptedContent) body.encrypted_content = encryptedContent;
+	if (nonce) body.nonce = nonce;
+	return request(`/api/community/messages/${username}`, { method: 'POST', body: JSON.stringify(body) });
 }
 export async function getUnreadCount(): Promise<{ unread: number }> {
 	return request('/api/community/unread-count');
@@ -1245,8 +1262,10 @@ export async function leaveCommunity(slug: string): Promise<any> {
 export async function getCommunityFeedBySlug(slug: string, page: number = 1): Promise<any> {
   return request('/api/wisers/communities/' + slug + '/feed?page=' + page);
 }
-export async function postToCommunity(slug: string, data: { content: string; image_url?: string; milestone_type?: string; milestone_value?: string }): Promise<any> {
-  return request('/api/wisers/communities/' + slug + '/post', { method: 'POST', body: JSON.stringify(data) });
+export async function postToCommunity(slug: string, data: { content: string; image_url?: string; milestone_type?: string; milestone_value?: string; media_ids?: string[] }): Promise<any> {
+  const body: Record<string, any> = { ...data };
+  if (!body.media_ids?.length) delete body.media_ids;
+  return request('/api/wisers/communities/' + slug + '/post', { method: 'POST', body: JSON.stringify(body) });
 }
 export async function getCommunityMembers(slug: string, page: number = 1): Promise<any> {
   return request('/api/wisers/communities/' + slug + '/members?page=' + page);
@@ -1372,4 +1391,24 @@ export async function sendAiCoach(message: string, history: { role: string; cont
 		method: 'POST',
 		body: JSON.stringify({ message, history })
 	});
+}
+
+// ═══════════════════════════════════════════════
+// ENCRYPTION KEYS
+// ═══════════════════════════════════════════════
+
+export async function uploadEncryptionKey(publicKey: string): Promise<any> {
+	return request('/api/keys/upload', { method: 'POST', body: JSON.stringify({ public_key: publicKey }) });
+}
+export async function getEncryptionKey(userId: string): Promise<{ public_key: string }> {
+	return request(`/api/keys/${userId}`);
+}
+export async function backupKey(encryptedKey: string): Promise<any> {
+	return request('/api/keys/backup', { method: 'POST', body: JSON.stringify({ encrypted_key: encryptedKey }) });
+}
+export async function getKeyBackup(): Promise<{ encrypted_key: string }> {
+	return request('/api/keys/backup');
+}
+export async function deleteKeyBackup(): Promise<any> {
+	return request('/api/keys/backup', { method: 'DELETE' });
 }
