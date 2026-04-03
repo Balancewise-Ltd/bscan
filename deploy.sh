@@ -18,6 +18,9 @@ cd "$(dirname "$0")"
 echo "▸ Building frontend..."
 npm run build
 
+echo "▸ Cleaning old build..."
+ssh "$SERVER" "rm -rf $REMOTE_DIR/_app"
+
 echo "▸ Uploading build to server..."
 scp -r build/* "$SERVER:$REMOTE_DIR/"
 

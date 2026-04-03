@@ -1078,7 +1078,7 @@
               {/if}
               <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
-              {#if post.image_url && post.image_url.trim()}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
+              {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} onerror={(e) => { const el = e.currentTarget as HTMLElement; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
               {#if post.media?.filter((m: any) => m.url && m.url.trim()).length}
                 <div class="w-post-media" class:w-media-grid-2={post.media.filter((m: any) => m.type === 'image' && m.url).length === 2} class:w-media-grid-3={post.media.filter((m: any) => m.type === 'image' && m.url).length === 3} class:w-media-grid-4={post.media.filter((m: any) => m.type === 'image' && m.url).length >= 4}>
                   {#each post.media.filter((m: any) => m.url && m.url.trim()) as m}
@@ -1403,11 +1403,14 @@
       {/if}
       {#if sponsoredAd.active}
         <div class="w-widget w-ad-block">
-          <div class="w-ad-label">Sponsored</div>
-          {#if sponsoredAd.image_url}<img src={sponsoredAd.image_url} alt="" class="w-ad-img" />{/if}
+          <div class="w-ad-label">SPONSORED</div>
+          <div class="w-ad-hero">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#e8940c" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8h4M7 11h6"/></svg>
+            <span class="w-ad-hero-text">BSCAN</span>
+          </div>
           <h4 class="w-ad-title">{sponsoredAd.title}</h4>
           <p class="w-ad-desc">{sponsoredAd.description}</p>
-          <a href={sponsoredAd.cta_url} target="_blank" rel="noopener" class="w-ad-cta">{sponsoredAd.cta_text}</a>
+          <a href={sponsoredAd.cta_url} target="_blank" rel="noopener" class="w-ad-cta">{sponsoredAd.cta_text} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-left:4px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></a>
         </div>
       {/if}
       <div class="w-widget w-footer">
@@ -1609,11 +1612,11 @@
   .w-sidebar-back { font-size: 14px; color: var(--wt3); text-decoration: none; padding: 10px 14px; }
   .w-sidebar-back:hover { color: var(--wgold); }
 
-  .w-profile-stats { display: flex; align-items: center; gap: 0; margin-top: 12px; width: 100%; justify-content: center; }
-  .w-stat { display: flex; flex-direction: column; align-items: center; flex: 1; }
-  .w-stat-num { font-size: 16px; font-weight: 800; color: var(--wt); }
-  .w-stat-label { font-size: 12px; color: var(--wt3); margin-top: 1px; }
-  .w-stat-sep { width: 1px; height: 24px; background: var(--wbd); }
+  .w-profile-stats { display: flex; align-items: center; gap: 24px; margin-top: 12px; width: 100%; justify-content: center; }
+  .w-stat { display: flex; flex-direction: column; align-items: center; }
+  .w-stat-num { font-size: 16px; font-weight: 600; color: var(--wt); }
+  .w-stat-label { font-size: 11px; text-transform: uppercase; color: #5a6478; margin-top: 1px; }
+  .w-stat-sep { display: none; }
   .w-badge-amber { background: #e8940c !important; color: #0f1724 !important; font-weight: 700; font-size: 12px; min-width: 20px; text-align: center; }
 
   .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); overflow-y: auto; height: 100%; }
@@ -1727,8 +1730,8 @@
   .w-suggest-info { flex: 1; min-width: 0; }
   .w-suggest-name { font-size: 14px; font-weight: 600; color: var(--wgold); text-decoration: none; }
   .w-suggest-real { font-size: 13px; color: var(--wt3); }
-  .w-connect-sm { padding: 8px 20px; border-radius: 20px; border: none; background: #e8940c; color: #0f1724; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
-  .w-connect-sm:hover { background: #d07e0a; }
+  .w-connect-sm { padding: 8px 20px; border-radius: 20px; border: none; background: #e8940c; color: #0f1724; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; transition: background 0.15s, transform 0.15s; }
+  .w-connect-sm:hover { background: #f5a623; transform: scale(1.03); }
   .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 13px; width: auto; padding: 6px 12px; border-radius: 12px; }
   .w-footer { font-size: 13px; color: var(--wt3); }
   .w-footer a { color: var(--wt3); text-decoration: none; }
@@ -1771,15 +1774,18 @@
   .w-trending-item:hover { background: rgba(255,255,255,0.04); }
   .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 16px; }
   .w-trending-count { color: var(--wt3); font-size: 14px; }
-  .w-trending-rank { font-size: 11px; font-weight: 700; color: #3d4554; min-width: 16px; }
+  .w-trending-rank { font-size: 11px; font-weight: 700; color: #3d4554; min-width: 16px; margin-right: 8px; }
   .w-follow-sm { font-weight: 700; }
-  .w-ad-block { border: 1px solid rgba(232,148,12,0.2); }
-  .w-ad-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--wt3); margin-bottom: 8px; }
+  .w-ad-block { border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; transition: border-color 0.2s; }
+  .w-ad-block:hover { border-color: rgba(232,148,12,0.3); }
+  .w-ad-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #3d4554; margin-bottom: 8px; }
+  .w-ad-hero { height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; background: rgba(232,148,12,0.06); margin-bottom: 12px; }
+  .w-ad-hero-text { font-size: 22px; font-weight: 800; color: #e8940c; letter-spacing: 2px; }
   .w-ad-img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
-  .w-ad-title { font-size: 15px; font-weight: 700; color: var(--wt); margin: 0 0 6px; }
-  .w-ad-desc { font-size: 13px; color: var(--wt2); margin: 0 0 12px; line-height: 1.4; }
-  .w-ad-cta { display: inline-block; padding: 8px 20px; border-radius: 20px; background: #e8940c; color: #0f1724; font-weight: 700; font-size: 14px; text-decoration: none; }
-  .w-ad-cta:hover { background: #d07e0a; }
+  .w-ad-title { font-size: 14px; font-weight: 700; color: var(--wt); margin: 0 0 6px; }
+  .w-ad-desc { font-size: 12px; color: var(--wt2); margin: 0 0 12px; line-height: 1.4; }
+  .w-ad-cta { display: inline-flex; align-items: center; padding: 8px 20px; border-radius: 20px; background: #e8940c; color: #0f1724; font-weight: 700; font-size: 14px; text-decoration: none; transition: background 0.15s; }
+  .w-ad-cta:hover { background: #f5a623; }
   .w-activity-header { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px; }
   .w-activity-count { font-size:14px;color:var(--wt3,#606770); }
   .w-activity-list { display:flex;flex-direction:column; }
