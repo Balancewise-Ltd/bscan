@@ -46,7 +46,7 @@
   }
   let mediaAttachments = $state<MediaAttachment[]>([]);
   const MAX_MEDIA_FILES = 4;
-  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+  const MAX_FILE_SIZE = 500 * 1024 * 1024;
   const ACCEPTED_TYPES = 'image/*,video/mp4,video/webm,video/quicktime,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
 
   function getMediaCategory(file: File): string {
@@ -70,7 +70,7 @@
     if (remaining <= 0) { alert('Max ' + MAX_MEDIA_FILES + ' files'); input.value = ''; return; }
     const toAdd = Array.from(files).slice(0, remaining);
     for (const file of toAdd) {
-      if (file.size > MAX_FILE_SIZE) { alert(file.name + ' exceeds 50MB limit'); continue; }
+      if (file.size > MAX_FILE_SIZE) { alert(file.name + ' exceeds 500MB limit'); continue; }
       const category = getMediaCategory(file);
       const preview = category === 'image' ? URL.createObjectURL(file) : '';
       const attachment: MediaAttachment = {
@@ -1078,12 +1078,12 @@
               {/if}
               <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
-              {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} onerror={(e) => { const el = e.currentTarget as HTMLElement; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
+              {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onclick={() => openLightbox(post.image_url)} onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" /></div>{/if}
               {#if post.media?.filter((m: any) => m.url && m.url.trim()).length}
                 <div class="w-post-media" class:w-media-grid-2={post.media.filter((m: any) => m.type === 'image' && m.url).length === 2} class:w-media-grid-3={post.media.filter((m: any) => m.type === 'image' && m.url).length === 3} class:w-media-grid-4={post.media.filter((m: any) => m.type === 'image' && m.url).length >= 4}>
                   {#each post.media.filter((m: any) => m.url && m.url.trim()) as m}
                     {#if m.type === 'image'}
-                      <div class="w-media-item"><img src={m.url} alt="" loading="lazy" onclick={() => openLightbox(m.url)} onerror={(e) => { const item = e.currentTarget.parentElement; if (item) { item.style.display = 'none'; const container = item.parentElement; if (container && !container.querySelector('.w-media-item:not([style*="display: none"])')) container.style.display = 'none'; } }} style="cursor:zoom-in" /></div>
+                      <div class="w-media-item"><img src={m.url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onclick={() => openLightbox(m.url)} onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const item = (e.currentTarget as HTMLElement).parentElement; if (item) { item.style.display = 'none'; const container = item.parentElement; if (container && !container.querySelector('.w-media-item:not([style*="display: none"])')) container.style.display = 'none'; } }} /></div>
                     {:else if m.type === 'video'}
                       <div class="w-media-item w-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
                     {:else if m.type === 'document'}
@@ -1838,8 +1838,10 @@
   .w.light .w-media-retry-btn { background: rgba(0,0,0,0.8); color: #fff; }
   .w.light .w-media-retry-btn:hover { background: #000; }
 
-  .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
-  .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; }
+  .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; min-height: 0; }
+  .w-post-img:empty { display: none; }
+  .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; transition: opacity 0.2s; }
+  .w-post-img img[style*="opacity: 0"], .w-post-img img[style*="opacity:0"] { height: 0 !important; overflow: hidden; }
 
   /* ═══ MULTI-MEDIA RENDERING ═══ */
   .w-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
