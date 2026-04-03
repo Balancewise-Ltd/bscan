@@ -38,19 +38,22 @@ async function init() {
 	_loading.set(false);
 }
 
-async function login(email: string, password: string) {
-	const result = await api.login(email, password);
+async function login(email: string, password: string, totp_code?: string) {
+	const result = await api.login(email, password, totp_code);
+	if (result.requires_2fa) return result;
 	safeSetStorage('bscan_token', result.access_token);
+	if (result.refresh_token) safeSetStorage('bscan_refresh_token', result.refresh_token);
 	safeSetStorage('bscan_email', email);
 	_token.set(result.access_token);
 	_user.set(result.user);
 	return result;
 }
 
-async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = '') {
-	const result = await api.register(email, password, name, referral_code, verification_code);
+async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = '', date_of_birth: string = '') {
+	const result = await api.register(email, password, name, referral_code, verification_code, date_of_birth);
 	if (result.access_token) {
 		safeSetStorage('bscan_token', result.access_token);
+		if (result.refresh_token) safeSetStorage('bscan_refresh_token', result.refresh_token);
 		safeSetStorage('bscan_email', email);
 		_token.set(result.access_token);
 		_user.set(result.user);
@@ -60,11 +63,28 @@ async function register(email: string, password: string, name: string, referral_
 
 function logout() {
 	safeRemoveStorage('bscan_token');
+	safeRemoveStorage('bscan_refresh_token');
 	disconnectWS();
 	safeRemoveStorage('bscan_email');
 	safeRemoveStorage('bscan_name');
 	_token.set(null);
 	_user.set(null);
+}
+
+async function loginWithToken(accessToken: string, refreshToken?: string) {
+	safeSetStorage('bscan_token', accessToken);
+	if (refreshToken) safeSetStorage('bscan_refresh_token', refreshToken);
+	_token.set(accessToken);
+	try {
+		const me = await api.getMe();
+		_user.set(me);
+		return true;
+	} catch {
+		safeRemoveStorage('bscan_token');
+		safeRemoveStorage('bscan_refresh_token');
+		_token.set(null);
+		return false;
+	}
 }
 
 async function refresh() {
@@ -80,6 +100,7 @@ export const auth = {
 	subscribe: _store.subscribe,
 	init,
 	login,
+	loginWithToken,
 	register,
 	logout,
 	refresh

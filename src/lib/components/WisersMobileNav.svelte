@@ -25,11 +25,11 @@
     <span>Groups</span>
   </a>
 
-  <a href="/wisers" class="wmn-fab" aria-label="Create post">
+  <button class="wmn-fab" aria-label="Create post" onclick={() => window.dispatchEvent(new CustomEvent('wisers:create'))}>
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
-  </a>
+  </button>
 
   <a href="/wisers/messages" class="wmn-item" class:active={isInbox}>
     <svg width="24" height="24" viewBox="0 0 24 24" fill={isInbox ? 'currentColor' : 'none'} stroke="currentColor" stroke-width={isInbox ? '0' : '1.8'}>
@@ -43,7 +43,11 @@
 
   <a href="/wisers/{$auth.user?.username || 'me'}" class="wmn-item" class:active={isProfile}>
     {#if $auth.user}
-      <div class="wmn-av" class:active={isProfile}>{($auth.user.name || $auth.user.email)[0].toUpperCase()}</div>
+      {#if $auth.user.avatar_url}
+        <img src={$auth.user.avatar_url} alt="" class="wmn-av" class:active={isProfile} />
+      {:else}
+        <div class="wmn-av" class:active={isProfile}>{($auth.user.name || $auth.user.email)[0].toUpperCase()}</div>
+      {/if}
     {:else}
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -148,6 +152,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      object-fit: cover;
     }
     .wmn-av.active { box-shadow: 0 0 0 2px #f5a623; }
   }

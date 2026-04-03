@@ -313,15 +313,32 @@ PGPASSWORD=bscan_pg_2026_secure psql -U bscan_user -d bscan_db -c "SELECT COUNT(
 ---
 
 ## Deploy
+
+### Server paths for frontends
+| App | Domain | Server path |
+|-----|--------|-------------|
+| Wisers / BSCAN | wisrs.com / bscan.balancewises.io | `/home/deploy/bscan-repo/build/` |
+| Help center | help.wisrs.com | `/home/deploy/help-wisrs/build/` |
+| Console | console.balancewises.io | `/home/deploy/console-repo/build/` |
+
+### Deploy commands (from Mac)
 ```bash
-# Frontend
-cd ~/Downloads/bscan && npm run build
-scp -r build/* deploy@165.22.126.190:/home/deploy/bscan-repo/build/
-git add -A && git commit -m "msg" && git push origin main
+# Wisers / BSCAN frontend (has deploy script)
+cd ~/Downloads/bscan && ./deploy.sh
+
+# Help center (manual)
+cd ~/Downloads/help-wisrs && npm run build && scp -r build/* deploy@165.22.126.190:/home/deploy/help-wisrs/build/
+
+# Console (manual)
+cd ~/Downloads/console-bscan && npm run build && scp -r build/* deploy@165.22.126.190:/home/deploy/console-repo/build/
 
 # Backend
 ssh deploy@165.22.126.190
 sudo systemctl restart bscan && sudo journalctl -u bscan -f
+
+# Push repos to remote
+cd ~/Downloads/bscan-backend && git push
+cd ~/Downloads/bscan && git add -A && git commit -m "feat: all frontend updates" && git push
 ```
 
 ---
@@ -364,4 +381,22 @@ sudo systemctl restart bscan && sudo journalctl -u bscan -f
 ## Categories (13): side-hustle, ecommerce, investing, tech, freelance, saas, crypto, property, content-creation, careers, fire, students, general
 ## Seed: 20 demo users, 25 posts, 5 milestones, 6 communities
 
-*Last updated: 1 April 2026 — Chisom, contact@balancewises.io*
+---
+
+### Change Discipline — MANDATORY BEFORE EVERY CODE CHANGE
+
+1. **Verify before acting.** Check the actual file on disk, the actual column types in the database, the actual route paths in the running server. Never assume a column is BOOLEAN — run `\d table_name`. Never assume a file exists — run `ls`. Never assume a route works — run `curl`.
+
+2. **Cross-check file names and paths.** Before scp, confirm the source file exists locally AND the destination path exists on the server. Before `cp /tmp/x.py`, confirm `/tmp/x.py` arrived. Two files with the same name in different directories (e.g. `routers/reports.py` vs `tasks/reports.py`) must be handled explicitly — never overwrite one with the other.
+
+3. **Research before changing.** Check the database schema, the ORM model, the raw SQL, AND the frontend expectations before changing any column type, response shape, or endpoint path. A "fix" that doesn't account for all four layers creates new bugs.
+
+4. **One verified change at a time.** Do not batch 80 changes across 16 files without verifying the assumptions behind them. If a fix depends on a column being BOOLEAN, confirm it IS boolean first. If a fix depends on a route prefix, confirm the prefix in main.py first.
+
+5. **Test after every deploy.** After `systemctl restart bscan`, immediately check logs (`journalctl -u bscan --since "30 sec ago"`) and hit the affected endpoint with curl. Do not move on until the change is confirmed working.
+
+6. **Never suggest disabling security features, proxies, or infrastructure** as a fix for a code bug. If Cloudflare, Nginx, or rate limiters appear to interfere, the root cause is almost always a backend 500 hiding behind the infrastructure layer. Fix the 500.
+
+7. **Separate confirmed facts from assumptions.** When debugging, state what you know (from logs, curl, grep) vs what you're guessing. Label guesses explicitly.
+
+*Last updated: 2 April 2026 — Chisom, contact@balancewises.io*

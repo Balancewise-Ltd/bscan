@@ -18,6 +18,37 @@
   let postImagePreview = $state('');
   let joining = $state(false);
   let theme = $state<'dark'|'light'>('dark');
+  let showSettings = $state(false);
+  let settingsName = $state('');
+  let settingsDesc = $state('');
+  let settingsRules = $state('');
+  let settingsCategory = $state('');
+  let settingsPrivacy = $state('public');
+  let savingSettings = $state(false);
+
+  function openSettings() {
+    settingsName = community?.name || '';
+    settingsDesc = community?.description || '';
+    settingsRules = community?.rules || '';
+    settingsCategory = community?.category || '';
+    settingsPrivacy = community?.privacy || 'public';
+    showSettings = true;
+  }
+
+  async function saveSettings() {
+    savingSettings = true;
+    try {
+      await api.updateCommunity(slug, { name: settingsName, description: settingsDesc, rules: settingsRules, category: settingsCategory, privacy: settingsPrivacy });
+      community = { ...community, name: settingsName, description: settingsDesc, rules: settingsRules, category: settingsCategory, privacy: settingsPrivacy };
+      showSettings = false;
+    } catch {}
+    savingSettings = false;
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this community? This cannot be undone.')) return;
+    try { await api.deleteCommunity(slug); window.location.href = '/wisers/communities'; } catch {}
+  }
 
   onMount(async () => {
     const saved = localStorage.getItem('wisers-theme');
@@ -113,6 +144,11 @@
         </div>
         {#if $auth.token}
           {#if community.is_member}
+            {#if community.my_role === 'admin' || community.my_role === 'creator'}
+              <button class="cd-settings-btn" onclick={openSettings} title="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              </button>
+            {/if}
             <button class="cd-joined" onclick={handleLeave}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Joined
@@ -288,6 +324,60 @@
   </div>
 </div>
 
+<!-- Settings Modal -->
+{#if showSettings}
+  <div class="cd-modal-overlay" onclick={() => showSettings = false} role="presentation">
+    <div class="cd-modal" onclick={(e) => e.stopPropagation()}>
+      <div class="cd-modal-header">
+        <h3>Community Settings</h3>
+        <button class="cd-modal-close" onclick={() => showSettings = false}>✕</button>
+      </div>
+      <div class="cd-modal-body">
+        <label class="cd-field">
+          <span>Name</span>
+          <input type="text" bind:value={settingsName} maxlength="50" />
+        </label>
+        <label class="cd-field">
+          <span>Description</span>
+          <textarea bind:value={settingsDesc} maxlength="500" rows="3"></textarea>
+        </label>
+        <label class="cd-field">
+          <span>Category</span>
+          <select bind:value={settingsCategory}>
+            <option value="general">General</option>
+            <option value="side-hustle">Side Hustle</option>
+            <option value="ecommerce">E-Commerce</option>
+            <option value="investing">Investing</option>
+            <option value="tech">Tech</option>
+            <option value="freelance">Freelance</option>
+            <option value="saas">SaaS</option>
+            <option value="crypto">Crypto</option>
+            <option value="property">Property</option>
+            <option value="content-creation">Content Creation</option>
+            <option value="careers">Careers</option>
+            <option value="fire">FIRE</option>
+            <option value="students">Students</option>
+          </select>
+        </label>
+        <label class="cd-field">
+          <span>Privacy</span>
+          <select bind:value={settingsPrivacy}>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+        </label>
+        <label class="cd-field">
+          <span>Rules (one per line)</span>
+          <textarea bind:value={settingsRules} rows="4" placeholder="Be respectful&#10;No spam&#10;Stay on topic"></textarea>
+        </label>
+      </div>
+      <div class="cd-modal-footer">
+        <button class="cd-delete-btn" onclick={handleDelete}>Delete Community</button>
+        <button class="cd-save-btn" onclick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Changes'}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .cd-page { width: 100%; min-height: 100vh; margin: 0; padding: 0;
@@ -299,47 +389,47 @@
   :global(.page) { padding: 0 !important; }
   .cd-inner { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
   .cd-loading { text-align: center; color: var(--cd-t3); padding: 60px; }
-  .cd-back { color: var(--cd-gold); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .cd-back { color: var(--cd-gold); text-decoration: none; font-size: 15px; display: inline-flex; align-items: center; gap: 6px; }
   .cd-back:hover { text-decoration: underline; }
   .cd-hero { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 16px; padding: 20px; margin: 12px 0 16px; }
   .cd-hero-top { display: flex; align-items: center; gap: 14px; }
   .cd-icon { width: 60px; height: 60px; border-radius: 16px; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #000; font-size: 26px; flex-shrink: 0; }
   .cd-hero-info { flex: 1; }
-  .cd-hero-info h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.3px; color: var(--cd-t); }
-  .cd-meta { font-size: 13px; color: var(--cd-t3); margin-top: 4px; }
-  .cd-desc { font-size: 14px; color: var(--cd-t2); margin: 12px 0 0; line-height: 1.5; }
-  .cd-join { background: var(--cd-gold); color: #000; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+  .cd-hero-info h1 { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.3px; color: var(--cd-t); }
+  .cd-meta { font-size: 15px; color: var(--cd-t3); margin-top: 4px; }
+  .cd-desc { font-size: 15px; color: var(--cd-t2); margin: 12px 0 0; line-height: 1.5; }
+  .cd-join { background: var(--cd-gold); color: #000; border: none; padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 16px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .cd-join:hover { filter: brightness(0.9); }
-  .cd-joined { background: none; border: 1.5px solid #10b981; color: #10b981; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; flex-shrink: 0; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .cd-joined { background: none; border: 1.5px solid #10b981; color: #10b981; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 15px; cursor: pointer; flex-shrink: 0; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
   .cd-joined:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.06); }
-  .cd-leave { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 13px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+  .cd-leave { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 15px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
   .cd-leave:hover { background: rgba(239,68,68,0.1); }
   .cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cd-bd); padding-bottom: 12px; margin-bottom: 16px; }
-  .cd-tabs button { background: none; border: none; color: var(--cd-t3); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  .cd-tabs button { background: none; border: none; color: var(--cd-t3); font-size: 16px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
   .cd-tabs button.active { color: var(--cd-gold); background: rgba(245,166,35,0.1); }
   .cd-composer { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 14px; margin-bottom: 16px; }
-  .cd-composer textarea { width: 100%; background: transparent; border: none; color: var(--cd-t); font-size: 15px; resize: none; font-family: inherit; box-sizing: border-box; }
+  .cd-composer textarea { width: 100%; background: transparent; border: none; color: var(--cd-t); font-size: 17px; resize: none; font-family: inherit; box-sizing: border-box; }
   .cd-composer textarea:focus { outline: none; }
   .cd-composer-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .cd-photo-btn { background: none; border: none; color: var(--cd-t3); cursor: pointer; padding: 4px; }
   .cd-photo-btn:hover { color: var(--cd-gold); }
-  .cd-char { font-size: 12px; color: var(--cd-t3); margin-left: auto; }
-  .cd-post-btn { background: var(--cd-gold); color: #000; border: none; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .cd-char { font-size: 14px; color: var(--cd-t3); margin-left: auto; }
+  .cd-post-btn { background: var(--cd-gold); color: #000; border: none; padding: 6px 20px; border-radius: 20px; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
   .cd-post-btn:disabled { opacity: 0.5; }
   .cd-img-preview { position: relative; margin: 8px 0; border-radius: 12px; overflow: hidden; }
   .cd-img-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; }
   .cd-img-preview button { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 14px; }
-  .cd-join-prompt { text-align: center; color: var(--cd-t3); padding: 20px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; margin-bottom: 16px; font-size: 14px; }
+  .cd-join-prompt { text-align: center; color: var(--cd-t3); padding: 20px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; margin-bottom: 16px; font-size: 16px; }
   .cd-empty { text-align: center; color: var(--cd-t3); padding: 40px; }
   .cd-post { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 14px; padding: 16px; margin-bottom: 10px; }
   .cd-post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .cd-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; text-decoration: none; font-size: 16px; flex-shrink: 0; overflow: hidden; }
   .cd-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .cd-post-author { font-weight: 600; color: var(--cd-t); text-decoration: none; font-size: 14px; }
+  .cd-post-author { font-weight: 600; color: var(--cd-t); text-decoration: none; font-size: 16px; }
   .cd-post-author:hover { color: var(--cd-gold); }
-  .cd-post-handle { color: var(--cd-t3); font-size: 13px; }
-  .cd-milestone { background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05)); border: 1px solid rgba(245,166,35,0.3); border-radius: 10px; padding: 10px 14px; font-weight: 700; color: var(--cd-gold); margin-bottom: 8px; font-size: 15px; }
-  .cd-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .cd-post-handle { color: var(--cd-t3); font-size: 15px; }
+  .cd-milestone { background: linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05)); border: 1px solid rgba(245,166,35,0.3); border-radius: 10px; padding: 10px 14px; font-weight: 700; color: var(--cd-gold); margin-bottom: 8px; font-size: 17px; }
+  .cd-post-body { font-size: 17px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .cd-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .cd-post-img img { width: 100%; max-height: 500px; object-fit: cover; display: block; }
   .cd-members { display: flex; flex-direction: column; gap: 8px; }
@@ -347,33 +437,33 @@
   .cd-member:hover { border-color: var(--cd-gold); }
   .cd-m-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 18px; overflow: hidden; flex-shrink: 0; }
   .cd-m-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .cd-m-name { font-weight: 600; font-size: 14px; }
-  .cd-m-role { font-size: 12px; color: var(--cd-t3); text-transform: capitalize; }
+  .cd-m-name { font-weight: 600; font-size: 16px; }
+  .cd-m-role { font-size: 14px; color: var(--cd-t3); text-transform: capitalize; }
   /* About grid */
   .cd-about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .cd-about-card { background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 16px; padding: 24px; }
   .cd-about-desc-card { grid-column: 1 / -1; }
   .cd-about-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
   .cd-about-card-head svg { color: var(--cd-gold); flex-shrink: 0; }
-  .cd-about-card-head h3 { font-size: 16px; font-weight: 700; margin: 0; color: var(--cd-t); }
-  .cd-about-desc-text { font-size: 15px; color: var(--cd-t2); line-height: 1.7; margin: 0; white-space: pre-wrap; }
+  .cd-about-card-head h3 { font-size: 18px; font-weight: 700; margin: 0; color: var(--cd-t); }
+  .cd-about-desc-text { font-size: 17px; color: var(--cd-t2); line-height: 1.7; margin: 0; white-space: pre-wrap; }
 
   /* Stats */
   .cd-about-stats { display: flex; gap: 0; }
   .cd-about-stat { flex: 1; text-align: center; padding: 16px 8px; border-right: 1px solid var(--cd-bd); }
   .cd-about-stat:last-child { border-right: none; }
   .cd-about-stat-num { font-size: 24px; font-weight: 800; color: var(--cd-t); }
-  .cd-about-stat-label { font-size: 12px; color: var(--cd-t3); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cd-about-stat-label { font-size: 14px; color: var(--cd-t3); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
 
   /* Rules */
   .cd-about-rules { display: flex; flex-direction: column; gap: 0; }
-  .cd-about-rule { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 14px; color: var(--cd-t2); line-height: 1.5; }
+  .cd-about-rule { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 16px; color: var(--cd-t2); line-height: 1.5; }
   .cd-about-rule:last-child { border-bottom: none; }
-  .cd-about-rule-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(245,166,35,0.12); color: var(--cd-gold); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .cd-about-rule-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(245,166,35,0.12); color: var(--cd-gold); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
   /* Details */
   .cd-about-details { display: flex; flex-direction: column; gap: 0; }
-  .cd-about-detail-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 14px; color: var(--cd-t2); }
+  .cd-about-detail-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--cd-bd); font-size: 16px; color: var(--cd-t2); }
   .cd-about-detail-row:last-child { border-bottom: none; }
   .cd-about-detail-row svg { color: var(--cd-t3); flex-shrink: 0; }
   .cd-about-detail-row span:nth-child(2) { min-width: 80px; }
@@ -381,7 +471,7 @@
   .cd-about-creator { display: flex; align-items: center; gap: 8px; color: var(--cd-gold); text-decoration: none; font-weight: 600; margin-left: auto; }
   .cd-about-creator:hover { text-decoration: underline; }
   .cd-about-creator-badge { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--cd-gold), #e09100); color: #000; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-  .cd-about-category { background: rgba(245,166,35,0.1); color: var(--cd-gold); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-left: auto; }
+  .cd-about-category { background: rgba(245,166,35,0.1); color: var(--cd-gold); padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: auto; }
 
   .cd-badge { display:inline-flex;vertical-align:middle;margin-left:2px; }
 
@@ -389,5 +479,26 @@
     .cd-about-grid { grid-template-columns: 1fr; }
   }
   :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
+
+  /* Settings button */
+  .cd-settings-btn { background: none; border: 1px solid var(--cpbd, #1e1e2a); border-radius: 8px; color: var(--cpt2, #8a8d91); cursor: pointer; padding: 6px 8px; transition: all 0.15s; }
+  .cd-settings-btn:hover { border-color: var(--cpgold, #f5a623); color: var(--cpgold, #f5a623); }
+
+  /* Modal */
+  .cd-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .cd-modal { background: var(--cpcard, #16161f); border: 1px solid var(--cpbd, #1e1e2a); border-radius: 16px; width: 90%; max-width: 480px; max-height: 85vh; overflow-y: auto; }
+  .cd-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--cpbd, #1e1e2a); }
+  .cd-modal-header h3 { margin: 0; font-size: 22px; font-weight: 700; }
+  .cd-modal-close { background: none; border: none; color: var(--cpt2, #8a8d91); cursor: pointer; font-size: 18px; }
+  .cd-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .cd-field { display: flex; flex-direction: column; gap: 6px; }
+  .cd-field span { font-size: 15px; font-weight: 600; color: var(--cpt2, #8a8d91); text-transform: uppercase; letter-spacing: 0.5px; }
+  .cd-field input, .cd-field textarea, .cd-field select { padding: 10px 12px; border: 1px solid var(--cpbd, #1e1e2a); border-radius: 8px; background: var(--cpbg, #0a0a0f); color: var(--cpt, #e4e6ea); font-family: inherit; font-size: 16px; }
+  .cd-field textarea { resize: vertical; }
+  .cd-modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-top: 1px solid var(--cpbd, #1e1e2a); }
+  .cd-save-btn { padding: 10px 24px; border-radius: 8px; background: var(--cpgold, #f5a623); color: #000; font-weight: 600; border: none; cursor: pointer; }
+  .cd-save-btn:disabled { opacity: 0.5; }
+  .cd-delete-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 15px; font-weight: 500; }
+  .cd-delete-btn:hover { text-decoration: underline; }
 
   </style>

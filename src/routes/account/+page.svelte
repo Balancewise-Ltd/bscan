@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
 	import { formatDate, scoreColor } from '$lib/utils/score';
@@ -19,10 +20,13 @@
 	let authPassword2 = $state('');
 	let agreedTerms = $state(false);
 	let agreedMarketing = $state(false);
+	let authDob = $state('');
 	let authLoading = $state(false);
 	let showReinstate = $state(false);
 	let reinstateLoading = $state(false);
 	let reinstateMsg = $state('');
+	let googleLoading = $state(false);
+	let passkeyLoading = $state(false);
 
 	// ── Forgot / Reset Password ─────────────────────────
 	let showForgot = $state(false);
@@ -51,6 +55,7 @@
 	let pendingName = $state('');
 	let pendingPassword = $state('');
 	let pendingEmail = $state('');
+	let pendingDob = $state('');
 
 	// ── Referral System ─────────────────────────────────
 	let referralData = $state<any>(null);
@@ -147,8 +152,25 @@
 		if (saved) authEmail = saved;
 		if (user) loadDashboard();
 
-		// Handle password reset link
 		const params = new URLSearchParams(window.location.search);
+
+		// Handle SSO token from Google OAuth callback
+		const ssoToken = params.get('sso_token');
+		if (ssoToken) {
+			const ssoRefresh = params.get('refresh_token');
+			window.history.replaceState({}, '', '/account');
+			auth.loginWithToken(ssoToken, ssoRefresh || undefined).then((ok) => {
+				if (ok) {
+					loadDashboard();
+				} else {
+					authError = 'SSO token was invalid. Please sign in again.';
+				}
+			});
+			initPushState();
+			return;
+		}
+
+		// Handle password reset link
 		const rt = params.get('reset_token');
 		if (rt) {
 			resetToken = rt;
@@ -176,8 +198,10 @@
 	});
 
 	let profileLoaded = $state(false);
+	let profileError = $state('');
 
 	async function loadProfileData() {
+		profileError = '';
 		try {
 			const profile = await api.getProfile();
 			if (profile) {
@@ -201,7 +225,10 @@
 				brandLogoUrl = profile.brand_logo_url || '';
 				profileLoaded = true;
 			}
-		} catch {}
+		} catch (err) {
+			profileError = err instanceof Error ? err.message : 'Unable to load account data.';
+			console.error('loadProfileData failed:', err);
+		}
 	}
 
 	async function loadDashboard() {
@@ -215,12 +242,97 @@
 		return url.replace('https://', '').replace('http://', '').split('/')[0];
 	}
 
+	async function signInWithGoogle() {
+		googleLoading = true;
+		authError = '';
+		try {
+			const data = await api.getGoogleAuthUrl();
+			if (data.url) {
+				window.location.href = data.url;
+			} else {
+				authError = 'Google sign-in is not configured on the server.';
+				googleLoading = false;
+			}
+		} catch (err: any) {
+			authError = err.message || 'Could not start Google sign-in';
+			googleLoading = false;
+		}
+	}
+
+	async function signInWithPasskey() {
+		passkeyLoading = true;
+		authError = '';
+		try {
+			if (!window.PublicKeyCredential) {
+				authError = 'Passkeys are not supported in this browser.';
+				passkeyLoading = false;
+				return;
+			}
+
+			const options = await api.getPasskeyLoginOptions();
+			const challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
+			const allowCredentials = (options.allowCredentials || []).map((cred: any) => ({
+				...cred,
+				id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0)),
+			}));
+
+			const credential = await navigator.credentials.get({
+				publicKey: {
+					challenge,
+					rpId: options.rpId || window.location.hostname,
+					allowCredentials,
+					timeout: options.timeout || 60000,
+					userVerification: options.userVerification || 'preferred',
+				}
+			});
+
+			if (!credential) { passkeyLoading = false; return; }
+
+			const assertionResponse = credential as PublicKeyCredential;
+			const response = assertionResponse.response as AuthenticatorAssertionResponse;
+
+			const data = await api.verifyPasskeyLogin({
+				id: assertionResponse.id,
+				rawId: btoa(String.fromCharCode(...new Uint8Array(assertionResponse.rawId))),
+				response: {
+					authenticatorData: btoa(String.fromCharCode(...new Uint8Array(response.authenticatorData))),
+					clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON))),
+					signature: btoa(String.fromCharCode(...new Uint8Array(response.signature))),
+				},
+				type: assertionResponse.type,
+			});
+
+			const ok = await auth.loginWithToken(data.access_token, data.refresh_token);
+			if (ok) {
+				loadDashboard();
+			} else {
+				authError = 'Passkey authentication failed.';
+			}
+		} catch (err: any) {
+			if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+				// User cancelled
+			} else {
+				authError = err.message || 'Passkey authentication failed';
+			}
+		} finally {
+			passkeyLoading = false;
+		}
+	}
+
 	async function handleAuth() {
 		authError = '';
 		if (!authEmail || !authPassword) { authError = 'Fill in all fields.'; return; }
 		if (isRegister && !authName) { authError = 'Name is required.'; return; }
 		if (isRegister && authPassword.length < 8) { authError = 'Password must be at least 8 characters.'; return; }
 		if (isRegister && authPassword !== authPassword2) { authError = 'Passwords do not match.'; return; }
+		if (isRegister && !authDob) { authError = 'Date of birth is required.'; return; }
+		if (isRegister && authDob) {
+			const d = new Date(authDob), t = new Date();
+			let age = t.getFullYear() - d.getFullYear();
+			const m = t.getMonth() - d.getMonth();
+			if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
+			if (age < 13) { authError = 'You must be at least 13 years old.'; return; }
+		}
 		authLoading = true;
 		try {
 			if (isRegister) {
@@ -229,6 +341,7 @@
 				pendingName = authName;
 				pendingEmail = authEmail;
 				pendingPassword = authPassword;
+				pendingDob = authDob;
 				showCodeInput = true;
 				authLoading = false;
 				return;
@@ -491,8 +604,8 @@
 		}
 		authLoading = true;
 		try {
-			await auth.register(pendingEmail, pendingPassword, pendingName, '', verificationCode);
-			loadDashboard();
+			await auth.register(pendingEmail, pendingPassword, pendingName, '', verificationCode, pendingDob);
+			goto('/wisers');
 		} catch (err) {
 			let msg = err instanceof Error ? err.message : 'Verification failed.';
 			if (msg.includes('expired') || msg.includes('not found')) codeError = 'That code has expired. Click Resend code to get a new one.';
@@ -796,18 +909,187 @@
 	</div>
 	{:else}
 	<!-- ══════ AUTH FORM ══════ -->
+	{#if !isRegister}
+	<!-- ── SPLIT LOGIN LAYOUT (X-style) ── -->
+	<div class="auth-section animate-fade-up" style="max-width: 100%; padding: 0; min-height: 60vh; background: radial-gradient(ellipse at top center, rgba(30, 25, 15, 0.8) 0%, #0c0c0c 60%); display: flex; flex-direction: row; align-items: stretch; justify-content: center;">
+		<!-- LEFT SIDE: BS Logo -->
+		<div style="flex: 1; display: flex; align-items: center; justify-content: center; min-height: 60vh;">
+			<svg viewBox="0 0 200 120" style="width: 280px; max-width: 80%; opacity: 0.7;">
+				<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" style="font-size: 96px; font-weight: 900; font-family: inherit; fill: #6b7280; letter-spacing: -4px;">BS</text>
+			</svg>
+		</div>
+
+		<!-- RIGHT SIDE: Login Form -->
+		<div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 40px; min-height: 60vh;">
+			<div style="width: 100%; max-width: 380px;">
+				<h1 style="font-size: 2.25rem; font-weight: 800; color: #fff; margin: 0 0 12px 0; line-height: 1.15;">Build with BSCAN</h1>
+				<p style="color: var(--clr-text-secondary); font-size: 15px; margin: 0 0 32px 0; line-height: 1.5;">Access your dashboard, scan history, and settings.</p>
+
+				<!-- Social sign-in buttons -->
+				<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+					<button
+						style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px 16px; border-radius: 9999px; border: 1px solid var(--clr-border); background: #fff; color: #1f2937; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s;"
+						disabled={googleLoading}
+						onclick={signInWithGoogle}
+					>
+						{#if googleLoading}
+							<span class="spinner spinner-sm"></span>
+						{:else}
+							<svg style="width: 18px; height: 18px;" viewBox="0 0 24 24">
+								<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+								<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+								<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 0 0 1 12c0 1.94.46 3.77 1.18 5.07l3.66-2.84z" fill="#FBBC05"/>
+								<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+							</svg>
+						{/if}
+						Sign in with Google
+					</button>
+
+					<button
+						style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px 16px; border-radius: 9999px; border: 1px solid var(--clr-border); background: #fff; color: #1f2937; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s;"
+						disabled={passkeyLoading}
+						onclick={signInWithPasskey}
+					>
+						{#if passkeyLoading}
+							<span class="spinner spinner-sm"></span>
+						{:else}
+							<svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="#1f2937" stroke-width="1.5">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/>
+							</svg>
+						{/if}
+						Sign in with a Passkey
+					</button>
+				</div>
+
+				<!-- OR divider -->
+				<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+					<div style="flex: 1; height: 1px; background: var(--clr-border);"></div>
+					<span style="font-size: 12px; font-weight: 500; color: var(--clr-text-muted);">OR</span>
+					<div style="flex: 1; height: 1px; background: var(--clr-border);"></div>
+				</div>
+
+				<!-- Email / Password fields -->
+				<div class="field" style="margin-bottom: 12px;">
+					<input class="input" type="email" id="a-email" placeholder="Email" autocomplete="email" bind:value={authEmail} onkeydown={kd} style="width: 100%; box-sizing: border-box;" />
+				</div>
+				<div class="field" style="margin-bottom: 4px;">
+					<input class="input" type="password" id="a-pw" placeholder="Password" bind:value={authPassword} onkeydown={kd} style="width: 100%; box-sizing: border-box;" />
+				</div>
+
+				{#if authError}<div class="msg-error">{authError}</div>{/if}
+
+				<button
+					style="width: 100%; margin-top: 16px; padding: 12px 16px; border-radius: 9999px; border: none; background: #f5a623; color: #000; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: opacity 0.15s;"
+					disabled={authLoading}
+					onclick={handleAuth}
+				>
+					{#if authLoading}<span class="spinner spinner-sm"></span>{/if}
+					Sign In
+				</button>
+
+				<!-- Terms text -->
+				<p style="font-size: 11px; color: var(--clr-text-muted); margin-top: 16px; line-height: 1.5; text-align: center;">
+					By signing in, you agree to the <a href="https://balancewises.io/terms" target="_blank" style="color: var(--clr-gold); text-decoration: underline;">Terms of Service</a> and <a href="https://balancewises.io/privacy" target="_blank" style="color: var(--clr-gold); text-decoration: underline;">Privacy Policy</a>, including <a href="https://balancewises.io/cookies" target="_blank" style="color: var(--clr-gold); text-decoration: underline;">Cookie Use</a>.
+				</p>
+
+				<!-- Don't have an account? -->
+				<div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--clr-border); text-align: center;">
+					<p style="font-size: 14px; color: var(--clr-text-muted); margin: 0 0 16px 0;">Don't have an account?</p>
+					<button
+						style="width: 100%; padding: 12px 16px; border-radius: 9999px; border: 1px solid var(--clr-gold); background: transparent; color: var(--clr-gold); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 0.15s;"
+						onclick={() => { isRegister = true; authError = ''; }}
+					>
+						Sign up
+					</button>
+				</div>
+
+				<!-- Forgot password -->
+				{#if !showForgot}
+					<div style="text-align: center; margin-top: 12px;">
+						<button class="toggle-link" style="font-size: 12px; color: var(--clr-text-muted);" onclick={() => { showForgot = true; forgotEmail = authEmail; forgotError = ''; forgotMsg = ''; }}>
+							Forgot password?
+						</button>
+					</div>
+				{:else}
+					<div style="margin-top: 16px; padding: 16px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg);">
+						<p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Reset your password</p>
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Enter your email and we'll send you a reset link.</p>
+						<input class="input" type="email" placeholder="you@company.com" bind:value={forgotEmail} onkeydown={(e) => e.key === 'Enter' && handleForgotPassword()} />
+						{#if forgotError}<div class="msg-error" style="margin-top: 8px;">{forgotError}</div>{/if}
+						{#if forgotMsg}<div style="margin-top: 8px; padding: 10px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 12px;">{forgotMsg}</div>{/if}
+						<div style="display: flex; gap: 8px; margin-top: 12px;">
+							<button class="btn btn-blue" style="flex: 1;" disabled={forgotLoading} onclick={handleForgotPassword}>
+								{#if forgotLoading}<span class="spinner spinner-sm"></span>{:else}Send Reset Link{/if}
+							</button>
+							<button class="btn" style="background: var(--clr-bg-deep); color: var(--clr-text-secondary); border: 1px solid var(--clr-border);" onclick={() => showForgot = false}>Cancel</button>
+						</div>
+					</div>
+				{/if}
+
+				{#if showReinstate}
+					<div style="margin-top: 16px; padding: 16px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); border-radius: var(--radius-lg);">
+						<p style="font-size: 14px; font-weight: 600; color: var(--clr-warning); margin-bottom: 8px;">Account Deleted</p>
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px; line-height: 1.6;">Your account was previously deleted. Your data has been kept for 6 months. You can reinstate your account now to regain full access.</p>
+						{#if reinstateMsg}<div style="padding: 10px; border-radius: var(--radius-sm); background: rgba(16,185,129,0.1); color: var(--clr-success); font-size: 12px; margin-bottom: 12px;">{reinstateMsg}</div>{/if}
+						<button class="btn btn-gold" style="width: 100%;" disabled={reinstateLoading} onclick={handleReinstate}>
+							{#if reinstateLoading}Reinstating...{:else}Reinstate My Account{/if}
+						</button>
+						<button class="toggle-link" style="display: block; text-align: center; margin-top: 8px; font-size: 11px; color: var(--clr-text-muted);" onclick={() => { showReinstate = false; authError = ''; }}>Cancel</button>
+					</div>
+				{/if}
+
+				{#if showVerifyPrompt}
+					<div style="margin-top: 16px; padding: 20px; background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.15); border-radius: var(--radius-lg); text-align: center;">
+						<div style="font-size: 28px; margin-bottom: 8px;">📧</div>
+						<div style="font-weight: 700; font-size: 15px; margin-bottom: 6px;">Verify your email</div>
+						<div style="font-size: 13px; color: var(--clr-text-secondary); margin-bottom: 14px; line-height: 1.6;">
+							We sent a verification link to <strong style="color: var(--clr-text-primary);">{verifyPromptEmail}</strong>.<br/>Check your inbox (and spam folder) and click the link to activate your account.
+						</div>
+						<button class="btn btn-gold" style="width: 100%;" disabled={resendLoading} onclick={async () => {
+							resendLoading = true;
+							verifyMsg = '';
+							verifyError = '';
+							try {
+								const res = await api.resendVerificationByEmail(verifyPromptEmail);
+								verifyMsg = res.message || 'Verification email sent! Check your inbox.';
+							} catch (err) {
+								verifyError = err instanceof Error ? err.message : 'Failed to resend. Try again later.';
+							}
+							resendLoading = false;
+						}}>
+							{#if resendLoading}<span class="spinner spinner-sm"></span> Sending...{:else}Resend Verification Email{/if}
+						</button>
+						{#if verifyMsg}<div class="msg-success" style="margin-top: 10px;">{verifyMsg}</div>{/if}
+						{#if verifyError}<div class="msg-error" style="margin-top: 10px;">{verifyError}</div>{/if}
+						<button style="margin-top: 12px; background: none; border: none; color: var(--clr-text-muted); font-size: 12px; cursor: pointer; font-family: inherit;" onclick={() => { showVerifyPrompt = false; }}>← Back to login</button>
+					</div>
+				{/if}
+
+				<!-- Footer links -->
+				<div style="margin-top: 32px; text-align: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;">
+					<a href="https://balancewises.io" target="_blank" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">About</a>
+					<a href="/" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">BSCAN</a>
+					<a href="https://wisrs.com" target="_blank" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">Wisers</a>
+					<a href="https://balancewises.io/terms" target="_blank" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">Terms</a>
+					<a href="https://balancewises.io/privacy" target="_blank" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">Privacy</a>
+					<a href="mailto:contact@balancewises.io" style="font-size: 12px; color: var(--clr-text-muted); text-decoration: none;">Contact</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{:else}
+	<!-- ── REGISTER FORM (original style) ── -->
 	<div class="auth-section animate-fade-up">
-		<h2>{isRegister ? 'Create your' : 'Sign in to your'} <span class="text-gold">account</span></h2>
+		<h2>Create your <span class="text-gold">account</span></h2>
 		<p class="text-secondary" style="margin-bottom: 24px;">
-			{isRegister ? 'Start tracking your website health.' : 'Access your dashboard, scan history, and settings.'}
+			Start tracking your website health.
 		</p>
 
-		{#if isRegister}
-			<div class="field">
-				<label class="label" for="a-name">Full name *</label>
-				<input class="input" type="text" id="a-name" placeholder="Your name" bind:value={authName} onkeydown={kd} />
-			</div>
-		{/if}
+		<div class="field">
+			<label class="label" for="a-name">Full name *</label>
+			<input class="input" type="text" id="a-name" placeholder="Your name" bind:value={authName} onkeydown={kd} />
+		</div>
 
 		<div class="field" style="margin-top: 12px;">
 			<label class="label" for="a-email">Email address *</label>
@@ -819,16 +1101,17 @@
 			<input class="input" type="password" id="a-pw" placeholder="Minimum 8 characters" bind:value={authPassword} onkeydown={kd} />
 		</div>
 
-		{#if isRegister}
 		<div class="field" style="margin-top: 12px;">
 			<label class="label" for="a-pw2">Confirm password *</label>
 			<input class="input" type="password" id="a-pw2" placeholder="Repeat your password" bind:value={authPassword2} onkeydown={kd} />
 		</div>
-		{/if}
+		<div class="field" style="margin-top: 12px;">
+			<label class="label" for="a-dob">Date of birth *</label>
+			<input class="input" type="date" id="a-dob" bind:value={authDob} max={new Date().toISOString().split('T')[0]} style="color-scheme:dark" />
+		</div>
 
 		{#if authError}<div class="msg-error">{authError}</div>{/if}
 
-		{#if isRegister}
 		<div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
 			<label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 12px; color: var(--clr-text-secondary); line-height: 1.4;">
 				<input type="checkbox" bind:checked={agreedTerms} style="margin-top: 2px; accent-color: var(--clr-gold);" />
@@ -839,17 +1122,16 @@
 				<span>I'd like to receive product updates, tips, and offers from Balancewise Technologies</span>
 			</label>
 		</div>
-		{/if}
 
-		<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={authLoading || (isRegister && !agreedTerms)} onclick={handleAuth}>
+		<button class="btn btn-gold" style="width: 100%; margin-top: 16px;" disabled={authLoading || !agreedTerms} onclick={handleAuth}>
 			{#if authLoading}<span class="spinner spinner-sm"></span>{/if}
-			{isRegister ? 'Create Account' : 'Sign In'}
+			Create Account
 		</button>
 
 		<div class="auth-toggle">
-			<span class="text-muted">{isRegister ? 'Already have an account?' : "Don't have an account?"}</span>
-			<button class="toggle-link" onclick={() => { isRegister = !isRegister; authError = ''; }}>
-				{isRegister ? 'Sign in' : 'Create one'}
+			<span class="text-muted">Already have an account?</span>
+			<button class="toggle-link" onclick={() => { isRegister = false; authError = ''; }}>
+				Sign in
 			</button>
 		</div>
 
@@ -914,6 +1196,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 	{/if}
 
 {:else if $auth.loading}
@@ -1006,6 +1289,10 @@
 
 		<!-- ── MAIN CONTENT ──────────────────────── -->
 		<main class="dash-main">
+
+		{#if profileError}
+			<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200" style="margin-bottom: 16px;">{profileError}</div>
+		{/if}
 
 		<!-- ── OVERVIEW TAB ─────────────────────── -->
 		{#if activeTab === 'overview'}
@@ -2009,7 +2296,8 @@
 	/* ── Auth ──────────────────────────────── */
 	.container-account { width: 100%; max-width: 100%; padding: 0 var(--space-lg); }
 
-	.auth-section { max-width: 400px; margin: var(--space-xl) auto; text-align: center; }
+	.auth-section { max-width: 400px; margin: 0 auto; padding: 0 16px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; }
+	.auth-section .field { width: 100%; } .auth-section .btn { width: 100%; } .auth-section .auth-toggle { width: 100%; }
 	.field { text-align: left; }
 	.auth-toggle { margin-top: 16px; font-size: 13px; text-align: center; }
 	.toggle-link { background: none; border: none; color: var(--clr-gold); cursor: pointer; font-family: inherit; font-weight: 600; font-size: 13px; margin-left: 4px; }
@@ -2195,6 +2483,9 @@
 		.right-panel { display: none; }
 	}
 	@media (max-width: 768px) {
+		.auth-section[style*="flex-direction: row"] { flex-direction: column !important; }
+		.auth-section[style*="flex-direction: row"] > div:first-child { display: none !important; }
+		.auth-section[style*="flex-direction: row"] > div:last-child { padding: 32px 20px !important; }
 		.dash-layout { grid-template-columns: 1fr; border: none; border-radius: 0; width: 100%; left: 0; transform: none; min-height: auto; }
 		.sidebar { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--clr-border); padding: var(--space-xs); }
 		.sidebar-avatar-wrap { flex-direction: row; gap: 10px; border-bottom: none; margin-bottom: 0; padding: 8px 12px; width: 100%; }

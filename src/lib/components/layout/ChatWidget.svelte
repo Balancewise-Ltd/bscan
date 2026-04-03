@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { chat } from '$lib/stores/chat';
 	import { sanitize } from '$lib/utils/security';
-	import { onMount } from 'svelte';
-
-	let isMobile = $state(true);
-	onMount(() => { isMobile = window.innerWidth <= 768; });
 
 	let inputText = $state('');
 	let messagesEl: HTMLDivElement | undefined = $state();
@@ -61,7 +57,6 @@
 	});
 </script>
 
-{#if !isMobile}
 <div class="chat-widget">
 	<!-- Toggle Button -->
 	<button class="chat-toggle" onclick={() => chat.toggle()}>
@@ -137,7 +132,6 @@
 		</div>
 	{/if}
 </div>
-{/if}
 
 <style>
 	.chat-widget {
@@ -363,7 +357,4 @@
 
 	.chat-send:hover { background: #c88600; }
 
-	@media (max-width: 768px) {
-		.chat-widget { display: none !important; }
-	}
 </style>

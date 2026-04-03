@@ -1,9 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { connectWS, wsNotifCount, wsUnreadDMs } from '$lib/stores/wisers-ws';
+  import { goto } from '$app/navigation';
   import * as api from '$lib/api/client';
   import { auth } from '$lib/stores/auth';
   import { timeAgo } from '$lib/utils/time';
+  import ImageLightbox from '$lib/components/ImageLightbox.svelte';
+  import OnboardingWizard from '$lib/components/OnboardingWizard.svelte';
+  import WisersLanding from '$lib/components/WisersLanding.svelte';
 
   let activeView = $state<'feed' | 'explore' | 'friends' | 'messages' | 'bookmarks' | 'activity'>('feed');
   let friends = $state<any[]>([]);
@@ -17,6 +21,7 @@
   let searchResults = $state<any[]>([]);
   let loading = $state(true);
   let feedLoading = $state(false);
+  let feedError = $state('');
   let feedPage = $state(1);
   let hasMore = $state(true);
   let loadingMore = $state(false);
@@ -50,6 +55,9 @@
   let editingPost = $state<number | null>(null);
   let editContent = $state('');
   let heartAnim = $state<number | null>(null);
+  let lightboxSrc = $state('');
+  let showOnboarding = $state(false);
+  let followStates = $state<Record<string, boolean>>({});
   let lastTap = $state<{ id: number; time: number }>({ id: 0, time: 0 });
   let trendingTags = $state<any[]>([]);
   let showScheduler = $state(false);
@@ -59,9 +67,6 @@
   let bookmarkedList = $state<any[]>([]);
   let activityList = $state<any[]>([]);
   let theme = $state<'dark' | 'light'>('dark');
-  let notifCount = $state(0);
-  let prevNotifCount = $state(0);
-
   onMount(async () => {
     // Load theme preference
     const saved = localStorage.getItem('wisers-theme');
@@ -84,6 +89,17 @@
       } catch {}
       try { const bk = await api.getBookmarks(); bookmarkedPosts = new Set((bk.posts || []).map((p: any) => p.id)); } catch {}
     }
+    // Layered profile completion check:
+    // 1. No username → full onboarding wizard (new user from any source)
+    // 2. DOB handled by layout-level DobPrompt
+    // 3. Both set → normal feed
+    if ($auth.token && $auth.user) {
+      if (!$auth.user.username) {
+        showOnboarding = true;
+      }
+      // Load follow states for feed posts
+      loadFollowStates();
+    }
     loading = false;
     if (typeof document !== 'undefined') {
       document.body.classList.add('wisers-page');
@@ -96,14 +112,16 @@
         if (scrollTicking) return;
         scrollTicking = true;
         requestAnimationFrame(() => {
-          if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600) {
+          if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
             loadMore();
           }
           scrollTicking = false;
         });
       };
       window.addEventListener('scroll', scrollHandler);
-      cleanupListeners = () => { document.removeEventListener('click', clickHandler); window.removeEventListener('scroll', scrollHandler); };
+      const createHandler = () => { showCreateSheet = true; };
+      window.addEventListener('wisers:create', createHandler);
+      cleanupListeners = () => { document.removeEventListener('click', clickHandler); window.removeEventListener('scroll', scrollHandler); window.removeEventListener('wisers:create', createHandler); };
 
       // Show PWA install prompt for iOS Safari (not standalone)
       const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
@@ -113,7 +131,7 @@
         setTimeout(() => { showPwaPrompt = true; }, 5000);
       }
     }
-    if ($auth.token) { await pollNotifs(); notifInterval = setInterval(pollNotifs, 30000); connectWS($auth.token); }
+    if ($auth.token) { connectWS($auth.token); }
   });
 
   function toggleTheme() {
@@ -122,37 +140,10 @@
     localStorage.setItem('wisers-theme', theme);
   }
 
-  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); if (notifInterval) clearInterval(notifInterval); if (cleanupListeners) cleanupListeners(); });
+  onDestroy(() => { if (typeof document !== 'undefined') document.body.classList.remove('wisers-page'); if (cleanupListeners) cleanupListeners(); });
 
-  let notifInterval: any;
   let cleanupListeners: (() => void) | null = null;
 
-  function playPing() {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.frequency.setValueAtTime(880, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-      g.gain.setValueAtTime(0.15, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      o.start(ctx.currentTime);
-      o.stop(ctx.currentTime + 0.4);
-    } catch {}
-  }
-
-  async function pollNotifs() {
-    if (!$auth.token) return;
-    try {
-      const res = await api.getNotificationCount();
-      const count = res.count || 0;
-      if (count > prevNotifCount && prevNotifCount !== 0) playPing();
-      prevNotifCount = count;
-      notifCount = count;
-    } catch {}
-  }
 
   function handleLogout() {
     auth.logout();
@@ -167,8 +158,10 @@
       const res = feedType === 'friends'
         ? await api.getFriendsFeed(feedPage)
         : await api.getFeed(feedPage);
-      const newPosts = res.posts || [];
-      posts = [...posts, ...newPosts];
+      const newPosts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
+      const existingKeys = new Set(posts.map((p, i) => `${p.id}-${p.reposted_by || ''}`));
+      const unique = newPosts.filter(p => !existingKeys.has(`${p.id}-${p.reposted_by || ''}`));
+      posts = [...posts, ...unique];
       hasMore = newPosts.length >= 20;
     } catch {}
     loadingMore = false;
@@ -176,12 +169,17 @@
 
   async function loadFeed(showSkeleton = false) {
     if (showSkeleton) { feedLoading = true; feedPage = 1; hasMore = true; }
+    feedError = '';
     try {
       const res = feedType === 'friends' && $auth.token
         ? await api.getFriendsFeed(1)
         : await api.getCommunityFeed(1);
       posts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
-    } catch {}
+    } catch (err) {
+      posts = [];
+      feedError = err instanceof Error ? err.message : 'Unable to load feed right now.';
+      console.error('loadFeed failed:', err);
+    }
     feedLoading = false;
   }
 
@@ -265,7 +263,8 @@
 
   async function search() {
     if (searchQuery.length < 2) return;
-    try { searchResults = (await api.searchWisers(searchQuery)).users || []; } catch {}
+    goto(`/wisers/search?q=${encodeURIComponent(searchQuery)}`);
+    return;
   }
 
   async function sendRequest(username: string) {
@@ -292,6 +291,32 @@
     try { await api.unfriend(username); friends = (await api.getFriends()).friends || []; } catch {}
   }
 
+  async function loadFollowStates() {
+    const usernames = [...new Set(posts.map(p => p.username).filter(u => u && u !== $auth.user?.username))];
+    for (const u of usernames.slice(0, 30)) {
+      try {
+        const fs = await api.getFollowStatus(u);
+        followStates[u] = fs.i_follow;
+      } catch {}
+    }
+    followStates = { ...followStates };
+  }
+
+  async function toggleFeedFollow(username: string) {
+    if (!$auth.token || !username) return;
+    try {
+      if (followStates[username]) {
+        await api.unfollowUser(username);
+        followStates[username] = false;
+      } else {
+        await api.followUser(username);
+        followStates[username] = true;
+      }
+      followStates = { ...followStates };
+    } catch {}
+  }
+
+  function openLightbox(src: string) { lightboxSrc = src; }
 
   function launchRockets() {
     if (typeof document === 'undefined') return;
@@ -318,10 +343,24 @@
     if (!$auth.token) return;
     try {
       const res = await api.toggleRocket(post.id);
-      post.rockets_count = (post.rockets_count || 0) + (res.rocketed ? 1 : -1);
-      post.my_rocket = res.rocketed;
-      if (res.rocketed) launchRockets();
-    } catch {}
+      const rocketed = res.rocketed;
+      // Rocket also reposts
+      let reposted = false;
+      if (rocketed && !post.my_repost) {
+        try {
+          const rr = await api.toggleRepost(post.id);
+          reposted = rr.reposted;
+        } catch (e) { /* repost failed */ }
+      }
+      posts = posts.map(p => p.id === post.id ? {
+        ...p,
+        rockets_count: (p.rockets_count || 0) + (rocketed ? 1 : -1),
+        my_rocket: rocketed,
+        reposts_count: (p.reposts_count || 0) + (reposted ? 1 : 0),
+        my_repost: reposted || p.my_repost
+      } : p);
+      if (rocketed) launchRockets();
+    } catch { /* rocket failed */ }
   }
 
   async function handleShare(post: any) {
@@ -424,6 +463,81 @@
     if (url.startsWith('http')) return url;
     return 'https://api-bscan.balancewises.io/avatars/' + url;
   }
+
+  // ═══ LINK PREVIEWS ═══
+  let linkPreviews = $state<Record<number, { title?: string; description?: string; image?: string; url: string } | null>>({});
+  const urlRegex = /https?:\/\/[^\s<]+/g;
+
+  async function fetchLinkPreview(postId: number, content: string) {
+    if (linkPreviews[postId] !== undefined) return;
+    const urls = content.match(urlRegex);
+    if (!urls || !urls[0]) return;
+    linkPreviews[postId] = null; // loading
+    try {
+      const preview = await api.getLinkPreview(urls[0]);
+      if (preview.title || preview.image) {
+        linkPreviews = { ...linkPreviews, [postId]: preview };
+      }
+    } catch { linkPreviews = { ...linkPreviews, [postId]: null }; }
+  }
+
+  $effect(() => {
+    for (const post of posts) {
+      if (post.content && urlRegex.test(post.content) && linkPreviews[post.id] === undefined) {
+        fetchLinkPreview(post.id, post.content);
+      }
+    }
+  });
+
+  // ═══ POLL CREATION ═══
+  let showPollForm = $state(false);
+  let pollQuestion = $state('');
+  let pollOptions = $state(['', '']);
+  let pollEndsAt = $state('');
+
+  function addPollOption() { if (pollOptions.length < 6) pollOptions = [...pollOptions, '']; }
+  function removePollOption(i: number) { if (pollOptions.length > 2) pollOptions = pollOptions.filter((_, idx) => idx !== i); }
+
+  async function submitPoll() {
+    if (!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2) return;
+    try {
+      await api.createPoll(pollQuestion, pollOptions.filter(o => o.trim()), newPost.trim() || undefined, pollEndsAt || undefined);
+      pollQuestion = ''; pollOptions = ['', '']; pollEndsAt = ''; showPollForm = false; newPost = '';
+      showToast('Poll created');
+      await loadFeed();
+    } catch (e: any) { showToast(e.detail || 'Failed to create poll'); }
+  }
+
+  // ═══ POST ANALYTICS ═══
+  let analyticsPost = $state<number | null>(null);
+  let analyticsData = $state<any>(null);
+
+  async function showAnalytics(postId: number) {
+    analyticsPost = postId;
+    try {
+      analyticsData = await api.getPostAnalytics(postId);
+    } catch { analyticsData = { views: 0, unique_views: 0, engagement_rate: 0 }; }
+  }
+
+  // ═══ LIKES LIST ═══
+  let likesPostId = $state<number | null>(null);
+  let likesList = $state<any[]>([]);
+
+  async function showLikes(postId: number) {
+    likesPostId = postId;
+    try {
+      const res = await api.getPostLikes(postId);
+      likesList = res.users || [];
+    } catch { likesList = []; }
+  }
+
+  // ═══ MENTIONS ═══
+  let mentionsList = $state<any[]>([]);
+  async function loadMentions() {
+    try { const res = await api.getMentions(); mentionsList = res.posts || []; } catch {}
+  }
+
+  async function handleLike(post: any) { await toggleLike(post.id); }
 </script>
 
 <svelte:head>
@@ -438,6 +552,9 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </svelte:head>
 
+{#if !$auth.token}
+  <WisersLanding />
+{:else}
 <div class="w" class:light={theme === 'light'}>
   <!-- TOP BAR -->
   <header class="w-topbar">
@@ -553,12 +670,60 @@
         </a>{/if}
       </nav>
       <div class="w-sidebar-divider"></div>
+      <nav class="w-sidebar-nav">
+        <a href="/wisers/discover" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          Discover
+        </a>
+        <a href="/wisers/groups" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+          Group Chats
+        </a>
+        <a href="/wisers/leaderboard" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/></svg>
+          Leaderboard
+        </a>
+        <a href="/wisers/ai-coach" class="w-sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H7a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="14" r="1.5" fill="currentColor"/><circle cx="15" cy="14" r="1.5" fill="currentColor"/></svg>
+          AI Coach
+        </a>
+      </nav>
+      <div class="w-sidebar-divider"></div>
       <a href="https://balancewises.io" class="w-sidebar-back" target="_blank">Balancewise Technologies</a>
     </aside>
 
     <!-- MAIN CONTENT -->
     <main class="w-main">
       {#if actionMsg}<div class="w-toast">{actionMsg}</div>{/if}
+
+      <!-- MOBILE QUICK LINKS (hidden on desktop) -->
+      <div class="w-quick-links">
+        <a href="/wisers/discover" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          Discover
+        </a>
+        <a href="/wisers/ai-coach" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H7a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+          AI Coach
+        </a>
+        <a href="/wisers/leaderboard" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/></svg>
+          Leaderboard
+        </a>
+        <a href="/wisers/mentorship" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
+          Mentorship
+        </a>
+        <a href="/wisers/groups" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Group Chats
+        </a>
+        <a href="/notifications" class="w-ql-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+          Notifications
+          {#if $wsNotifCount > 0}<span class="w-ql-badge">{$wsNotifCount}</span>{/if}
+        </a>
+      </div>
 
       <!-- FEED VIEW -->
       {#if activeView === 'feed'}
@@ -585,6 +750,33 @@
               </div>
             </div>
             {/if}
+            {#if showPollForm}
+            <div class="w-poll-form">
+              <div class="w-poll-badge">📊 Create Poll</div>
+              <input type="text" bind:value={pollQuestion} class="w-poll-q" placeholder="Ask a question..." maxlength="200" />
+              {#each pollOptions as opt, i}
+                <div class="w-poll-opt-row">
+                  <input type="text" bind:value={pollOptions[i]} class="w-poll-opt" placeholder="Option {i + 1}" maxlength="100" />
+                  {#if pollOptions.length > 2}<button class="w-poll-opt-rm" onclick={() => removePollOption(i)} type="button">✕</button>{/if}
+                </div>
+              {/each}
+              {#if pollOptions.length < 6}<button class="w-poll-add" onclick={addPollOption} type="button">+ Add option</button>{/if}
+              <div class="w-poll-footer">
+                <label class="w-poll-ends">Ends: <input type="datetime-local" bind:value={pollEndsAt} /></label>
+                <button class="w-post-btn" onclick={submitPoll} disabled={!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2}>Create Poll</button>
+              </div>
+            </div>
+            {/if}
+            {#if showScheduler}
+            <div class="w-schedule-form">
+              <div class="w-poll-badge">🕐 Schedule Post</div>
+              <textarea bind:value={scheduleContent} placeholder="Write your scheduled post..." maxlength="2000" rows="2" class="w-sched-textarea"></textarea>
+              <div class="w-poll-footer">
+                <input type="datetime-local" bind:value={scheduleDate} class="w-sched-date" />
+                <button class="w-post-btn" onclick={handleSchedulePost} disabled={!scheduleContent.trim() || !scheduleDate}>Schedule</button>
+              </div>
+            </div>
+            {/if}
             {#if postImagePreview}<div class="w-img-preview"><img src={postImagePreview} alt="Preview" /><button class="w-img-remove" onclick={removeImage}>✕</button></div>{/if}
             <div class="w-composer-bottom">
               <div class="w-feed-tabs">
@@ -593,6 +785,12 @@
               </div>
               <button class="w-milestone-btn" class:active={isMilestone} onclick={() => isMilestone = !isMilestone} type="button" title="Milestone post">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill={isMilestone ? '#f5a623' : 'none'} stroke={isMilestone ? '#f5a623' : 'currentColor'} stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M12 8v13"/></svg>
+              </button>
+              <button class="w-poll-btn" class:active={showPollForm} onclick={() => showPollForm = !showPollForm} type="button" title="Create poll">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={showPollForm ? '#f5a623' : 'none'} stroke={showPollForm ? '#f5a623' : 'currentColor'} stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="9" width="7" height="12" rx="1"/></svg>
+              </button>
+              <button class="w-sched-btn" class:active={showScheduler} onclick={() => showScheduler = !showScheduler} type="button" title="Schedule post">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={showScheduler ? '#f5a623' : 'currentColor'} stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </button>
               <button class="w-img-btn" onclick={() => document.getElementById('post-img-input')?.click()} type="button" title="Add image">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
@@ -625,6 +823,10 @@
           <div class="w-empty">No posts yet. Be the first to share something!</div>
         {/if}
 
+        {#if feedError}
+          <div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feedError}</div>
+        {/if}
+
         {#if feedLoading}
               {#each [1,2,3] as _}
                 <div class="w-skel-post">
@@ -634,8 +836,14 @@
                   <div class="w-skel-actions"><div class="w-skel w-skel-act"></div><div class="w-skel w-skel-act"></div><div class="w-skel w-skel-act"></div></div>
                 </div>
               {/each}
-            {:else}{#each posts as post (post.id)}
+            {:else}{#each posts as post, idx (`${post.id}-${post.reposted_by || 'orig'}-${idx}`)}
           <article class="w-post">
+            {#if post.reposted_by}
+              <div class="w-repost-banner">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+                <span>{post.reposted_by} rocketed</span>
+              </div>
+            {/if}
             <div class="w-post-left">
               <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
             </div>
@@ -650,6 +858,11 @@
                   <span class="w-post-time">{timeAgo(post.created_at)}</span>
                   {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
                 </div>
+                {#if $auth.token && post.username !== $auth.user?.username}
+                  <button class="w-follow-inline" class:following={followStates[post.username]} onclick={() => toggleFeedFollow(post.username)}>
+                    {followStates[post.username] ? 'Following' : 'Follow'}
+                  </button>
+                {/if}
                 {#if $auth.token}
                   <div class="w-post-menu-wrap" onclick={(e) => e.stopPropagation()}>
                     <button class="w-post-menu-btn" onclick={() => openPostMenu = openPostMenu === post.id ? null : post.id} title="More" aria-label="More options">
@@ -665,6 +878,10 @@
                           <button class="w-menu-danger" onclick={() => { removePost(post.id); openPostMenu = null; }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             Delete post
+                          </button>
+                          <button onclick={() => { showAnalytics(post.id); openPostMenu = null; }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                            Analytics
                           </button>
                           <div class="w-menu-divider"></div>
                           <button onclick={() => { navigator.clipboard?.writeText(window.location.origin + '/wisers?post=' + post.id); actionMsg = 'Link copied!'; setTimeout(() => actionMsg = '', 2000); openPostMenu = null; }}>
@@ -708,17 +925,27 @@
               {/if}
               <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
-              {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" /></div>{/if}
+              {#if post.image_url}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" onclick={() => openLightbox(post.image_url)} role="button" tabindex="0" style="cursor:zoom-in" /></div>{/if}
               {#if post.post_type === 'scan_share' && post.scan_url}
                 <div class="w-scan-card">
                   <span>{post.scan_url}</span>
                   <span class="w-scan-score" class:good={post.scan_score >= 70} class:warn={post.scan_score >= 40 && post.scan_score < 70} class:bad={post.scan_score < 40}>{post.scan_score}</span>
                 </div>
               {/if}
+              {#if linkPreviews[post.id]?.title || linkPreviews[post.id]?.image}
+                <a href={linkPreviews[post.id]?.url} target="_blank" rel="noopener" class="w-link-preview">
+                  {#if linkPreviews[post.id]?.image}<img src={linkPreviews[post.id]?.image} alt="" class="w-lp-img" />{/if}
+                  <div class="w-lp-text">
+                    <div class="w-lp-title">{linkPreviews[post.id]?.title || ''}</div>
+                    {#if linkPreviews[post.id]?.description}<div class="w-lp-desc">{linkPreviews[post.id]?.description}</div>{/if}
+                    <div class="w-lp-domain">{new URL(linkPreviews[post.id]?.url || '').hostname}</div>
+                  </div>
+                </a>
+              {/if}
               <div class="w-post-actions">
                 <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  <span>{post.likes_count || 0}</span>
+                  <span class="w-likes-clickable" onclick={(e) => { e.stopPropagation(); if (post.likes_count > 0) showLikes(post.id); }}>{post.likes_count || 0}</span>
                 </button>
                 <button class="w-action w-rocket-btn" class:w-rocketed={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket & Share">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post.my_rocket ? '#f97316' : 'none'} stroke={post.my_rocket ? '#f97316' : 'currentColor'} stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
@@ -754,6 +981,11 @@
             </div>
           </article>
         {/each}
+        {#if loadingMore}
+        <div style="display:flex;justify-content:center;padding:20px;">
+            <div style="width:24px;height:24px;border:2px solid var(--wbd);border-top-color:var(--wgold);border-radius:50%;animation:spin 0.6s linear infinite;"></div>
+        </div>
+        {/if}
         {/if}
 
       <!-- EXPLORE VIEW -->
@@ -800,7 +1032,7 @@
         {#if bookmarkedList.length === 0}
           <div class="w-empty">No saved posts yet. Bookmark posts to find them here.</div>
         {:else}
-          {#each bookmarkedList as post (post.id)}
+          {#each bookmarkedList as post, idx (`bm-${post.id}-${idx}`)}
             <article class="w-post">
               <div class="w-post-left">
                 <a href="/wisers/{post.username}" class="w-avatar-md">{#if avatarSrc(post.avatar_url)}<img src={avatarSrc(post.avatar_url)} alt="" class="w-av-img" />{:else}{initial(post.display_name || post.user_name)}{/if}</a>
@@ -1068,6 +1300,84 @@
     </div>
   {/if}
 
+{#if lightboxSrc}
+  <ImageLightbox src={lightboxSrc} onclose={() => lightboxSrc = ''} />
+{/if}
+
+{#if showOnboarding}
+  <OnboardingWizard onfinish={() => showOnboarding = false} />
+{/if}
+
+<!-- Analytics Modal -->
+{#if analyticsPost !== null}
+  <div class="w-modal-overlay" onclick={() => analyticsPost = null} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()}>
+      <div class="w-modal-header">
+        <h3>Post Analytics</h3>
+        <button class="w-modal-close" onclick={() => analyticsPost = null}>✕</button>
+      </div>
+      {#if analyticsData}
+        <div class="w-analytics-grid">
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{analyticsData.views ?? 0}</div>
+            <div class="w-analytics-label">Views</div>
+          </div>
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{analyticsData.unique_views ?? 0}</div>
+            <div class="w-analytics-label">Unique Views</div>
+          </div>
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{analyticsData.likes ?? 0}</div>
+            <div class="w-analytics-label">Likes</div>
+          </div>
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{analyticsData.comments ?? 0}</div>
+            <div class="w-analytics-label">Comments</div>
+          </div>
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{analyticsData.rockets ?? 0}</div>
+            <div class="w-analytics-label">Rockets</div>
+          </div>
+          <div class="w-analytics-stat">
+            <div class="w-analytics-num">{((analyticsData.engagement_rate ?? 0) * 100).toFixed(1)}%</div>
+            <div class="w-analytics-label">Engagement</div>
+          </div>
+        </div>
+      {:else}
+        <div class="w-modal-loading">Loading...</div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Likes List Modal -->
+{#if likesPostId !== null}
+  <div class="w-modal-overlay" onclick={() => likesPostId = null} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()}>
+      <div class="w-modal-header">
+        <h3>Liked by</h3>
+        <button class="w-modal-close" onclick={() => likesPostId = null}>✕</button>
+      </div>
+      <div class="w-likes-list">
+        {#if likesList.length === 0}
+          <div class="w-modal-empty">No likes yet</div>
+        {:else}
+          {#each likesList as user}
+            <a href="/wisers/{user.username}" class="w-likes-user" onclick={() => likesPostId = null}>
+              <div class="w-avatar-sm">{#if avatarSrc(user.avatar_url)}<img src={avatarSrc(user.avatar_url)} alt="" class="w-av-img" />{:else}{initial(user.display_name || user.name || user.username)}{/if}</div>
+              <div class="w-likes-info">
+                <span class="w-likes-name">{user.display_name || user.name}</span>
+                <span class="w-likes-handle">@{user.username}</span>
+              </div>
+            </a>
+          {/each}
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
+{/if}
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
@@ -1079,51 +1389,51 @@
 
   .w-topbar { position: sticky; top: 0; z-index: 100; background: var(--wcard); border-bottom: 1px solid var(--wbd); height: 56px; }
   .w-topbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; height: 100%; padding: 0 16px; gap: 12px; }
-  .w-logo { font-size: 24px; font-weight: 800; color: var(--wgold); text-decoration: none; letter-spacing: -1px; flex-shrink: 0; }
+  .w-logo { font-size: 26px; font-weight: 800; color: var(--wgold); text-decoration: none; letter-spacing: -1px; flex-shrink: 0; }
   .w-logo span { color: var(--wt); }
   .w-search-wrap { flex: 1; max-width: 400px; }
-  .w-search { width: 100%; padding: 8px 16px; border-radius: 20px; border: none; background: var(--wc); color: var(--wt); font-size: 14px; outline: none; font-family: inherit; }
+  .w-search { width: 100%; padding: 12px 16px; border-radius: 20px; border: none; background: var(--wc); color: var(--wt); font-size: 16px; outline: none; font-family: inherit; }
   .w-search::placeholder { color: var(--wt3); }
   .w-search:focus { box-shadow: 0 0 0 2px var(--wgold); }
   .w-topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
   .w-topbar-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--wc); border: none; color: var(--wt2); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; }
   .w-topbar-btn:hover { background: var(--wbd); color: var(--wt); }
-  .w-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; text-decoration: none; flex-shrink: 0; }
-  .w-avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; text-decoration: none; flex-shrink: 0; }
-  .w-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
+  .w-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; text-decoration: none; flex-shrink: 0; }
+  .w-avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; text-decoration: none; flex-shrink: 0; }
+  .w-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0; }
   .w-avatar-gold { background: var(--wgold); }
   .w-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   .w-av-img-lg { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
   .w-av-img-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-  .w-login-btn { padding: 7px 16px; border-radius: 8px; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .w-login-btn { padding: 10px 18px; border-radius: 8px; background: var(--wgold); color: #000; font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
 
-  .w-body { display: flex; max-width: 1280px; margin: 0 auto; min-height: calc(100vh - 56px); }
+  .w-body { display: flex; max-width: 1280px; margin: 0 auto; height: calc(100vh - 56px); overflow: hidden; }
 
-  .w-sidebar-left { width: 240px; padding: 16px 12px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; flex-shrink: 0; }
+  .w-sidebar-left { width: 240px; padding: 16px 12px; height: 100%; overflow-y: auto; flex-shrink: 0; }
   .w-profile-card { display: flex; flex-direction: column; align-items: center; padding: 20px 12px; border-radius: 12px; background: var(--wcard); border: 1px solid var(--wbd); text-decoration: none; color: var(--wt); margin-bottom: 16px; }
   .w-profile-card:hover { border-color: var(--wgold); }
-  .w-profile-name { font-weight: 700; font-size: 15px; margin-top: 10px; }
-  .w-profile-handle { font-size: 12px; color: var(--wt2); }
+  .w-profile-name { font-weight: 700; font-size: 17px; margin-top: 10px; }
+  .w-profile-handle { font-size: 14px; color: var(--wt2); }
   .w-sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
-  .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: none; background: none; color: var(--wt2); font-size: 14px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; }
+  .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 8px; border: none; background: none; color: var(--wt2); font-size: 16px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; }
   .w-sidebar-nav button:hover, .w-sidebar-link:hover { background: var(--whover); color: var(--wt); }
   .w-sidebar-nav button.active { background: rgba(245,166,35,0.1); color: var(--wgold); font-weight: 700; }
-  .w-count { font-size: 11px; padding: 1px 6px; border-radius: 99px; margin-left: auto; }
+  .w-count { font-size: 13px; padding: 1px 6px; border-radius: 99px; margin-left: auto; }
   .w-sidebar-divider { height: 1px; background: var(--wbd); margin: 12px 0; }
-  .w-sidebar-back { font-size: 12px; color: var(--wt3); text-decoration: none; padding: 8px 12px; }
+  .w-sidebar-back { font-size: 14px; color: var(--wt3); text-decoration: none; padding: 10px 14px; }
   .w-sidebar-back:hover { color: var(--wgold); }
 
-  .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); }
+  .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); overflow-y: auto; height: 100%; }
 
-  .w-sidebar-right { width: 280px; padding: 16px 12px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; flex-shrink: 0; }
+  .w-sidebar-right { width: 280px; padding: 16px 12px; height: 100%; overflow-y: auto; flex-shrink: 0; }
 
   .w-composer { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
   .w-composer-top { display: flex; gap: 10px; }
-  .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 15px; resize: none; outline: none; font-family: inherit; min-height: 50px; }
+  .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 17px; resize: none; outline: none; font-family: inherit; min-height: 50px; }
   .w-composer textarea::placeholder { color: var(--wt3); }
   .w-composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
   .w-feed-tabs { display: flex; gap: 2px; }
-  .w-feed-tabs button { padding: 5px 12px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .w-feed-tabs button { padding: 7px 14px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 14px; cursor: pointer; font-family: inherit; font-weight: 600; }
   .w-feed-tabs button.active { background: var(--wgold); color: #000; border-color: var(--wgold); }
   .w-emoji-wrap { position: relative; }
   .w-emoji-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; line-height: 1; }
@@ -1132,47 +1442,58 @@
   .w-emoji-item { background: none; border: none; font-size: 22px; cursor: pointer; padding: 6px 2px; border-radius: 8px; text-align: center; line-height: 1; transition: background 0.1s, transform 0.1s; }
   .w-emoji-item:hover { background: var(--whover); transform: scale(1.2); }
   .w-emoji-item:active { transform: scale(0.95); }
-  .w-char { font-size: 11px; color: var(--wt3); }
-  .w-post-btn { padding: 7px 20px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .w-char { font-size: 13px; color: var(--wt3); }
+  .w-post-btn { padding: 10px 22px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
   .w-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .w-join-cta { text-align: center; padding: 40px 20px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 16px; }
-  .w-join-cta h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
-  .w-join-cta p { color: var(--wt2); font-size: 14px; margin-bottom: 16px; }
-  .w-join-btn { display: inline-block; padding: 10px 28px; border-radius: 20px; background: var(--wgold); color: #000; font-weight: 700; font-size: 14px; text-decoration: none; }
+  .w-join-cta h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .w-join-cta p { color: var(--wt2); font-size: 16px; margin-bottom: 16px; }
+  .w-join-btn { display: inline-block; padding: 12px 28px; border-radius: 20px; background: var(--wgold); color: #000; font-weight: 700; font-size: 16px; text-decoration: none; }
 
-  .w-post { display: flex; gap: 12px; padding: 16px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 10px; }
+  .w-post { display: flex; flex-wrap: wrap; gap: 0 12px; padding: 16px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 10px; }
   .w-post:hover { border-color: rgba(245,166,35,0.2); }
+  .w-repost-banner { width: 100%; display: flex; align-items: center; gap: 6px; padding: 0 0 8px 44px; font-size: 15px; color: #f97316; font-weight: 500; }
+  .w-repost-banner svg { flex-shrink: 0; stroke: #f97316; }
   .w-post-right { flex: 1; min-width: 0; }
   .w-post-meta { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; position: relative; }
   .w-post-meta-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; flex-wrap: wrap; }
-  .w-post-author { font-weight: 700; font-size: 14px; color: var(--wt); text-decoration: none; }
+  .w-post-author { font-weight: 700; font-size: 16px; color: var(--wt); text-decoration: none; }
   .w-post-author:hover { text-decoration: underline; }
-  .w-post-handle { font-size: 13px; color: var(--wt2); }
+  .w-post-handle { font-size: 15px; color: var(--wt2); }
   .w-post-dot { color: var(--wt3); }
-  .w-post-time { font-size: 12px; color: var(--wt3); }
-  .w-post-edited { font-size: 11px; color: var(--wt3); font-style: italic; }
+  .w-post-time { font-size: 14px; color: var(--wt3); }
+  .w-post-edited { font-size: 13px; color: var(--wt3); font-style: italic; }
   .w-verify { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; }
   .w-verify svg { width: 16px; height: 16px; }
   .w-verify.v-free svg { fill: #555; }
   .w-verify.v-pro svg { fill: #3b82f6; }
   .w-verify.v-agency svg { fill: #f5a623; }
-  .w-plan-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--wgold); }
-  .w-post-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .w-plan-badge { font-size: 13px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(245,166,35,0.15); color: var(--wgold); }
+  .w-post-body { font-size: 17px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .w-scan-card { margin-top: 10px; padding: 12px; border-radius: 8px; background: var(--wc); border: 1px solid var(--wbd); display: flex; justify-content: space-between; align-items: center; }
-  .w-scan-score { font-size: 18px; font-weight: 800; }
+  .w-scan-score { font-size: 20px; font-weight: 800; }
   .w-scan-score.good { color: #10b981; } .w-scan-score.warn { color: #f59e0b; } .w-scan-score.bad { color: #ef4444; }
   .w-post-actions { display: flex; gap: 16px; margin-top: 10px; }
-  .w-action { -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--wt3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
+  .w-action { -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 4px; background: none; border: none; color: var(--wt3); font-size: 15px; cursor: pointer; padding: 6px 10px; border-radius: 6px; font-family: inherit; }
   .w-action:hover { background: var(--whover); color: var(--wt); }
   .w-action-del { margin-left: auto; }
   .w-action-del:hover { color: #ef4444; }
-  .w-post-menu-wrap { position: relative; margin-left: auto; flex-shrink: 0; }
+  .w-follow-inline {
+    padding: 3px 12px; border-radius: 16px; border: 1px solid var(--wgold); background: none;
+    color: var(--wgold); font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: inherit; white-space: nowrap; flex-shrink: 0; transition: all 0.15s;
+    margin-left: auto;
+  }
+  .w-follow-inline:hover { background: var(--wgold); color: #000; }
+  .w-follow-inline.following { border-color: var(--wbd); color: var(--wt3); }
+  .w-follow-inline.following:hover { border-color: #ef4444; color: #ef4444; background: none; }
+  .w-post-menu-wrap { position: relative; flex-shrink: 0; }
   .w-post-menu-btn { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--wt3); background: none; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; opacity: 0; font-family: inherit; }
   .w-post:hover .w-post-menu-btn, .w-post-menu-btn:focus { opacity: 1; }
   .w-post-menu-btn:hover { background: rgba(29,155,240,0.1); color: #1d9bf0; }
   .w-post-menu-dropdown { position: absolute; right: 0; top: 34px; background: #16161e; border: 1px solid #2a2a3a; border-radius: 12px; min-width: 260px; z-index: 100; box-shadow: 0 0 8px rgba(0,0,0,0.3), 0 12px 36px rgba(0,0,0,0.5); overflow: hidden; padding: 4px 0; }
-  .w-post-menu-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: none; border: none; color: var(--wt1); font-size: 14px; cursor: pointer; text-align: left; font-family: inherit; transition: background 0.12s; }
+  .w-post-menu-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; background: none; border: none; color: var(--wt1); font-size: 16px; cursor: pointer; text-align: left; font-family: inherit; transition: background 0.12s; }
   .w-post-menu-dropdown button:hover { background: rgba(255,255,255,0.06); }
   .w-post-menu-dropdown .w-menu-danger { color: #ef4444; }
   .w-post-menu-dropdown .w-menu-danger:hover { background: rgba(239,68,68,0.08); }
@@ -1183,45 +1504,45 @@
   .w.light .w-menu-divider { background: #dddfe2; }
 
   .w-comments { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
-  .w-comment { padding: 6px 0; font-size: 13px; }
-  .w-comment-author { color: var(--wgold); font-weight: 600; text-decoration: none; font-size: 12px; }
+  .w-comment { padding: 6px 0; font-size: 15px; }
+  .w-comment-author { color: var(--wgold); font-weight: 600; text-decoration: none; font-size: 14px; }
   .w-comment-text { color: var(--wt2); margin-left: 6px; }
-  .w-comment-time { font-size: 10px; color: var(--wt3); margin-left: 6px; }
+  .w-comment-time { font-size: 13px; color: var(--wt3); margin-left: 6px; }
   .w-comment-input { display: flex; gap: 6px; margin-top: 8px; }
-  .w-comment-input input { flex: 1; padding: 7px 12px; border: 1px solid var(--wbd); border-radius: 20px; background: var(--wc); color: var(--wt); font-size: 12px; outline: none; font-family: inherit; }
-  .w-comment-input button { padding: 7px 14px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 11px; border-radius: 20px; cursor: pointer; font-family: inherit; }
+  .w-comment-input input { flex: 1; padding: 10px 14px; border: 1px solid var(--wbd); border-radius: 20px; background: var(--wc); color: var(--wt); font-size: 14px; outline: none; font-family: inherit; }
+  .w-comment-input button { padding: 10px 16px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; border-radius: 20px; cursor: pointer; font-family: inherit; }
 
-  .w-section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+  .w-section-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
   .w-user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .w-user-card { padding: 20px; border-radius: 12px; background: var(--wcard); border: 1px solid var(--wbd); display: flex; flex-direction: column; align-items: center; text-align: center; }
   .w-user-card:hover { border-color: var(--wgold); }
-  .w-user-name { font-weight: 700; color: var(--wgold); text-decoration: none; font-size: 14px; margin-top: 8px; }
-  .w-user-real { font-size: 12px; color: var(--wt2); margin-top: 2px; }
-  .w-user-bio { font-size: 11px; color: var(--wt3); margin-top: 6px; line-height: 1.3; }
+  .w-user-name { font-weight: 700; color: var(--wgold); text-decoration: none; font-size: 16px; margin-top: 8px; }
+  .w-user-real { font-size: 14px; color: var(--wt2); margin-top: 2px; }
+  .w-user-bio { font-size: 13px; color: var(--wt3); margin-top: 6px; line-height: 1.3; }
   .w-user-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-  .w-add-btn, .w-msg-btn { padding: 5px 14px; border-radius: 16px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: none; font-family: inherit; }
-  .w-remove-btn { padding: 5px 14px; border-radius: 16px; border: 1px solid rgba(239,68,68,0.3); background: none; color: #ef4444; font-size: 10px; cursor: pointer; font-family: inherit; }
-  .w-accept-btn { padding: 6px 16px; border-radius: 16px; border: none; background: #10b981; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
-  .w-decline-btn { padding: 6px 16px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; }
+  .w-add-btn, .w-msg-btn { padding: 8px 16px; border-radius: 16px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .w-remove-btn { padding: 8px 16px; border-radius: 16px; border: 1px solid rgba(239,68,68,0.3); background: none; color: #ef4444; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .w-accept-btn { padding: 9px 18px; border-radius: 16px; border: none; background: #10b981; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .w-decline-btn { padding: 9px 18px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 14px; cursor: pointer; font-family: inherit; }
   .w-req-actions { display: flex; gap: 8px; margin-top: 12px; }
   .w-request-card { border-color: #10b981; }
 
   .w-widget { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-  .w-widget h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .w-widget h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
   .w-suggest-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
   .w-suggest-info { flex: 1; min-width: 0; }
-  .w-suggest-name { font-size: 12px; font-weight: 600; color: var(--wgold); text-decoration: none; }
-  .w-suggest-real { font-size: 10px; color: var(--wt3); }
-  .w-connect-sm { height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
+  .w-suggest-name { font-size: 14px; font-weight: 600; color: var(--wgold); text-decoration: none; }
+  .w-suggest-real { font-size: 13px; color: var(--wt3); }
+  .w-connect-sm { height: 30px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--wgold); background: none; color: var(--wgold); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; }
   .w-connect-sm:hover { background: var(--wgold); color: #000; }
-  .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 10px; width: auto; padding: 4px 10px; border-radius: 12px; }
-  .w-footer { font-size: 11px; color: var(--wt3); }
+  .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 13px; width: auto; padding: 6px 12px; border-radius: 12px; }
+  .w-footer { font-size: 13px; color: var(--wt3); }
   .w-footer a { color: var(--wt3); text-decoration: none; }
   .w-footer a:hover { color: var(--wgold); }
-  .w-copyright { margin-top: 8px; font-size: 10px; }
+  .w-copyright { margin-top: 8px; font-size: 13px; }
 
-  .w-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 10px 24px; border-radius: 20px; font-weight: 700; font-size: 13px; z-index: 200; animation: slideUp 0.3s; }
-  .w-empty { text-align: center; padding: 40px; color: var(--wt3); font-size: 14px; }
+  .w-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 12px 26px; border-radius: 20px; font-weight: 700; font-size: 15px; z-index: 200; animation: slideUp 0.3s; }
+  .w-empty { text-align: center; padding: 40px; color: var(--wt3); font-size: 16px; }
 
   @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
@@ -1242,8 +1563,8 @@
   .w-bookmark-btn:hover { color: #eab308; }
   .w-bookmarked { color: #eab308 !important; }
   .w-edit-btn:hover { color: #10b981; }
-  .w-edit-textarea { width: 100%; background: var(--wc); border: 1px solid var(--wbd); border-radius: 8px; color: var(--wt); padding: 8px; font: inherit; resize: vertical; }
-  .w-edited-tag { font-size: 11px; color: var(--wt3); margin-left: 6px; }
+  .w-edit-textarea { width: 100%; background: var(--wc); border: 1px solid var(--wbd); border-radius: 8px; color: var(--wt); padding: 12px; font: inherit; resize: vertical; }
+  .w-edited-tag { font-size: 13px; color: var(--wt3); margin-left: 6px; }
   .w-hashtag { color: var(--wgold); text-decoration: none; font-weight: 600; }
   .w-hashtag:hover { text-decoration: underline; }
   .w-mention { color: #3b82f6; text-decoration: none; font-weight: 600; }
@@ -1254,10 +1575,10 @@
   .w-trending { margin-bottom: 16px; }
   .w-trending-item { display: flex; justify-content: space-between; padding: 8px 12px; text-decoration: none; border-radius: 6px; }
   .w-trending-item:hover { background: rgba(255,255,255,0.04); }
-  .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 14px; }
-  .w-trending-count { color: var(--wt3); font-size: 12px; }
+  .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 16px; }
+  .w-trending-count { color: var(--wt3); font-size: 14px; }
   .w-activity-header { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px; }
-  .w-activity-count { font-size:12px;color:var(--wt3,#606770); }
+  .w-activity-count { font-size:14px;color:var(--wt3,#606770); }
   .w-activity-list { display:flex;flex-direction:column; }
   .w-activity-item { display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--wbd,#1e1e2a); }
   .w-activity-item:last-child { border-bottom:none; }
@@ -1268,16 +1589,16 @@
   .w-activity-badge--comment { background:rgba(96,165,250,0.12); }
   .w-activity-badge--post { background:rgba(167,139,250,0.12); }
   .w-activity-body { display:flex;flex-direction:column;gap:2px;flex:1;min-width:0; }
-  .w-activity-action { font-size:13px;font-weight:600;color:var(--wt1,#e4e6ea); }
-  .w-activity-preview { font-size:12px;color:var(--wt2,#8a8d91);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-  .w-activity-time { font-size:11px;color:var(--wt3,#606770);white-space:nowrap;flex-shrink:0; }
-  .w-badge-count { background:var(--wgold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px; }
-  .w-pending-label { font-size:11px;color:var(--wt3);border:1px solid var(--wbd);padding:3px 8px;border-radius:12px;white-space:nowrap; }
+  .w-activity-action { font-size:15px;font-weight:600;color:var(--wt1,#e4e6ea); }
+  .w-activity-preview { font-size:14px;color:var(--wt2,#8a8d91);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .w-activity-time { font-size:13px;color:var(--wt3,#606770);white-space:nowrap;flex-shrink:0; }
+  .w-badge-count { background:var(--wgold);color:#000;font-size:13px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px; }
+  .w-pending-label { font-size:13px;color:var(--wt3);border:1px solid var(--wbd);padding:4px 10px;border-radius:12px;white-space:nowrap; }
   .w-widget-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
   .w-widget-head h3 { margin:0; }
-  .w-show-more { background:none;border:none;color:var(--wgold);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:inherit; }
+  .w-show-more { background:none;border:none;color:var(--wgold);font-size:14px;font-weight:600;cursor:pointer;padding:0;font-family:inherit; }
   .w-show-more:hover { text-decoration:underline; }
-  .w-pending-badge { font-size:11px;color:var(--wt3);border:1px solid var(--wbd);padding:4px 10px;border-radius:12px; }
+  .w-pending-badge { font-size:13px;color:var(--wt3);border:1px solid var(--wbd);padding:5px 12px;border-radius:12px; }
   .w-notif-btn { position: relative; }
   .w-notif-badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; }
   .w-img-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; }
@@ -1288,12 +1609,12 @@
   .w-img-remove:hover { background: #ef4444; }
   .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; }
-  .wc-sidebar-link { display: block; background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px 16px; color: #f5a623; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 12px; text-align: center; transition: border-color 0.15s; }
+  .wc-sidebar-link { display: block; background: #141420; border: 1px solid #1e293b; border-radius: 14px; padding: 14px 16px; color: #f5a623; text-decoration: none; font-weight: 700; font-size: 16px; margin-bottom: 12px; text-align: center; transition: border-color 0.15s; }
   .wc-sidebar-link:hover { border-color: #f5a623; }
   .w-user-menu-wrap { position: relative; }
   .w-avatar-btn { cursor: pointer; border: none; background: linear-gradient(135deg, var(--wgold), #e09100); font-family: inherit; }
   .w-user-dropdown { position: absolute; right: 0; top: 44px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 14px; min-width: 200px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.4); overflow: hidden; }
-  .w-ud-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: none; border: none; color: var(--wt); font-size: 14px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .w-ud-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; background: none; border: none; color: var(--wt); font-size: 16px; cursor: pointer; text-decoration: none; font-family: inherit; }
   .w-ud-item:hover { background: var(--whover); }
   .w-ud-divider { height: 1px; background: var(--wbd); margin: 4px 0; }
   .w-ud-danger { color: #ef4444 !important; }
@@ -1305,20 +1626,25 @@
 
   /* Milestone form */
   .w-milestone-form { background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02)); border: 1px solid rgba(245,166,35,0.2); border-radius: 12px; padding: 12px; margin: 8px 0; }
-  .w-milestone-badge { font-size: 12px; font-weight: 700; color: var(--wgold); margin-bottom: 8px; }
+  .w-milestone-badge { font-size: 14px; font-weight: 700; color: var(--wgold); margin-bottom: 8px; }
   .w-milestone-row { display: flex; gap: 8px; }
-  .w-milestone-select { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 8px 10px; color: var(--wt); font-size: 13px; font-family: inherit; flex-shrink: 0; }
-  .w-milestone-input { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 8px 12px; color: var(--wt); font-size: 14px; font-family: inherit; flex: 1; }
+  .w-milestone-select { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 10px 12px; color: var(--wt); font-size: 15px; font-family: inherit; flex-shrink: 0; }
+  .w-milestone-input { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 8px; padding: 10px 14px; color: var(--wt); font-size: 16px; font-family: inherit; flex: 1; }
   .w-milestone-input:focus, .w-milestone-select:focus { outline: none; border-color: var(--wgold); }
   .w-milestone-input::placeholder { color: var(--wt3); }
 
   /* Milestone card in feed */
   .w-milestone-card { display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, rgba(245,166,35,0.12), rgba(245,166,35,0.04)); border: 1px solid rgba(245,166,35,0.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
   .w-milestone-icon { font-size: 22px; }
-  .w-milestone-val { font-weight: 700; font-size: 16px; color: var(--wgold); flex: 1; }
-  .w-milestone-type { font-size: 11px; color: var(--wt3); text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border: 1px solid var(--wbd); border-radius: 6px; }
+  .w-milestone-val { font-weight: 700; font-size: 18px; color: var(--wgold); flex: 1; }
+  .w-milestone-type { font-size: 13px; color: var(--wt3); text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border: 1px solid var(--wbd); border-radius: 6px; }
   .w-emoji-backdrop { position: fixed; inset: 0; z-index: 49; }
   .w-emoji-picker { z-index: 50; }
+
+  /* ============================================ */
+  /* QUICK LINKS (mobile-only scrollable strip)   */
+  /* ============================================ */
+  .w-quick-links { display: none; }
 
   /* ============================================ */
   /* MOBILE BOTTOM NAV                            */
@@ -1341,9 +1667,54 @@
     .w-sidebar-left { display: none; }
     .w-sidebar-right { display: none; }
 
+    /* Quick links strip — scrollable chips */
+    .w-quick-links {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      border-bottom: 1px solid var(--wbd);
+      background: var(--wbg);
+    }
+    .w-quick-links::-webkit-scrollbar { display: none; }
+    .w-ql-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: var(--whover);
+      color: var(--wt2);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      border: 1px solid var(--wbd);
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .w-ql-chip:active { background: rgba(245,166,35,0.15); color: var(--wgold); border-color: var(--wgold); }
+    .w-ql-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      min-width: 14px;
+      height: 14px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      margin-left: 2px;
+    }
+
     /* Layout */
-    .w-body { flex-direction: column; padding-bottom: 72px; }
-    .w-main { border: none; padding: 0; min-width: 0; width: 100%; }
+    .w-body { flex-direction: column; padding-bottom: 72px; height: auto; overflow: visible; }
+    .w-main { border: none; padding: 0; min-width: 0; width: 100%; overflow-y: visible; height: auto; }
 
     /* Topbar — simplified */
     .w-topbar { position: sticky; top: 0; z-index: 100; }
@@ -1361,11 +1732,11 @@
     .w-composer { margin: 0; border-radius: 0; border-left: none; border-right: none; padding: 12px 14px; }
     .w-composer-top { gap: 10px; }
     .w-composer-top .w-avatar-sm { display: none; }
-    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+    .w-composer-top textarea { font-size: 17px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
     .w-composer-bottom { gap: 6px; flex-wrap: nowrap; align-items: center; }
     .w-feed-tabs { order: -1; }
-    .w-feed-tabs button { font-size: 12px; padding: 5px 12px; border-radius: 16px; }
-    .w-post-btn { padding: 8px 18px; font-size: 13px; border-radius: 18px; margin-left: auto; }
+    .w-feed-tabs button { font-size: 14px; padding: 7px 14px; border-radius: 16px; }
+    .w-post-btn { padding: 10px 20px; font-size: 15px; border-radius: 18px; margin-left: auto; }
     .w-char { display: none; }
     .w-img-btn, .w-milestone-btn, .w-emoji-btn { padding: 6px; }
     .w-img-preview { border-radius: 10px; margin: 8px 0; }
@@ -1381,15 +1752,15 @@
     .w-post:hover { background: transparent; }
     .w-post-header { gap: 10px; }
     .w-avatar-md { width: 40px; height: 40px; font-size: 15px; }
-    .w-post-body { font-size: 15px; line-height: 1.55; }
+    .w-post-body { font-size: 17px; line-height: 1.55; }
     .w-post-img img { border-radius: 10px; max-height: 400px; }
     .w-milestone-card { padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; }
-    .w-milestone-val { font-size: 15px; }
+    .w-milestone-val { font-size: 17px; }
 
     /* Post actions — spread evenly */
     .w-post-actions { padding: 8px 0 0; gap: 0; justify-content: space-around; }
-    .w-action { -webkit-tap-highlight-color: transparent; padding: 8px 12px; border-radius: 8px; gap: 6px; font-size: 13px; }
-    .w-action span { font-size: 13px; }
+    .w-action { -webkit-tap-highlight-color: transparent; padding: 8px 12px; border-radius: 8px; gap: 6px; font-size: 15px; }
+    .w-action span { font-size: 15px; }
 
     /* Three-dot menu */
     .w-post-menu-wrap { position: static; }
@@ -1397,7 +1768,7 @@
 
     /* Comments */
     .w-comments { padding: 8px 0; }
-    .w-comment-input { font-size: 14px; }
+    .w-comment-input { font-size: 16px; }
 
     /* Join CTA */
     .w-join-cta { margin: 0; border-radius: 0; padding: 32px 20px; }
@@ -1438,7 +1809,7 @@
       gap: 2px;
       color: var(--wt3);
       text-decoration: none;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 500;
       padding: 6px 12px;
       border-radius: 8px;
@@ -1518,7 +1889,7 @@
     }
     @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .w-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--wbd); margin: 4px auto 12px; }
-    .w-sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; padding: 0 4px; }
+    .w-sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; padding: 0 4px; }
     .w-sheet-item {
       display: flex;
       align-items: center;
@@ -1546,8 +1917,8 @@
       flex-shrink: 0;
     }
     .w-sheet-label { flex: 1; }
-    .w-sheet-name { font-weight: 600; font-size: 15px; }
-    .w-sheet-desc { font-size: 12px; color: var(--wt3); margin-top: 2px; }
+    .w-sheet-name { font-weight: 600; font-size: 17px; }
+    .w-sheet-desc { font-size: 14px; color: var(--wt3); margin-top: 2px; }
   }
 
   /* PWA install prompt */
@@ -1567,8 +1938,8 @@
     .w-pwa-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--wt3); font-size: 16px; cursor: pointer; }
     .w-pwa-content { display: flex; align-items: center; gap: 14px; }
     .w-pwa-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--wgold); color: #000; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .w-pwa-title { font-weight: 600; font-size: 14px; }
-    .w-pwa-desc { font-size: 12px; color: var(--wt3); margin-top: 2px; }
+    .w-pwa-title { font-weight: 600; font-size: 16px; }
+    .w-pwa-desc { font-size: 14px; color: var(--wt3); margin-top: 2px; }
 
   /* ============================================ */
   /* SMALL PHONES — 380px and below               */
@@ -1576,16 +1947,16 @@
   @media (max-width: 380px) {
     .w-topbar-inner { padding: 0 8px; }
     .w-logo { font-size: 18px; }
-    .w-search-wrap input { font-size: 13px; height: 32px; }
+    .w-search-wrap input { font-size: 15px; height: 32px; }
     .w-post { padding: 12px 10px; }
-    .w-post-body { font-size: 14px; }
+    .w-post-body { font-size: 16px; }
     .w-action { -webkit-tap-highlight-color: transparent; padding: 6px 8px; }
-    .w-mn-item { padding: 6px 8px; font-size: 9px; }
+    .w-mn-item { padding: 6px 8px; font-size: 11px; }
     .w-mn-create { width: 44px; height: 44px; }
   }
 
   /* Toast */
-  .w-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 10px 24px; border-radius: 24px; font-size: 13px; font-weight: 600; z-index: 500; animation: toastIn 0.25s ease-out; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .w-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 12px 26px; border-radius: 24px; font-size: 15px; font-weight: 600; z-index: 500; animation: toastIn 0.25s ease-out; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
   @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
   /* Double-tap heart */
@@ -1611,16 +1982,71 @@
   @keyframes shimmer { 0% { opacity: 0.3; } 50% { opacity: 0.6; } 100% { opacity: 0.3; } }
 
   /* Load more / feed end */
-  .w-load-more { text-align: center; padding: 20px; color: var(--wt3); font-size: 13px; }
-  .w-feed-end { text-align: center; padding: 24px; color: var(--wt3); font-size: 13px; font-weight: 500; border-top: 1px solid var(--wbd); }
+  .w-load-more { text-align: center; padding: 20px; color: var(--wt3); font-size: 15px; }
+  .w-feed-end { text-align: center; padding: 24px; color: var(--wt3); font-size: 15px; font-weight: 500; border-top: 1px solid var(--wbd); }
 
   /* Empty state */
   .w-empty-state { text-align: center; padding: 48px 20px; }
   .w-empty-icon { color: var(--wt3); margin-bottom: 16px; }
-  .w-empty-state h3 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
-  .w-empty-state p { font-size: 14px; color: var(--wt3); margin: 0 0 24px; }
+  .w-empty-state h3 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+  .w-empty-state p { font-size: 16px; color: var(--wt3); margin: 0 0 24px; }
   .w-empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .w-empty-btn { padding: 10px 24px; border-radius: 24px; background: var(--wgold); color: #000; font-weight: 600; font-size: 13px; text-decoration: none; }
+  .w-empty-btn { padding: 12px 26px; border-radius: 24px; background: var(--wgold); color: #000; font-weight: 600; font-size: 15px; text-decoration: none; }
   .w-empty-btn.secondary { background: none; border: 1px solid var(--wbd); color: var(--wt2); }
   .w-empty-btn.secondary:hover { border-color: var(--wgold); color: var(--wgold); }
+
+  /* ═══ LINK PREVIEWS ═══ */
+  .w-link-preview { display: block; margin-top: 10px; border: 1px solid var(--wbd); border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+  .w-link-preview:hover { border-color: var(--wgold); }
+  .w-lp-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+  .w-lp-text { padding: 10px 14px; }
+  .w-lp-title { font-weight: 600; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .w-lp-desc { font-size: 15px; color: var(--wt2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .w-lp-domain { font-size: 14px; color: var(--wt3); margin-top: 6px; }
+
+  /* ═══ POLL FORM ═══ */
+  .w-poll-form, .w-schedule-form { padding: 12px 0; border-top: 1px solid var(--wbd); margin-top: 10px; }
+  .w-poll-badge { font-size: 15px; font-weight: 600; color: var(--wgold); margin-bottom: 10px; }
+  .w-poll-q, .w-poll-opt, .w-sched-textarea, .w-sched-date { width: 100%; padding: 12px 14px; border: 1px solid var(--wbd); border-radius: 8px; background: var(--wb); color: var(--wt); font-size: 16px; font-family: inherit; box-sizing: border-box; }
+  .w-poll-q { margin-bottom: 8px; }
+  .w-poll-opt-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .w-poll-opt { flex: 1; }
+  .w-poll-opt-rm { background: none; border: none; color: var(--wt3); cursor: pointer; font-size: 16px; padding: 0 6px; }
+  .w-poll-add { background: none; border: none; color: var(--wgold); cursor: pointer; font-size: 15px; font-weight: 500; padding: 6px 0; }
+  .w-poll-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 10px; }
+  .w-poll-ends { font-size: 15px; color: var(--wt2); display: flex; align-items: center; gap: 6px; }
+  .w-poll-ends input { padding: 8px 10px; border: 1px solid var(--wbd); border-radius: 6px; background: var(--wb); color: var(--wt); font-size: 15px; }
+  .w-poll-btn, .w-sched-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.15s; }
+  .w-poll-btn:hover, .w-sched-btn:hover { color: var(--wgold); }
+  .w-poll-btn.active, .w-sched-btn.active { color: var(--wgold); }
+  .w-sched-textarea { min-height: 50px; resize: none; margin-bottom: 8px; }
+
+  /* ═══ MODALS ═══ */
+  .w-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .w-modal { background: var(--wcard, #16161f); border: 1px solid var(--wbd, #1e1e2a); border-radius: 16px; width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto; }
+  .w-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--wbd); }
+  .w-modal-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--wt, #e4e6ea); }
+  .w-modal-close { background: none; border: none; color: var(--wt3); cursor: pointer; font-size: 18px; padding: 4px 8px; }
+  .w-modal-loading, .w-modal-empty { padding: 32px; text-align: center; color: var(--wt3); font-size: 16px; }
+
+  /* ═══ ANALYTICS ═══ */
+  .w-analytics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--wbd); }
+  .w-analytics-stat { padding: 20px 16px; text-align: center; background: var(--wcard, #16161f); }
+  .w-analytics-num { font-size: 28px; font-weight: 700; color: var(--wgold); }
+  .w-analytics-label { font-size: 14px; color: var(--wt3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ═══ LIKES LIST ═══ */
+  .w-likes-list { padding: 8px 0; max-height: 400px; overflow-y: auto; }
+  .w-likes-user { display: flex; align-items: center; gap: 12px; padding: 10px 20px; text-decoration: none; color: inherit; transition: background 0.1s; }
+  .w-likes-user:hover { background: var(--whover); }
+  .w-likes-info { display: flex; flex-direction: column; }
+  .w-likes-name { font-weight: 600; font-size: 16px; }
+  .w-likes-handle { font-size: 15px; color: var(--wt3); }
+  .w-likes-clickable { cursor: pointer; }
+  .w-likes-clickable:hover { text-decoration: underline; }
+
+  /* ═══ REPOST BANNER ═══ */
+  .w-repost-banner { width: 100%; display: flex; align-items: center; gap: 6px; padding: 0 0 8px 44px; font-size: 15px; color: #f97316; font-weight: 500; }
+  .w-repost-banner svg { flex-shrink: 0; stroke: #f97316; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>

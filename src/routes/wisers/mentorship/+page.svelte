@@ -283,20 +283,20 @@
   :global(body) { margin: 0; }
   :global(.page) { padding: 0 !important; }
   .mt-inner { max-width: 800px; margin: 0 auto; padding: 40px 48px; }
-  .mt-back { font-size: 13px; color: var(--mt-gold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .mt-back { font-size: 15px; color: var(--mt-gold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
   .mt-back:hover { text-decoration: underline; }
   .mt-title { font-size: 28px; font-weight: 600; margin: 0 0 6px; }
-  .mt-sub { font-size: 15px; color: var(--mt-t3); margin: 0 0 28px; }
+  .mt-sub { font-size: 17px; color: var(--mt-t3); margin: 0 0 28px; }
   .mt-bar { border-bottom: 1px solid var(--mt-bd); margin-bottom: 24px; }
   .mt-tabs { display: flex; gap: 0; }
-  .mt-tabs button { background: none; border: none; padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--mt-t3); border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; }
+  .mt-tabs button { background: none; border: none; padding: 12px 20px; font-size: 16px; font-weight: 500; color: var(--mt-t3); border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; }
   .mt-tabs button.active { color: var(--mt-gold); border-bottom-color: var(--mt-gold); }
   .mt-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
   .mt-browse-bar { display: flex; gap: 10px; margin-bottom: 20px; }
   .mt-role-toggle { display: flex; gap: 4px; background: var(--mt-card); border: 1px solid var(--mt-bd); border-radius: 12px; padding: 4px; }
-  .mt-role-toggle button { background: none; border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--mt-t3); cursor: pointer; font-family: inherit; }
+  .mt-role-toggle button { background: none; border: none; padding: 8px 18px; border-radius: 8px; font-size: 15px; font-weight: 500; color: var(--mt-t3); cursor: pointer; font-family: inherit; }
   .mt-role-toggle button.active { background: var(--mt-gold); color: #000; }
-  .mt-empty { text-align: center; color: var(--mt-t3); padding: 60px 20px; font-size: 15px; }
+  .mt-empty { text-align: center; color: var(--mt-t3); padding: 60px 20px; font-size: 17px; }
   .mt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .mt-card { background: var(--mt-card); border: 1px solid var(--mt-bd); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
   .mt-card:hover { border-color: var(--mt-t3); }
@@ -304,56 +304,56 @@
   .mt-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--mt-gold), #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 18px; flex-shrink: 0; overflow: hidden; }
   .mt-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .mt-card-info { flex: 1; min-width: 0; }
-  .mt-card-name { font-weight: 600; font-size: 15px; color: var(--mt-t); text-decoration: none; }
+  .mt-card-name { font-weight: 600; font-size: 17px; color: var(--mt-t); text-decoration: none; }
   .mt-card-name:hover { color: var(--mt-gold); }
-  .mt-card-handle { font-size: 13px; color: var(--mt-t3); }
+  .mt-card-handle { font-size: 15px; color: var(--mt-t3); }
   .mt-level-badge { font-size: 11px; color: var(--mt-gold); border: 1px solid rgba(245,166,35,0.3); padding: 3px 10px; border-radius: 12px; text-transform: capitalize; font-weight: 500; flex-shrink: 0; }
-  .mt-card-bio { font-size: 13px; color: var(--mt-t2); line-height: 1.5; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .mt-card-section { font-size: 13px; color: var(--mt-t2); }
+  .mt-card-bio { font-size: 15px; color: var(--mt-t2); line-height: 1.5; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mt-card-section { font-size: 15px; color: var(--mt-t2); }
   .mt-card-label { color: var(--mt-t3); font-weight: 500; margin-right: 6px; }
   .mt-card-actions { display: flex; gap: 8px; margin-top: 4px; }
-  .mt-request-btn { background: var(--mt-gold); color: #000; border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .mt-request-btn { background: var(--mt-gold); color: #000; border: none; padding: 8px 20px; border-radius: 20px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .mt-request-btn:disabled { opacity: 0.5; }
-  .mt-msg-btn { background: none; border: 1px solid var(--mt-bd); color: var(--mt-t2); padding: 8px 18px; border-radius: 20px; font-size: 13px; text-decoration: none; font-family: inherit; }
+  .mt-msg-btn { background: none; border: 1px solid var(--mt-bd); color: var(--mt-t2); padding: 8px 18px; border-radius: 20px; font-size: 15px; text-decoration: none; font-family: inherit; }
   .mt-msg-btn:hover { border-color: var(--mt-t3); color: var(--mt-t); }
 
   /* Profile form */
   .mt-profile-form { max-width: 560px; }
   .mt-form-card { background: var(--mt-card); border: 1px solid var(--mt-bd); border-radius: 16px; padding: 24px; }
-  .mt-form-card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
-  .mt-form-hint { font-size: 13px; color: var(--mt-t3); margin: 0 0 20px; }
+  .mt-form-card h3 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+  .mt-form-hint { font-size: 15px; color: var(--mt-t3); margin: 0 0 20px; }
   .mt-field { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
-  .mt-field label { font-size: 13px; font-weight: 500; color: var(--mt-t2); }
-  .mt-field textarea, .mt-field select, .mt-field input { background: var(--mt-bg); border: 1px solid var(--mt-bd); border-radius: 10px; padding: 10px 14px; color: var(--mt-t); font-size: 14px; font-family: inherit; resize: vertical; }
+  .mt-field label { font-size: 15px; font-weight: 500; color: var(--mt-t2); }
+  .mt-field textarea, .mt-field select, .mt-field input { background: var(--mt-bg); border: 1px solid var(--mt-bd); border-radius: 10px; padding: 10px 14px; color: var(--mt-t); font-size: 16px; font-family: inherit; resize: vertical; }
   .mt-field textarea:focus, .mt-field select:focus, .mt-field input:focus { outline: none; border-color: var(--mt-gold); }
   .mt-role-selector { display: flex; gap: 8px; }
-  .mt-role-selector button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1.5px solid var(--mt-bd); border-radius: 12px; background: none; color: var(--mt-t3); cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; }
+  .mt-role-selector button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1.5px solid var(--mt-bd); border-radius: 12px; background: none; color: var(--mt-t3); cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 500; }
   .mt-role-selector button.active { border-color: var(--mt-gold); color: var(--mt-gold); background: rgba(245,166,35,0.06); }
   .mt-level-pills { display: flex; gap: 6px; }
-  .mt-pill { padding: 7px 16px; border-radius: 20px; font-size: 13px; border: 1px solid var(--mt-bd); background: none; color: var(--mt-t3); cursor: pointer; font-family: inherit; text-transform: capitalize; }
+  .mt-pill { padding: 7px 16px; border-radius: 20px; font-size: 15px; border: 1px solid var(--mt-bd); background: none; color: var(--mt-t3); cursor: pointer; font-family: inherit; text-transform: capitalize; }
   .mt-pill.active { background: rgba(245,166,35,0.12); color: var(--mt-gold); border-color: transparent; }
-  .mt-save-btn { background: var(--mt-gold); color: #000; border: none; padding: 10px 28px; border-radius: 24px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .mt-save-btn { background: var(--mt-gold); color: #000; border: none; padding: 10px 28px; border-radius: 24px; font-weight: 600; font-size: 16px; cursor: pointer; font-family: inherit; }
   .mt-save-btn:disabled { opacity: 0.4; }
 
   /* Requests */
   .mt-requests { display: flex; flex-direction: column; gap: 12px; }
-  .mt-req-heading { font-size: 15px; font-weight: 600; color: var(--mt-gold); margin: 8px 0; }
+  .mt-req-heading { font-size: 17px; font-weight: 600; color: var(--mt-gold); margin: 8px 0; }
   .mt-req-card { background: var(--mt-card); border: 1px solid var(--mt-bd); border-radius: 14px; padding: 16px; }
   .mt-req-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
   .mt-avatar-sm { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--mt-gold), #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 16px; flex-shrink: 0; overflow: hidden; }
   .mt-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
   .mt-req-info { flex: 1; }
-  .mt-req-name { font-weight: 600; font-size: 14px; color: var(--mt-t); text-decoration: none; }
+  .mt-req-name { font-weight: 600; font-size: 16px; color: var(--mt-t); text-decoration: none; }
   .mt-req-name:hover { color: var(--mt-gold); }
-  .mt-req-handle { font-size: 12px; color: var(--mt-t3); }
-  .mt-req-msg { font-size: 13px; color: var(--mt-t2); font-style: italic; margin: 0 0 8px; }
+  .mt-req-handle { font-size: 14px; color: var(--mt-t3); }
+  .mt-req-msg { font-size: 15px; color: var(--mt-t2); font-style: italic; margin: 0 0 8px; }
   .mt-req-status { font-size: 11px; padding: 3px 10px; border-radius: 10px; text-transform: capitalize; font-weight: 500; }
   .mt-req-status.active { color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
   .mt-req-status.pending { color: var(--mt-gold); border: 1px solid rgba(245,166,35,0.3); }
   .mt-req-status.declined { color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
   .mt-req-actions { display: flex; gap: 8px; }
-  .mt-accept-btn { background: #10b981; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  .mt-decline-btn { background: none; border: 1px solid var(--mt-bd); color: var(--mt-t3); padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .mt-accept-btn { background: #10b981; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .mt-decline-btn { background: none; border: 1px solid var(--mt-bd); color: var(--mt-t3); padding: 8px 18px; border-radius: 20px; font-size: 15px; cursor: pointer; font-family: inherit; }
   .mt-decline-btn:hover { border-color: #ef4444; color: #ef4444; }
 
   @media (max-width: 640px) { .mt-inner { padding: 20px 16px; } .mt-grid { grid-template-columns: 1fr; } .mt-role-selector { flex-direction: column; } }

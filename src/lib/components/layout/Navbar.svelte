@@ -34,6 +34,7 @@
     { href: '/monitoring', label: 'Monitoring', icon: Bell },
     { href: '/deep-crawl', label: 'Deep Crawl', icon: Layers },
     { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+    { href: '/support', label: 'Support', icon: MessageCircle },
     { href: '/wisers', label: 'Wisers Community', icon: Users },
     { href: '/account', label: 'Account', icon: User },
   ];
@@ -77,8 +78,14 @@
       {/if}
     </div>
 
+    <!-- Support -->
+    <a href="/support" class="nav-link" class:active={$page.url.pathname === '/support'}>
+      <MessageCircle size={15} strokeWidth={2} />
+      Support
+    </a>
+
     <!-- Wisers Direct Link -->
-    <a href="https://wisrs.com/wisers" class="nav-link nav-wisers" target="_blank">
+    <a href={$auth.token ? `https://wisrs.com?bscan_sso=${$auth.token}` : 'https://wisrs.com'} class="nav-link nav-wisers" target="_blank">
       <Users size={15} strokeWidth={2} />
       Wisers
     </a>

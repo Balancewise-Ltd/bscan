@@ -12,8 +12,11 @@
 	import { browser } from '$app/environment';
 	import CheckoutModal from '$lib/components/ui/CheckoutModal.svelte';
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
+	import DobPrompt from '$lib/components/ui/DobPrompt.svelte';
 
 	let { children } = $props();
+
+	let showDobPrompt = $state(false);
 
 	onMount(() => {
 		auth.init();
@@ -23,6 +26,13 @@
 			navigator.serviceWorker.register('/sw.js').catch(() => {});
 		}
 	});
+
+	// Show DOB prompt for logged-in users missing date_of_birth
+	$effect(() => {
+		if ($auth.token && $auth.user && !$auth.user.date_of_birth) {
+			showDobPrompt = true;
+		}
+	});
 </script>
 
 <a href="#main-content" class="skip-link">Skip to content</a>
@@ -30,7 +40,7 @@
 <div class="bg-mesh" aria-hidden="true"></div>
 <div class="bg-grid" aria-hidden="true"></div>
 
-{#if !$page.url.pathname.startsWith('/wisers')}
+{#if !$page.url.pathname.startsWith('/wisers') && !$page.url.pathname.startsWith('/notifications') && !$page.url.pathname.startsWith('/settings')}
 <Navbar />
 {/if}
 
@@ -40,15 +50,18 @@
 	</main>
 </ErrorBoundary>
 
-{#if !$page.url.pathname.startsWith('/wisers')}
+{#if !$page.url.pathname.startsWith('/wisers') && !$page.url.pathname.startsWith('/notifications') && !$page.url.pathname.startsWith('/settings')}
 <Faq />
 <Footer />
 {/if}
-{#if !$page.url.pathname.startsWith('/wisers')}
+{#if !$page.url.pathname.startsWith('/wisers') && !$page.url.pathname.startsWith('/notifications') && !$page.url.pathname.startsWith('/settings')}
 <ChatWidget />
 {/if}
 {#if browser}<WisersDM /><WisersToast />{/if}
 <CheckoutModal />
+{#if showDobPrompt}
+	<DobPrompt onfinish={() => showDobPrompt = false} />
+{/if}
 
 <style>
 	.skip-link {

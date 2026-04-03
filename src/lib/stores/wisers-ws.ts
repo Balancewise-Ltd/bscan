@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store';
+import { PUBLIC_API_BASE } from '$env/static/public';
 
-const API = 'https://api-bscan.balancewises.io/api/community';
+const API = `${PUBLIC_API_BASE}/api/community`;
 
 // ═══════════════════════════════════════
 // STORES
@@ -16,20 +17,35 @@ export const wsLastMessage = writable<any>(null);
 let lastFetchTime = 0;
 const FETCH_COOLDOWN = 3000; // Don't re-fetch within 3s (prevents spam on reconnect flicker)
 
+async function safeJson<T>(res: Response, fallback: T): Promise<T> {
+  if (!res.ok) return fallback;
+  try { return (await res.json()) as T; } catch { return fallback; }
+}
+
 export async function fetchUnreadCounts(authToken: string) {
   const now = Date.now();
   if (now - lastFetchTime < FETCH_COOLDOWN) return; // Debounce
   lastFetchTime = now;
 
-  const h = { Authorization: `Bearer ${authToken}` };
+  const headers = new Headers({
+    Accept: 'application/json',
+    Authorization: `Bearer ${authToken}`,
+  });
+
   try {
-    const dm = await fetch(`${API}/unread-count`, { headers: h }).then(r => r.json());
-    wsUnreadDMs.set(dm.unread || 0);
-  } catch {}
-  try {
-    const notif = await fetch(`${API}/notifications/unread-count`, { headers: h }).then(r => r.json());
-    wsNotifCount.set(notif.count || 0);
-  } catch {}
+    const [dmRes, notifRes] = await Promise.all([
+      fetch(`${API}/unread-count`, { headers, mode: 'cors' }),
+      fetch(`${API}/notifications/unread-count`, { headers, mode: 'cors' }),
+    ]);
+
+    const dm = await safeJson(dmRes, { unread: 0 });
+    const notif = await safeJson(notifRes, { count: 0 });
+
+    wsUnreadDMs.set(Number((dm as any).unread || 0));
+    wsNotifCount.set(Number((notif as any).count || 0));
+  } catch (err) {
+    console.error('fetchUnreadCounts failed:', err);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -94,10 +110,10 @@ export function connectWS(authToken: string) {
   if (typeof window === 'undefined') return;
   if (ws && ws.readyState === WebSocket.OPEN) return;
   token = authToken;
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsBase = PUBLIC_API_BASE.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
 
   try {
-    ws = new WebSocket(`${protocol}//api-bscan.balancewises.io/api/community/ws?token=${authToken}`);
+    ws = new WebSocket(`${wsBase}/api/community/ws?token=${authToken}`);
 
     ws.onopen = () => {
       wsConnected.set(true);
@@ -162,9 +178,9 @@ export function connectWS(authToken: string) {
   }
 }
 
-export function sendTyping(toUsername: string) {
+export function sendTyping(toUserId: string, conversationId?: number) {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ action: 'typing', to: toUsername }));
+    ws.send(JSON.stringify({ action: 'typing', to_user_id: toUserId, conversation_id: conversationId }));
   }
 }
 

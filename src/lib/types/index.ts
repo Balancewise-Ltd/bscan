@@ -34,6 +34,8 @@ export interface User {
 	billing_type?: string;
 	plan_expires_at?: string;
 	plan_source?: string;
+	date_of_birth?: string;
+	display_name?: string;
 }
 
 export interface AuthState {

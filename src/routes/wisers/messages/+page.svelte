@@ -193,7 +193,7 @@
     </div>
   </header>
 
-  <div class="m-body">
+  <div class="m-body" class:has-active={activeConv !== null}>
     <!-- Conversations sidebar -->
     <div class="m-convos">
       <div class="m-convos-header">
@@ -218,7 +218,7 @@
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <p>No conversations yet</p>
           {#if friendsList.length > 0}
-            <p style="font-size: 13px; margin-top: 8px;">Start chatting with a friend:</p>
+            <p style="font-size: 15px; margin-top: 8px;">Start chatting with a friend:</p>
             {#each friendsList as f}
               <button class="m-friend-btn" onclick={() => { startChatWith(f.username); }}>
                 <span class="m-friend-avatar">{(f.display_name || f.username || '?')[0].toUpperCase()}</span>
@@ -281,6 +281,9 @@
         <!-- Chat header -->
         {#if getActiveConv()}
           <div class="m-chat-header">
+            <button class="m-chat-back" onclick={() => { activeConv = null; messages = []; }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
             <a href="/wisers/{getActiveConv().other_username}" class="m-chat-user">
               <div class="m-conv-avatar">{initial(getActiveConv().other_display_name || getActiveConv().other_name)}</div>
               <div>
@@ -332,7 +335,7 @@
                 const conv = conversations.find(c => c.id === activeConv);
                 if (conv) {
                   const otherId = conv.user_a === $auth.user?.id ? conv.user_b : conv.user_a;
-                  if (otherId) sendTyping(otherId);
+                  if (otherId) sendTyping(otherId, conv.id);
                 }
                 lastTypingSent = now;
               }
@@ -357,9 +360,9 @@
   .m-top { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 52px; background: var(--mcard); border-bottom: 1px solid var(--mbd); flex-shrink: 0; }
   .m-back { color: var(--mt2); display: flex; }
   .m-back:hover { color: var(--mt); }
-  .m-logo { font-size: 20px; font-weight: 800; color: var(--mgold); text-decoration: none; letter-spacing: -1px; }
+  .m-logo { font-size: 22px; font-weight: 800; color: var(--mgold); text-decoration: none; letter-spacing: -1px; }
   .m-logo span { color: var(--mt); }
-  .m-title { font-size: 15px; font-weight: 600; margin-left: 8px; }
+  .m-title { font-size: 20px; font-weight: 600; margin-left: 8px; }
   .m-top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .m-live { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
   .m-theme-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--mc); color: var(--mt2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -368,18 +371,18 @@
 
   .m-convos { width: 340px; border-right: 1px solid var(--mbd); display: flex; flex-direction: column; background: var(--mcard); flex-shrink: 0; }
   .m-convos-header { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid var(--mbd); }
-  .m-convos-search { flex: 1; padding: 8px 14px; border-radius: 20px; border: none; background: var(--mc); color: var(--mt); font-size: 13px; outline: none; font-family: inherit; }
+  .m-convos-search { flex: 1; padding: 14px 16px; border-radius: 20px; border: none; background: var(--mc); color: var(--mt); font-size: 15px; outline: none; font-family: inherit; }
   .m-convos-search::placeholder { color: var(--mt3); }
   .m-new-btn { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--mgold); color: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
   .m-new-conv { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--mbd); }
-  .m-new-conv input { flex: 1; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 12px; outline: none; font-family: inherit; }
-  .m-new-conv button { padding: 6px 14px; border-radius: 16px; border: none; background: var(--mgold); color: #000; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .m-new-conv input { flex: 1; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 15px; outline: none; font-family: inherit; }
+  .m-new-conv button { padding: 14px 16px; border-radius: 16px; border: none; background: var(--mgold); color: #000; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
 
   .m-convos-list { flex: 1; overflow-y: auto; min-height: 0; }
-  .m-empty-conv { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: var(--mt3); font-size: 14px; gap: 10px; min-height: calc(100vh - 220px); }
+  .m-empty-conv { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: var(--mt3); font-size: 16px; gap: 10px; min-height: calc(100vh - 220px); }
   .m-empty-conv svg { opacity: 0.2; margin-bottom: 4px; }
   .m-empty-conv p { margin: 0; }
-  .m-empty-sub { font-size: 12px; color: var(--mt3); opacity: 0.7; }
+  .m-empty-sub { font-size: 14px; color: var(--mt3); opacity: 0.7; }
 
   .m-conv { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: none; border-bottom: 1px solid rgba(255,255,255,0.02); background: transparent; color: var(--mt); cursor: pointer; width: 100%; text-align: left; font-family: inherit; position: relative; }
   .m-conv:hover { background: var(--mhover); }
@@ -387,61 +390,67 @@
   .m-conv-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--mgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; flex-shrink: 0; }
   .m-conv-body { flex: 1; min-width: 0; }
   .m-conv-top { display: flex; justify-content: space-between; align-items: center; }
-  .m-conv-name { font-size: 14px; font-weight: 600; }
-  .m-conv-time { font-size: 11px; color: var(--mt3); }
-  .m-conv-preview { font-size: 12px; color: var(--mt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .m-conv-name { font-size: 16px; font-weight: 600; }
+  .m-conv-time { font-size: 13px; color: var(--mt3); }
+  .m-conv-preview { font-size: 14px; color: var(--mt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .m-conv-action { background: none; border: none; color: var(--mt3); cursor: pointer; padding: 4px; border-radius: 50%; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
   .m-conv:hover .m-conv-action { opacity: 1; }
   .m-conv-action:hover { color: var(--mgold); background: var(--mhover); }
-  .m-conv-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 10px; background: var(--mgold); color: #000; padding: 2px 7px; border-radius: 99px; font-weight: 800; }
+  .m-conv-badge { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; background: var(--mgold); color: #000; padding: 2px 7px; border-radius: 99px; font-weight: 800; }
 
   .m-chat { flex: 1; display: flex; flex-direction: column; background: var(--mb); min-height: 0; }
   .m-chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
-  .m-chat-empty h2 { font-size: 20px; font-weight: 700; }
-  .m-chat-empty p { color: var(--mt3); font-size: 14px; }
+  .m-chat-empty h2 { font-size: 22px; font-weight: 700; }
+  .m-chat-empty p { color: var(--mt3); font-size: 16px; }
 
   .m-chat-header { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--mbd); background: var(--mcard); }
   .m-chat-user { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--mt); }
   .m-chat-user:hover .m-chat-name { text-decoration: underline; }
-  .m-chat-name { font-size: 14px; font-weight: 700; }
-  .m-chat-real { font-size: 11px; color: var(--mt2); }
+  .m-chat-name { font-size: 16px; font-weight: 700; }
+  .m-chat-real { font-size: 13px; color: var(--mt2); }
 
   .m-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
-  .m-msg-empty { text-align: center; color: var(--mt3); font-size: 13px; padding: 40px; }
+  .m-msg-empty { text-align: center; color: var(--mt3); font-size: 15px; padding: 40px; }
   .m-msg { display: flex; }
   .m-msg.mine { justify-content: flex-end; }
-  .m-msg-bubble { max-width: 65%; padding: 10px 14px; border-radius: 18px; background: var(--mcard); border: 1px solid var(--mbd); }
+  .m-msg-bubble { max-width: 65%; padding: 12px 16px; border-radius: 18px; background: var(--mcard); border: 1px solid var(--mbd); }
   .m-msg.mine .m-msg-bubble { background: var(--mmine); border-color: var(--mmine-bd); border-bottom-right-radius: 4px; }
   .m-msg:not(.mine) .m-msg-bubble { border-bottom-left-radius: 4px; }
-  .m-msg-text { font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
-  .m-msg-time { font-size: 10px; color: var(--mt3); display: block; margin-top: 4px; }
+  .m-msg-text { font-size: 16px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .m-msg-time { font-size: 13px; color: var(--mt3); display: block; margin-top: 4px; }
   .m-msg.mine .m-msg-time { text-align: right; }
-  .m-tick { margin-left: 4px; color: var(--mt3); font-size: 10px; }
+  .m-tick { margin-left: 4px; color: var(--mt3); font-size: 13px; }
   .m-tick-read { color: #3b82f6; }
-  .m-typing { padding: 4px 20px 6px; font-size: 12px; color: var(--mt3); font-style: italic; min-height: 24px; }
+  .m-typing { padding: 4px 20px 6px; font-size: 14px; color: var(--mt3); font-style: italic; min-height: 24px; }
   .m-typing-dots::after { content: '●●●'; letter-spacing: -2px; animation: typeDots 1.2s infinite; margin-right: 6px; font-style: normal; font-size: 8px; }
   @keyframes typeDots { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-  .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); flex-shrink: 0; }
+  .m-input-bar { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-top: 1px solid var(--mbd); background: var(--mcard); flex-shrink: 0; }
   .m-emoji-wrap { position: relative; }
   .m-emoji-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
   .m-emoji-btn:hover { background: var(--mhover); }
   .m-emoji-picker { position: absolute; bottom: 44px; left: 0; background: var(--mcard); border: 1px solid var(--mbd); border-radius: 12px; padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
   .m-emoji-item { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 6px; text-align: center; }
   .m-emoji-item:hover { background: var(--mhover); }
-  .m-input { flex: 1; padding: 12px 18px; border-radius: 24px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 14px; outline: none; font-family: inherit; }
+  .m-input { flex: 1; padding: 14px 18px; border-radius: 24px; border: 1px solid var(--mbd); background: var(--mc); color: var(--mt); font-size: 16px; outline: none; font-family: inherit; }
   .m-input:focus { border-color: var(--mgold); }
   .m-input::placeholder { color: var(--mt3); }
   .m-send { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--mgold); color: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
   .m-send:disabled { opacity: 0.3; cursor: not-allowed; }
   .m-send:hover:not(:disabled) { filter: brightness(1.1); }
 
+  .m-chat-back { display: none; background: none; border: none; color: var(--mt2); cursor: pointer; padding: 4px; border-radius: 6px; }
+  .m-chat-back:hover { color: var(--mt); background: var(--mhover); }
+
   @media (max-width: 640px) {
     .m-convos { width: 100%; }
     .m-chat { display: none; }
-    .m-convos:has(+ .m-chat .m-chat-header) { display: none; }
+    .m-body.has-active .m-convos { display: none; }
+    .m-body.has-active .m-chat { display: flex; }
+    .m-chat-back { display: flex; }
+    .m-emoji-wrap { display: none; }
   }
-  .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--wt, #e8e6e3); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 13px; }
+  .m-friend-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--wt, #e8e6e3); cursor: pointer; width: 100%; margin-top: 6px; font-family: inherit; font-size: 15px; }
   .m-friend-btn:hover { background: rgba(245,166,35,0.1); border-color: rgba(245,166,35,0.3); }
   .m-friend-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e8941a); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; flex-shrink: 0; }
   :global(input, textarea, select) { font-size: 16px !important; -webkit-text-size-adjust: 100%; }

@@ -18,6 +18,7 @@
 
   let isVisible = $derived(
     !!$auth.token &&
+    $page.url.pathname.startsWith('/wisers') &&
     !$page.url.pathname.startsWith('/wisers/messages')
   );
 
@@ -225,4 +226,5 @@
   .fdm-dot:nth-child(2) { animation-delay: 0.2s; }
   .fdm-dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes fdm-pulse { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+  @media (max-width: 768px) { .fdm { display: none !important; } }
 </style>

@@ -18,13 +18,14 @@ import { PUBLIC_API_BASE } from '$env/static/public';
 
 const API_BASE = PUBLIC_API_BASE;
 
-class ApiError extends Error {
+export class ApiError extends Error {
 	status: number;
-	detail: string;
-	constructor(status: number, detail: string) {
-		super(detail);
+	body?: unknown;
+	constructor(status: number, message: string, body?: unknown) {
+		super(message);
+		this.name = 'ApiError';
 		this.status = status;
-		this.detail = detail;
+		this.body = body;
 	}
 }
 
@@ -32,41 +33,130 @@ function getToken(): string | null {
 	return safeGetStorage('bscan_token');
 }
 
-function authHeaders(): Record<string, string> {
-	const token = getToken();
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	if (token) headers['Authorization'] = `Bearer ${token}`;
-	return headers;
+let _refreshing: Promise<boolean> | null = null;
+
+async function _tryRefresh(): Promise<boolean> {
+	const rt = safeGetStorage('bscan_refresh_token');
+	if (!rt) return false;
+	try {
+		const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ refresh_token: rt })
+		});
+		if (!res.ok) return false;
+		const data = await res.json();
+		if (data.access_token) {
+			if (typeof window !== 'undefined') {
+				try { localStorage.setItem('bscan_token', data.access_token); } catch {}
+				if (data.refresh_token) try { localStorage.setItem('bscan_refresh_token', data.refresh_token); } catch {}
+			}
+			return true;
+		}
+	} catch {}
+	return false;
+}
+
+async function parseResponseBody(res: Response): Promise<unknown> {
+	if (res.status === 204) return null;
+	const contentType = res.headers.get('content-type') || '';
+	if (contentType.includes('application/json')) {
+		try { return await res.json(); } catch { return null; }
+	}
+	try { return await res.text(); } catch { return null; }
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-	const res = await fetch(`${API_BASE}${path}`, {
-		...options,
-		headers: { ...authHeaders(), ...(options.headers || {}) }
-	});
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		throw new ApiError(res.status, body.detail || `Request failed (${res.status})`);
+	const headers = new Headers(options.headers || {});
+	headers.set('Accept', 'application/json');
+	if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+		headers.set('Content-Type', 'application/json');
 	}
-	return res.json();
+	const token = getToken();
+	if (token && !headers.has('Authorization')) {
+		headers.set('Authorization', `Bearer ${token}`);
+	}
+
+	let res: Response;
+	try {
+		res = await fetch(`${API_BASE}${path}`, {
+			...options,
+			headers,
+			mode: 'cors',
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Network request failed';
+		throw new ApiError(0, `Network error: ${message}`);
+	}
+
+	// Auto-refresh on 401
+	if (res.status === 401 && getToken()) {
+		if (!_refreshing) _refreshing = _tryRefresh().finally(() => { _refreshing = null; });
+		const ok = await _refreshing;
+		if (ok) {
+			headers.set('Authorization', `Bearer ${getToken()}`);
+			try {
+				res = await fetch(`${API_BASE}${path}`, { ...options, headers, mode: 'cors' });
+			} catch (err) {
+				const message = err instanceof Error ? err.message : 'Network request failed';
+				throw new ApiError(0, `Network error: ${message}`);
+			}
+		}
+	}
+
+	const body = await parseResponseBody(res);
+
+	if (!res.ok) {
+		const message =
+			typeof body === 'object' && body && 'detail' in body
+				? String((body as any).detail)
+				: typeof body === 'object' && body && 'message' in body
+				? String((body as any).message)
+				: typeof body === 'string' && body.trim()
+				? body
+				: `Request failed with status ${res.status}`;
+		throw new ApiError(res.status, message, body);
+	}
+
+	return body as T;
 }
 
 // ══════════════════════════════════════════════════════════
 // AUTH — matches /api/auth/*
 // ══════════════════════════════════════════════════════════
 
-/** Backend returns { access_token, token_type, user: UserResponse } */
+/** Backend returns { access_token, refresh_token, token_type, user } */
 interface AuthResponse {
 	access_token: string;
+	refresh_token?: string;
 	token_type: string;
 	user: User;
+	requires_2fa?: boolean;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(email: string, password: string, totp_code?: string): Promise<AuthResponse> {
+	const body: Record<string, string> = { email, password };
+	if (totp_code) body.totp_code = totp_code;
 	return request('/api/auth/login', {
 		method: 'POST',
-		body: JSON.stringify({ email, password })
+		body: JSON.stringify(body)
 	});
+}
+
+export async function get2faStatus(): Promise<{ enabled: boolean }> {
+	return request('/api/auth/2fa/status');
+}
+
+export async function setup2fa(): Promise<{ secret: string; provisioning_uri: string }> {
+	return request('/api/auth/2fa/setup', { method: 'POST' });
+}
+
+export async function verify2fa(code: string): Promise<{ message: string; backup_codes: string[] }> {
+	return request('/api/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) });
+}
+
+export async function disable2fa(code: string, password: string): Promise<{ message: string }> {
+	return request('/api/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ code, password }) });
 }
 
 export async function sendCode(email: string): Promise<{ message: string; email: string }> {
@@ -76,15 +166,33 @@ export async function sendCode(email: string): Promise<{ message: string; email:
 	});
 }
 
-export async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = ''): Promise<any> {
+export async function register(email: string, password: string, name: string, referral_code: string = '', verification_code: string = '', date_of_birth: string = ''): Promise<any> {
 	return request('/api/auth/register', {
 		method: 'POST',
-		body: JSON.stringify({ email, password, name, referral_code, verification_code })
+		body: JSON.stringify({ email, password, name, referral_code, verification_code, date_of_birth })
 	});
 }
 
 export async function getMe(): Promise<User> {
 	return request('/api/auth/me');
+}
+
+export async function getGoogleAuthUrl(): Promise<{ url?: string }> {
+	return request('/api/auth/google/url');
+}
+
+export async function getPasskeyLoginOptions(): Promise<any> {
+	return request('/api/auth/passkey/login-options', {
+		method: 'POST',
+		body: JSON.stringify({})
+	});
+}
+
+export async function verifyPasskeyLogin(credential: any): Promise<AuthResponse> {
+	return request('/api/auth/passkey/login-verify', {
+		method: 'POST',
+		body: JSON.stringify(credential)
+	});
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
@@ -246,6 +354,7 @@ export interface ProfileData {
 	postcode?: string;
 	country?: string;
 	website?: string;
+	date_of_birth?: string;
 	bio?: string;
 	brand_name?: string;
 	brand_color?: string;
@@ -653,7 +762,7 @@ export async function reinstateAccount(email: string, password: string): Promise
 	});
 }
 
-export { ApiError, API_BASE };
+export { API_BASE };
 
 
 // ══════════════════════════════════════════════════════════
@@ -741,6 +850,7 @@ export async function getFriendshipStatus(username: string): Promise<{ status: s
 export async function getCommunityFeed(page: number = 1): Promise<any> {
 	return request(`/api/community/feed?page=${page}`);
 }
+export const getFeed = getCommunityFeed;
 export async function getFriendsFeed(page: number = 1): Promise<any> {
 	return request(`/api/community/feed/friends?page=${page}`);
 }
@@ -820,12 +930,40 @@ export async function getAllUsers(page: number = 1): Promise<any> {
   return request(`/api/community/all-users?page=${page}`);
 }
 
-// ── Support ──
+// ── Support (legacy tickets) ──
 export async function getSupportTicket(): Promise<any> {
   return request('/api/community/support/my-ticket');
 }
 export async function sendSupportMessage(content: string): Promise<any> {
   return request('/api/community/support/send', { method: 'POST', body: JSON.stringify({ content }) });
+}
+
+// ── Live Support ──
+export async function startSupportSession(platform: string, message: string, category?: string): Promise<any> {
+  return request('/api/support/session/start', { method: 'POST', body: JSON.stringify({ platform, message, category }) });
+}
+export async function sendLiveSupportMessage(sessionId: string, message: string): Promise<any> {
+  return request(`/api/support/session/${sessionId}/message`, { method: 'POST', body: JSON.stringify({ message }) });
+}
+export async function getSupportSession(sessionId: string): Promise<any> {
+  return request(`/api/support/session/${sessionId}`);
+}
+export async function closeSupportSession(sessionId: string): Promise<any> {
+  return request(`/api/support/session/${sessionId}/close`, { method: 'POST' });
+}
+export async function rateSupportSession(sessionId: string, rating: number): Promise<any> {
+  return request(`/api/support/session/${sessionId}/rate`, { method: 'POST', body: JSON.stringify({ rating }) });
+}
+
+// ── Help Centre ──
+export async function getHelpArticles(): Promise<any> {
+  return request('/api/support/help');
+}
+export async function searchHelpArticles(q: string): Promise<any> {
+  return request(`/api/support/help/search?q=${encodeURIComponent(q)}`);
+}
+export async function getHelpArticle(slug: string): Promise<any> {
+  return request(`/api/support/help/${encodeURIComponent(slug)}`);
 }
 
 // ── Reports ──
@@ -907,6 +1045,25 @@ export async function getFollowStatus(username: string): Promise<{ i_follow: boo
 }
 
 // ═══════════════════════════════════════════════
+// USER SETTINGS
+// ═══════════════════════════════════════════════
+
+export async function getUserSettings(): Promise<Record<string, any>> {
+	return request('/api/community/user-settings');
+}
+
+export async function updateUserSettings(data: Record<string, any>): Promise<{ message: string }> {
+	return request('/api/community/user-settings', {
+		method: 'PUT',
+		body: JSON.stringify(data),
+	});
+}
+
+export async function dismissNudge(key: string): Promise<{ message: string }> {
+	return updateUserSettings({ [key]: true });
+}
+
+// ═══════════════════════════════════════════════
 // POST EDIT
 // ═══════════════════════════════════════════════
 
@@ -928,6 +1085,10 @@ export async function getTrendingHashtags(): Promise<{ hashtags: any[] }> {
 
 export async function getHashtagPosts(tag: string, page: number = 1): Promise<any> {
 	return request(`/api/community/hashtags/${encodeURIComponent(tag)}?page=${page}`);
+}
+
+export async function searchAll(q: string): Promise<{ users: any[]; posts: any[]; communities: any[]; query: string }> {
+	return request(`/api/community/search/all?q=${encodeURIComponent(q)}`);
 }
 
 // ═══════════════════════════════════════════════
@@ -1079,7 +1240,7 @@ export async function joinCommunity(slug: string): Promise<any> {
   return request('/api/wisers/communities/' + slug + '/join', { method: 'POST' });
 }
 export async function leaveCommunity(slug: string): Promise<any> {
-  return request('/api/wisers/communities/' + slug + '/leave', { method: 'DELETE' });
+  return request('/api/wisers/communities/' + slug + '/leave', { method: 'POST' });
 }
 export async function getCommunityFeedBySlug(slug: string, page: number = 1): Promise<any> {
   return request('/api/wisers/communities/' + slug + '/feed?page=' + page);
@@ -1145,3 +1306,70 @@ export async function respondMentorship(connectionId: number, action: string): P
   return request('/api/wisers/mentorship/respond/' + connectionId, { method: 'POST', body: JSON.stringify({ action }) });
 }
 
+// ══════════════════════════════════════════════════════════
+// DISCOVER / ALGORITHMS
+// ══════════════════════════════════════════════════════════
+
+export async function getRankedFeed(page: number = 1): Promise<any> {
+  return request('/api/wisers/feed/ranked?page=' + page);
+}
+
+export async function discoverPeople(page: number = 1): Promise<any> {
+  return request('/api/wisers/discover/people?page=' + page);
+}
+
+export async function discoverContent(page: number = 1): Promise<any> {
+  return request('/api/wisers/discover/content?page=' + page);
+}
+
+export async function discoverMentors(page: number = 1): Promise<any> {
+  return request('/api/wisers/discover/mentors?page=' + page);
+}
+
+// ══════════════════════════════════════════════════════════
+// LINK PREVIEWS
+// ══════════════════════════════════════════════════════════
+
+export async function getLinkPreview(url: string): Promise<{ title?: string; description?: string; image?: string; url: string }> {
+  return request('/api/community/link-preview?url=' + encodeURIComponent(url));
+}
+
+// ══════════════════════════════════════════════════════════
+// COMMUNITY MANAGEMENT
+// ══════════════════════════════════════════════════════════
+
+export async function updateCommunity(slug: string, data: { name?: string; description?: string; category?: string; rules?: string; privacy?: string }): Promise<any> {
+  return request('/api/wisers/communities/' + slug, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteCommunity(slug: string): Promise<any> {
+  return request('/api/wisers/communities/' + slug, { method: 'DELETE' });
+}
+
+export async function updateMemberRole(slug: string, username: string, role: string): Promise<any> {
+  return request('/api/wisers/communities/' + slug + '/role', { method: 'PUT', body: JSON.stringify({ username, role }) });
+}
+
+// ══════════════════════════════════════════════════════════
+// LIKES LIST
+// ══════════════════════════════════════════════════════════
+
+export async function getPostLikes(postId: number): Promise<{ users: any[] }> {
+  return request('/api/community/posts/' + postId + '/likes');
+}
+
+// ══════════════════════════════════════════════════════════
+// LOGOUT ALL
+// ══════════════════════════════════════════════════════════
+
+export async function logoutAll(): Promise<any> {
+  return request('/api/auth/logout-all', { method: 'POST' });
+}
+
+
+export async function sendAiCoach(message: string, history: { role: string; content: string }[]): Promise<{ reply: string }> {
+	return request('/api/community/ai-coach', {
+		method: 'POST',
+		body: JSON.stringify({ message, history })
+	});
+}

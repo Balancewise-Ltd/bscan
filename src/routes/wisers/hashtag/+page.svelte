@@ -77,18 +77,18 @@
   .ht-page.light { --ht-bg: #ffffff; --ht-card: #ffffff; --ht-t: #1c1e21; --ht-t2: #606770; --ht-t3: #8a8d91; --ht-bd: #dddfe2; --ht-gold: #d4a017; }
   :global(body) { margin: 0; }
   .ht-header { margin-bottom: 24px; }
-  .ht-back { color: var(--ht-gold); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  .ht-back { color: var(--ht-gold); text-decoration: none; font-size: 16px; display: inline-flex; align-items: center; gap: 6px; }
   .ht-back:hover { text-decoration: underline; }
   .ht-header h1 { font-size: 28px; font-weight: 700; margin: 8px 0 4px; }
-  .ht-count { color: var(--ht-t3); font-size: 14px; }
+  .ht-count { color: var(--ht-t3); font-size: 16px; }
   .ht-loading, .ht-empty { text-align: center; color: var(--ht-t3); padding: 40px; }
   .ht-post { background: var(--ht-card); border: 1px solid var(--ht-bd); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
   .ht-post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .ht-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--ht-gold), #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; text-decoration: none; font-size: 16px; flex-shrink: 0; }
-  .ht-author { font-weight: 600; color: var(--ht-t); text-decoration: none; font-size: 14px; }
+  .ht-author { font-weight: 600; color: var(--ht-t); text-decoration: none; font-size: 16px; }
   .ht-author:hover { color: var(--ht-gold); }
-  .ht-handle { color: var(--ht-t3); font-size: 13px; }
-  .ht-body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .ht-handle { color: var(--ht-t3); font-size: 15px; }
+  .ht-body { font-size: 17px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
   .ht-img { margin-top: 10px; border-radius: 12px; overflow: hidden; }
   .ht-img img { width: 100%; max-height: 500px; object-fit: cover; display: block; }
   .ht-badge { display:inline-flex;vertical-align:middle;margin-left:2px; }
