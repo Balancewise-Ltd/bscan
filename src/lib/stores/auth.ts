@@ -41,6 +41,17 @@ async function init() {
 async function login(email: string, password: string, totp_code?: string) {
 	const result = await api.login(email, password, totp_code);
 	if (result.requires_2fa) return result;
+	if (result.requires_verification) return result;
+	safeSetStorage('bscan_token', result.access_token);
+	if (result.refresh_token) safeSetStorage('bscan_refresh_token', result.refresh_token);
+	safeSetStorage('bscan_email', email);
+	_token.set(result.access_token);
+	_user.set(result.user);
+	return result;
+}
+
+async function verifyLoginCode(email: string, code: string) {
+	const result = await api.verifyLoginCode(email, code);
 	safeSetStorage('bscan_token', result.access_token);
 	if (result.refresh_token) safeSetStorage('bscan_refresh_token', result.refresh_token);
 	safeSetStorage('bscan_email', email);
@@ -100,6 +111,7 @@ export const auth = {
 	subscribe: _store.subscribe,
 	init,
 	login,
+	verifyLoginCode,
 	loginWithToken,
 	register,
 	logout,

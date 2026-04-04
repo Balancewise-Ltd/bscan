@@ -57,6 +57,13 @@
 	let pendingEmail = $state('');
 	let pendingDob = $state('');
 
+	// ── Login Verification Code ─────────────────────────
+	let showLoginCode = $state(false);
+	let loginCode = $state('');
+	let loginCodeError = $state('');
+	let loginCodeLoading = $state(false);
+	let loginCodeEmail = $state('');
+
 	// ── Referral System ─────────────────────────────────
 	let referralData = $state<any>(null);
 	let referralLoading = $state(true);
@@ -346,7 +353,15 @@
 				authLoading = false;
 				return;
 			} else {
-				await auth.login(authEmail, authPassword);
+				const result = await auth.login(authEmail, authPassword);
+				if (result.requires_verification) {
+					loginCodeEmail = authEmail;
+					showLoginCode = true;
+					loginCode = '';
+					loginCodeError = '';
+					authLoading = false;
+					return;
+				}
 			}
 			loadDashboard();
 		} catch (err) {
@@ -383,6 +398,19 @@
 			reinstateMsg = err instanceof Error ? err.message : 'Could not reinstate account.';
 		}
 		reinstateLoading = false;
+	}
+
+	async function handleLoginCode() {
+		if (!loginCode || loginCode.length !== 6) { loginCodeError = 'Enter the 6-digit code.'; return; }
+		loginCodeLoading = true;
+		loginCodeError = '';
+		try {
+			await auth.verifyLoginCode(loginCodeEmail, loginCode);
+			loadDashboard();
+		} catch (err) {
+			loginCodeError = err instanceof Error ? err.message : 'Invalid code. Try again.';
+		}
+		loginCodeLoading = false;
 	}
 
 	// ── Profile ──────────────────────────────────────────
@@ -906,6 +934,23 @@
 			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { showCodeInput = false; verificationCode = ''; codeError = ''; }}>Use different email</button>
 		</div>
 		<p class="text-muted" style="margin-top: 16px; font-size: 11px;">Code expires in 10 minutes. Check spam if you don't see it.</p>
+	</div>
+	{:else if showLoginCode}
+	<!-- ══════ LOGIN VERIFICATION CODE ══════ -->
+	<div class="auth-section animate-fade-up" style="text-align: center;">
+		<div style="font-size: 56px; margin-bottom: 16px;">&#128274;</div>
+		<h2>Verify your <span class="text-gold">login</span></h2>
+		<p class="text-muted" style="margin-bottom: 8px;">We sent a 6-digit verification code to</p>
+		<p style="font-weight: 600; margin-bottom: 24px; color: var(--clr-gold);">{loginCodeEmail}</p>
+		<input class="input" type="text" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="text-align: center; font-size: 32px; letter-spacing: 10px; font-family: var(--font-mono); max-width: 280px; margin: 0 auto 16px;" bind:value={loginCode} onkeydown={(e) => { if (e.key === 'Enter') handleLoginCode(); }} />
+		{#if loginCodeError}<div class="msg-error" style="margin-bottom: 12px;">{loginCodeError}</div>{/if}
+		<button class="btn btn-gold" style="width: 100%; max-width: 280px; margin: 0 auto;" disabled={loginCodeLoading} onclick={handleLoginCode}>
+			{#if loginCodeLoading}<span class="spinner spinner-sm"></span> Verifying...{:else}Verify & Sign In{/if}
+		</button>
+		<div style="margin-top: 20px;">
+			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { showLoginCode = false; loginCode = ''; loginCodeError = ''; }}>Back to login</button>
+		</div>
+		<p class="text-muted" style="margin-top: 16px; font-size: 11px;">Code expires in 5 minutes. Check spam if you don't see it.</p>
 	</div>
 	{:else}
 	<!-- ══════ AUTH FORM ══════ -->

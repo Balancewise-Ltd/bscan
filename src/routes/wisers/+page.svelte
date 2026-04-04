@@ -657,7 +657,7 @@
   <meta property="og:url" content="https://bscan.balancewises.io/wisers" />
   <meta name="twitter:card" content="summary" />
   <meta name="robots" content="index, follow" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- System font stack — no external fonts -->
 </svelte:head>
 
 {#if !$auth.token}
@@ -680,13 +680,9 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           {#if $wsNotifCount > 0}<span class="w-notif-badge">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
         </a>
-        <button class="w-topbar-btn" onclick={toggleTheme} title="Toggle theme">
-          {#if theme === 'dark'}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          {:else}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          {/if}
-        </button>
+        <a href="/account" class="w-topbar-btn" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </a>
         {#if $auth.user}
           <div class="w-user-menu-wrap">
             <button class="w-avatar-sm w-avatar-btn" onclick={(e) => { e.stopPropagation(); showUserMenu = !showUserMenu; }} aria-label="User menu">
@@ -702,14 +698,10 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   Settings
                 </a>
-                <a href="/wisers/mentorship" class="w-ud-item" onclick={() => showUserMenu = false}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
-                  Mentorship
-                </a>
-                <a href="/wisers/communities" class="w-ud-item" onclick={() => showUserMenu = false}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  Communities
-                </a>
+                <button class="w-ud-item" onclick={() => { showUserMenu = false; toggleTheme(); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">{#if theme === 'dark'}<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>{:else}<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>{/if}</svg>
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
                 <div class="w-ud-divider"></div>
                 <button class="w-ud-item w-ud-danger" onclick={() => { showUserMenu = false; handleLogout(); }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -730,81 +722,97 @@
     <aside class="w-sidebar-left">
       {#if $auth.user}
         <a href="/wisers/{$auth.user.username || 'me'}" class="w-profile-card">
-          <div class="w-avatar-lg">{initial($auth.user.name || $auth.user.email)}</div>
-          <div class="w-profile-name">{$auth.user.name}</div>
+          <div class="w-avatar-lg">{#if avatarSrc($auth.user.avatar_url)}<img src={avatarSrc($auth.user.avatar_url)} alt="" class="w-av-img" style="width:64px;height:64px" />{:else}{initial($auth.user.name || $auth.user.email)}{/if}</div>
+          <div class="w-profile-name">{$auth.user.display_name || $auth.user.name}</div>
           <div class="w-profile-handle">@{$auth.user.username || 'you'}</div>
           <div class="w-profile-stats">
             <div class="w-stat"><span class="w-stat-num">{profileStats.posts}</span><span class="w-stat-label">Posts</span></div>
-            <div class="w-stat-sep"></div>
+            <span class="w-stat-sep">&middot;</span>
             <div class="w-stat"><span class="w-stat-num">{profileStats.followers}</span><span class="w-stat-label">Followers</span></div>
-            <div class="w-stat-sep"></div>
+            <span class="w-stat-sep">&middot;</span>
             <div class="w-stat"><span class="w-stat-num">{profileStats.following}</span><span class="w-stat-label">Following</span></div>
           </div>
         </a>
       {/if}
+      <!-- Group 1 — Core -->
       <nav class="w-sidebar-nav">
         <button class:active={activeView === 'feed'} onclick={() => { activeView = 'feed'; loadFeed(); }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
           Feed
         </button>
         <button class:active={activeView === 'explore'} onclick={() => activeView = 'explore'}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Explore
         </button>
-        {#if $auth.token}<button class:active={activeView === 'friends'} onclick={() => activeView = 'friends'}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Friends <span class="w-count">{friends.length}</span>
-        </button>{/if}
         {#if $auth.token}
-        <button class:w-sidebar-active={activeView === 'bookmarks'} onclick={() => { activeView = 'bookmarks'; loadBookmarks(); }} class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <button class:active={activeView === 'friends'} onclick={() => activeView = 'friends'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Friends
+          {#if incoming.length > 0}<span class="w-count">{incoming.length}</span>{/if}
+        </button>
+        <button class:active={activeView === 'bookmarks'} onclick={() => { activeView = 'bookmarks'; loadBookmarks(); }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Saved
         </button>
-        <button class:w-sidebar-active={activeView === 'activity'} onclick={() => { activeView = 'activity'; loadActivity(); }} class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <button class:active={activeView === 'activity'} onclick={() => { activeView = 'activity'; loadActivity(); }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Activity
         </button>
         {/if}
-        {#if $auth.token}<a href="/wisers/mentorship" class="w-sidebar-link">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
-            Mentorship
-          </a>
-          <a href="/wisers/communities" class="w-sidebar-link">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Communities
-          </a>
-          <a href="/wisers/messages" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Messages
-          {#if $wsUnreadDMs > 0}<span class="w-count w-badge-amber">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
-        </a>
-        <a href="/notifications" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
-          Notifications
-          {#if $wsNotifCount > 0}<span class="w-count w-badge-amber">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
-        </a>{/if}
       </nav>
       <div class="w-sidebar-divider"></div>
+
+      <!-- Group 2 — Social -->
+      {#if $auth.token}
+      <nav class="w-sidebar-nav">
+        <a href="/wisers/mentorship" class="w-sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
+          Mentorship
+        </a>
+        <a href="/wisers/communities" class="w-sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Communities
+        </a>
+        <a href="/wisers/messages" class="w-sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Messages
+          {#if $wsUnreadDMs > 0}<span class="w-count">{$wsUnreadDMs > 9 ? '9+' : $wsUnreadDMs}</span>{/if}
+        </a>
+        <a href="/notifications" class="w-sidebar-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+          {#if $wsNotifCount > 0}<span class="w-count">{$wsNotifCount > 9 ? '9+' : $wsNotifCount}</span>{/if}
+        </a>
+      </nav>
+      <div class="w-sidebar-divider"></div>
+      {/if}
+
+      <!-- Group 3 — Tools -->
       <nav class="w-sidebar-nav">
         <a href="/wisers/discover" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
           Discover
         </a>
         <a href="/wisers/groups" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
           Group Chats
         </a>
         <a href="/wisers/leaderboard" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 9 8 12 8s5-4 7.5-4a2.5 2.5 0 0 1 0 5H18"/><path d="M6 9v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/></svg>
           Leaderboard
         </a>
         <a href="/wisers/ai-coach" class="w-sidebar-link">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H7a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="14" r="1.5" fill="currentColor"/><circle cx="15" cy="14" r="1.5" fill="currentColor"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H7a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="9" cy="14" r="1.5" fill="currentColor"/><circle cx="15" cy="14" r="1.5" fill="currentColor"/></svg>
           AI Coach
         </a>
       </nav>
       <div class="w-sidebar-divider"></div>
-      <a href="https://balancewises.io" class="w-sidebar-back" target="_blank">Balancewise Technologies</a>
+      <div class="w-sidebar-footer">
+        <a href="https://balancewises.io" target="_blank">Balancewise Technologies</a>
+        <div class="w-sidebar-footer-links">
+          <a href="/">Scanner</a> &middot; <a href="/seo">SEO</a> &middot; <a href="/compare">Compare</a> &middot; <a href="/support">Support</a>
+        </div>
+      </div>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -845,7 +853,7 @@
         {#if $auth.token}
           <div class="w-composer">
             <div class="w-composer-top">
-              <div class="w-avatar-sm w-avatar-gold">{initial($auth.user?.name || '')}</div>
+              <div class="w-composer-avatar">{#if avatarSrc($auth.user?.avatar_url)}<img src={avatarSrc($auth.user?.avatar_url)} alt="" />{:else}{initial($auth.user?.name || '')}{/if}</div>
               <textarea bind:value={newPost} placeholder={isMilestone ? "Share your milestone story..." : "What's on your mind?"} maxlength="2000" rows="2"></textarea>
             </div>
             {#if isMilestone}
@@ -960,7 +968,7 @@
                 </div>
               {/if}
             </div>
-            <span class="w-char">{newPost.length}/2000</span>
+            <span class="w-char" class:w-char-warn={newPost.length > 1900}>{newPost.length}/2000</span>
               <button class="w-post-btn" onclick={submitPost} disabled={posting || uploading || mediaAttachments.some(a => a.status === 'uploading') || (!newPost.trim() && !postImage && mediaAttachments.length === 0 && !(isMilestone && milestoneValue.trim()))}>{mediaAttachments.some(a => a.status === 'uploading') ? 'Uploading...' : uploading ? 'Uploading...' : posting ? 'Posting...' : 'Post'}</button>
             </div>
           </div>
@@ -1344,79 +1352,91 @@
 
     <!-- RIGHT SIDEBAR -->
     <aside class="w-sidebar-right">
+        <!-- Section 1: Trending -->
         {#if trendingTags.length > 0}
-          <div class="w-card w-trending">
-            <h3 class="w-card-title">Trending</h3>
-            {#each trendingTags.slice(0, 8) as tag, i}
-              <a href="/wisers?tag={tag.tag}" class="w-trending-item">
-                <span class="w-trending-rank">{i + 1}</span>
-                <span class="w-trending-tag">#{tag.tag}</span>
+          <div class="w-rs-card w-trending">
+            <div class="w-rs-header"><h3>Trending</h3></div>
+            {#each trendingTags.slice(0, 5) as tag, i}
+              <a href="/wisers/hashtag?tag={tag.tag}" class="w-trending-item">
+                <div class="w-trending-left">
+                  <span class="w-trending-rank">#{i + 1}</span>
+                  <div class="w-trending-info">
+                    <span class="w-trending-tag">#{tag.tag}</span>
+                    <svg class="w-trending-spark" width="40" height="16" viewBox="0 0 40 16"><polyline points="{[0,1,2,3,4,5,6].map((d, idx) => `${idx * 6.5},${16 - Math.min(15, (tag.post_count || 1) * (0.3 + Math.sin(d + i) * 0.7) * 1.2)}`).join(' ')}" fill="none" stroke="var(--wgold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                </div>
                 <span class="w-trending-count">{tag.post_count} posts</span>
               </a>
             {/each}
           </div>
         {/if}
-      {#if $auth.token && suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).length > 0}
-        <div class="w-widget">
-          <div class="w-widget-head"><h3>People you may know</h3><button class="w-show-more" onclick={() => activeView = 'explore'}>See all</button></div>
-          {#each suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).slice(0, 5) as u}
-            <div class="w-suggest-item">
-              <div class="w-avatar-sm">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(u.display_name || u.name)}{/if}</div>
-              <div class="w-suggest-info">
-                <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
-                <div class="w-suggest-real">{u.display_name || u.name}</div>
+
+        <!-- Section 2: People You May Know -->
+        {#if $auth.token && suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).length > 0}
+          <div class="w-rs-card">
+            <div class="w-rs-header"><h3>People you may know</h3><button class="w-rs-see-all" onclick={() => activeView = 'explore'}>See all</button></div>
+            {#each suggested.filter(u => u.username !== $auth.user?.username && !friends.some(fr => fr.username === u.username) && !outgoing.some(o => o.username === u.username) && !incoming.some(i => i.username === u.username)).slice(0, 5) as u}
+              <div class="w-suggest-item">
+                <div class="w-avatar-36">{#if avatarSrc(u.avatar_url)}<img src={avatarSrc(u.avatar_url)} alt="" class="w-av-img-36" />{:else}{initial(u.display_name || u.name)}{/if}</div>
+                <div class="w-suggest-info">
+                  <a href="/wisers/{u.username}" class="w-suggest-name">@{u.username}</a>
+                  <div class="w-suggest-real">{u.display_name || u.name}</div>
+                </div>
+                <button class="w-follow-btn" onclick={() => sendRequest(u.username)}>Follow</button>
               </div>
-              <button class="w-connect-sm w-follow-sm" onclick={() => sendRequest(u.username)}>Follow</button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if incoming.length > 0}
-        <div class="w-widget">
-          <div class="w-widget-head"><h3>Requests for you <span class="w-badge-count">{incoming.length}</span></h3><button class="w-show-more" onclick={() => activeView = 'friends'}>See all</button></div>
-          {#each incoming as req}
-            <div class="w-suggest-item">
-              <div class="w-avatar-sm">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(req.display_name || req.name)}{/if}</div>
-              <div class="w-suggest-info">
-                <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
-                <div class="w-suggest-real">{req.display_name || req.name}</div>
-              </div>
-              <button class="w-connect-sm w-accept-sm" onclick={() => accept(req.id)}>✓</button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if outgoing.length > 0}
-        <div class="w-widget">
-          <div class="w-widget-head"><h3>Sent requests <span class="w-badge-count">{outgoing.length}</span></h3><button class="w-show-more" onclick={() => activeView = 'friends'}>See all</button></div>
-          {#each outgoing as req}
-            <div class="w-suggest-item">
-              <div class="w-avatar-sm">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-sm" />{:else}{initial(req.display_name || req.name)}{/if}</div>
-              <div class="w-suggest-info">
-                <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
-                <div class="w-suggest-real">{req.display_name || req.name}</div>
-              </div>
-              <span class="w-pending-label">Pending</span>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if sponsoredAd.active}
-        <div class="w-widget w-ad-block">
-          <div class="w-ad-label">SPONSORED</div>
-          <div class="w-ad-hero">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#e8940c" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 8h4M7 11h6"/></svg>
-            <span class="w-ad-hero-text">BSCAN</span>
+            {/each}
           </div>
-          <h4 class="w-ad-title">{sponsoredAd.title}</h4>
-          <p class="w-ad-desc">{sponsoredAd.description}</p>
-          <a href={sponsoredAd.cta_url} target="_blank" rel="noopener" class="w-ad-cta">{sponsoredAd.cta_text} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-left:4px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></a>
+        {/if}
+
+        <!-- Section 3: Incoming Requests -->
+        {#if incoming.length > 0}
+          <div class="w-rs-card">
+            <div class="w-rs-header"><h3>Requests for you <span class="w-rs-badge">{incoming.length}</span></h3><button class="w-rs-see-all" onclick={() => activeView = 'friends'}>See all</button></div>
+            {#each incoming as req}
+              <div class="w-suggest-item">
+                <div class="w-avatar-36">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-36" />{:else}{initial(req.display_name || req.name)}{/if}</div>
+                <div class="w-suggest-info">
+                  <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
+                  <div class="w-suggest-real">{req.display_name || req.name}</div>
+                </div>
+                <button class="w-follow-btn" onclick={() => accept(req.id)}>Accept</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Section 4: Sent Requests -->
+        {#if outgoing.length > 0}
+          <div class="w-rs-card">
+            <div class="w-rs-header"><h3>Sent requests <span class="w-rs-badge">{outgoing.length}</span></h3><button class="w-rs-see-all" onclick={() => activeView = 'friends'}>See all</button></div>
+            {#each outgoing as req}
+              <div class="w-suggest-item">
+                <div class="w-avatar-36">{#if avatarSrc(req.avatar_url)}<img src={avatarSrc(req.avatar_url)} alt="" class="w-av-img-36" />{:else}{initial(req.display_name || req.name)}{/if}</div>
+                <div class="w-suggest-info">
+                  <a href="/wisers/{req.username}" class="w-suggest-name">@{req.username}</a>
+                  <div class="w-suggest-real">{req.display_name || req.name}</div>
+                </div>
+                <span class="w-pending-pill">Pending</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Section 5: Sponsored Ad -->
+        {#if sponsoredAd.active}
+          <div class="w-rs-card w-ad-block">
+            <div class="w-ad-label">SPONSORED</div>
+            <h4 class="w-ad-title">{sponsoredAd.title}</h4>
+            <p class="w-ad-desc">{sponsoredAd.description}</p>
+            <a href={sponsoredAd.cta_url} target="_blank" rel="noopener" class="w-ad-cta">Try BSCAN <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-left:4px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></a>
+          </div>
+        {/if}
+
+        <!-- Section 6: Footer -->
+        <div class="w-rs-footer">
+          <div class="w-rs-footer-links"><a href="/">Scanner</a> · <a href="/seo">SEO</a> · <a href="/compare">Compare</a> · <a href="/support">Support</a></div>
+          <div class="w-rs-footer-copy">Balancewise Technologies &copy; 2026</div>
         </div>
-      {/if}
-      <div class="w-widget w-footer">
-        <a href="/">Scanner</a> · <a href="/seo">SEO</a> · <a href="/compare">Compare</a> · <a href="/support">Support</a>
-        <div class="w-copyright">Balancewise Technologies &copy; 2026</div>
-      </div>
     </aside>
   </div>
 </div>
@@ -1568,69 +1588,95 @@
 {/if}
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+  :global([data-wisers-theme="light"]) {
+    --wb: #ffffff; --wc: #ffffff; --wdeep: #f0f2f5; --whover: #f5f6f8;
+    --wt: #1c1e21; --wt2: #65676b; --wt3: #8a8d91;
+    --wbd: #dddfe2; --wbd-subtle: #ecedef;
+    --wcard: #ffffff; --wgold: #d4a017; --wgold-hover: #b8900f;
+    --wdanger: #ef4444; --wsuccess: #10b981; --wblue: #3b82f6;
+    --wpink: #f43f5e; --worange: #f97316; --wyellow: #eab308;
+  }
 
-  :global([data-wisers-theme="light"]) { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
-
-  .w { margin-top: 0; padding-top: 0; --wb: #0a0a0f; --wc: #111117; --wt: #e4e6ea; --wt2: #8a8d91; --wt3: #606770; --wbd: #1e1e2a; --wcard: #16161f; --wgold: #f5a623; --whover: rgba(255,255,255,0.04);
-    font-family: 'DM Sans', -apple-system, sans-serif; color: var(--wt); background: var(--wb); min-height: 100vh; position: relative; }
-  .w.light { --wb: #ffffff; --wc: #f0f2f5; --wt: #1c1e21; --wt2: #606770; --wt3: #8a8d91; --wbd: #dddfe2; --wcard: #ffffff; --wgold: #d4a017; --whover: rgba(0,0,0,0.04); }
+  .w {
+    margin-top: 0; padding-top: 0;
+    --wb: #0a0a0f; --wc: #111117; --wdeep: #08080c; --whover: #16161e;
+    --wt: #e4e6ea; --wt2: #8a8d91; --wt3: #606770;
+    --wbd: #1e1e2a; --wbd-subtle: #151520;
+    --wcard: #111117; --wgold: #f5a623; --wgold-hover: #d4a017;
+    --wdanger: #ef4444; --wsuccess: #10b981; --wblue: #3b82f6;
+    --wpink: #f43f5e; --worange: #f97316; --wyellow: #eab308;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--wt); background: var(--wb); min-height: 100vh; position: relative;
+  }
+  .w.light {
+    --wb: #ffffff; --wc: #ffffff; --wdeep: #f0f2f5; --whover: #f5f6f8;
+    --wt: #1c1e21; --wt2: #65676b; --wt3: #8a8d91;
+    --wbd: #dddfe2; --wbd-subtle: #ecedef;
+    --wcard: #ffffff; --wgold: #d4a017; --wgold-hover: #b8900f;
+  }
 
   .w-topbar { position: sticky; top: 0; z-index: 100; background: var(--wcard); border-bottom: 1px solid var(--wbd); height: 56px; }
   .w-topbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; height: 100%; padding: 0 16px; gap: 12px; }
-  .w-logo { font-size: 26px; font-weight: 800; color: var(--wgold); text-decoration: none; letter-spacing: -1px; flex-shrink: 0; }
+  .w-logo { font-size: 22px; font-weight: 800; color: var(--wgold); text-decoration: none; letter-spacing: -0.5px; flex-shrink: 0; }
   .w-logo span { color: var(--wt); }
-  .w-search-wrap { flex: 1; max-width: 400px; }
-  .w-search { width: 100%; padding: 12px 16px; border-radius: 20px; border: none; background: var(--wc); color: var(--wt); font-size: 16px; outline: none; font-family: inherit; }
+  .w-search-wrap { flex: 1; max-width: 360px; }
+  .w-search { width: 100%; padding: 10px 16px; border-radius: 20px; border: none; background: var(--wdeep); color: var(--wt); font-size: 15px; outline: none; font-family: inherit; }
   .w-search::placeholder { color: var(--wt3); }
   .w-search:focus { box-shadow: 0 0 0 2px var(--wgold); }
-  .w-topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-  .w-topbar-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--wc); border: none; color: var(--wt2); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; }
-  .w-topbar-btn:hover { background: var(--wbd); color: var(--wt); }
-  .w-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; text-decoration: none; flex-shrink: 0; }
+  .w-topbar-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .w-topbar-btn { width: 32px; height: 32px; border-radius: 50%; background: none; border: none; color: var(--wt2); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; position: relative; transition: color 0.15s; }
+  .w-topbar-btn:hover { color: var(--wt); }
+  .w-avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; text-decoration: none; flex-shrink: 0; }
   .w-avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; text-decoration: none; flex-shrink: 0; }
-  .w-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0; }
+  .w-avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--wgold); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; flex-shrink: 0; }
   .w-avatar-gold { background: var(--wgold); }
   .w-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   .w-av-img-lg { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
   .w-av-img-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
   .w-login-btn { padding: 10px 18px; border-radius: 8px; background: var(--wgold); color: #000; font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
 
-  .w-body { display: flex; max-width: 1280px; margin: 0 auto; height: calc(100vh - 56px); overflow: hidden; }
+  .w-body { display: flex; max-width: 1280px; margin: 0 auto; gap: 0; min-height: calc(100vh - 56px); }
 
-  .w-sidebar-left { width: 240px; padding: 16px 12px; height: 100%; overflow-y: auto; flex-shrink: 0; }
-  .w-profile-card { display: flex; flex-direction: column; align-items: center; padding: 20px 12px; border-radius: 12px; background: var(--wcard); border: 1px solid var(--wbd); text-decoration: none; color: var(--wt); margin-bottom: 16px; }
+  .w-sidebar-left { width: 260px; padding: 16px; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; flex-shrink: 0; border-right: 1px solid var(--wbd); }
+  .w-profile-card { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; border-radius: 14px; background: var(--wcard); border: 1px solid var(--wbd); text-decoration: none; color: var(--wt); margin-bottom: 16px; transition: border-color 0.15s; }
   .w-profile-card:hover { border-color: var(--wgold); }
-  .w-profile-name { font-weight: 700; font-size: 17px; margin-top: 10px; }
+  .w-profile-name { font-weight: 700; font-size: 16px; margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
   .w-profile-handle { font-size: 14px; color: var(--wt2); }
-  .w-sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
-  .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 8px; border: none; background: none; color: var(--wt2); font-size: 16px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; }
+  .w-sidebar-nav { display: flex; flex-direction: column; gap: 1px; }
+  .w-sidebar-nav button, .w-sidebar-link { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; border: none; border-left: 3px solid transparent; background: none; color: var(--wt2); font-size: 15px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; text-decoration: none; font-family: inherit; transition: all 0.15s; }
   .w-sidebar-nav button:hover, .w-sidebar-link:hover { background: var(--whover); color: var(--wt); }
-  .w-sidebar-nav button.active { background: rgba(245,166,35,0.1); color: var(--wgold); font-weight: 700; }
-  .w-count { font-size: 13px; padding: 1px 6px; border-radius: 99px; margin-left: auto; }
-  .w-sidebar-divider { height: 1px; background: var(--wbd); margin: 12px 0; }
-  .w-sidebar-back { font-size: 14px; color: var(--wt3); text-decoration: none; padding: 10px 14px; }
+  .w-sidebar-nav button.active, .w-sidebar-link.w-sidebar-active { background: rgba(245,166,35,0.08); color: var(--wgold); font-weight: 700; border-left-color: var(--wgold); }
+  .w-count { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; margin-left: auto; background: var(--wgold); color: #000; }
+  .w-sidebar-divider { height: 1px; background: var(--wbd-subtle, var(--wbd)); margin: 12px 16px; }
+  .w-sidebar-back { font-size: 12px; color: var(--wt3); text-decoration: none; padding: 10px 14px; }
   .w-sidebar-back:hover { color: var(--wgold); }
+  .w-sidebar-footer { padding: 8px 14px; }
+  .w-sidebar-footer a { font-size: 12px; color: var(--wt3); text-decoration: none; }
+  .w-sidebar-footer a:hover { color: var(--wgold); }
+  .w-sidebar-footer-links { margin-top: 6px; font-size: 12px; color: var(--wt3); }
+  .w-sidebar-footer-links a { font-size: 12px; color: var(--wt3); text-decoration: none; }
+  .w-sidebar-footer-links a:hover { color: var(--wgold); }
 
-  .w-profile-stats { display: flex; align-items: center; gap: 24px; margin-top: 12px; width: 100%; justify-content: center; }
-  .w-stat { display: flex; flex-direction: column; align-items: center; }
-  .w-stat-num { font-size: 16px; font-weight: 600; color: var(--wt); }
-  .w-stat-label { font-size: 11px; text-transform: uppercase; color: #5a6478; margin-top: 1px; }
-  .w-stat-sep { display: none; }
-  .w-badge-amber { background: #e8940c !important; color: #0f1724 !important; font-weight: 700; font-size: 12px; min-width: 20px; text-align: center; }
+  .w-profile-stats { display: flex; align-items: center; gap: 4px; margin-top: 12px; width: 100%; justify-content: center; font-size: 13px; color: var(--wt2); flex-wrap: wrap; }
+  .w-stat { display: flex; align-items: center; gap: 3px; }
+  .w-stat-num { font-weight: 700; color: var(--wt); }
+  .w-stat-label { }
+  .w-stat-sep { color: var(--wt3); }
+  .w-badge-amber { background: var(--wgold) !important; color: #000 !important; font-weight: 800; font-size: 11px; min-width: 20px; text-align: center; padding: 2px 8px; border-radius: 10px; }
 
-  .w-main { flex: 1; min-width: 0; padding: 16px; border-left: 1px solid var(--wbd); border-right: 1px solid var(--wbd); overflow-y: auto; height: 100%; }
+  .w-main { flex: 1; min-width: 0; max-width: 600px; padding: 0; overflow-y: auto; height: calc(100vh - 56px); position: sticky; top: 56px; }
 
-  .w-sidebar-right { width: 280px; padding: 16px 12px; height: 100%; overflow-y: auto; flex-shrink: 0; }
+  .w-sidebar-right { width: 300px; padding: 16px; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; flex-shrink: 0; }
 
-  .w-composer { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .w-composer { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 14px; padding: 16px; margin-bottom: 0; border-bottom: 1px solid var(--wbd); }
   .w-composer-top { display: flex; gap: 12px; align-items: flex-start; }
-  .w-composer-top .w-avatar-sm { width: 40px; height: 40px; font-size: 17px; }
-  .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 17px; resize: none; outline: none; font-family: inherit; min-height: 50px; }
-  .w-composer textarea::placeholder { color: var(--wt3); }
-  .w-composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); }
+  .w-composer-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--wgold); color: #000; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+  .w-composer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .w-composer textarea { flex: 1; border: none; background: transparent; color: var(--wt); font-size: 16px; line-height: 1.6; resize: none; outline: none; font-family: inherit; min-height: 50px; }
+  .w-composer textarea::placeholder { color: var(--wt3); font-style: italic; }
+  .w-composer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--wbd); gap: 4px; }
   .w-feed-tabs { display: flex; gap: 2px; }
-  .w-feed-tabs button { padding: 7px 14px; border-radius: 16px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 14px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .w-feed-tabs button { padding: 7px 14px; border-radius: 24px; border: 1px solid var(--wbd); background: none; color: var(--wt3); font-size: 14px; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.15s; }
   .w-feed-tabs button.active { background: var(--wgold); color: #000; border-color: var(--wgold); }
   .w-emoji-wrap { position: relative; }
   .w-emoji-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; line-height: 1; }
@@ -1639,8 +1685,10 @@
   .w-emoji-item { background: none; border: none; font-size: 22px; cursor: pointer; padding: 6px 2px; border-radius: 8px; text-align: center; line-height: 1; transition: background 0.1s, transform 0.1s; }
   .w-emoji-item:hover { background: var(--whover); transform: scale(1.2); }
   .w-emoji-item:active { transform: scale(0.95); }
-  .w-char { font-size: 13px; color: var(--wt3); }
-  .w-post-btn { padding: 10px 22px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
+  .w-char { font-size: 13px; color: var(--wt3); transition: color 0.15s; }
+  .w-char-warn { color: var(--wdanger, #ef4444); }
+  .w-post-btn { padding: 10px 24px; border-radius: 24px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .w-post-btn:hover:not(:disabled) { background: var(--wgold-hover, #d4a017); }
   .w-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .w-join-cta { text-align: center; padding: 40px 20px; background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; margin-bottom: 16px; }
@@ -1724,19 +1772,11 @@
   .w-req-actions { display: flex; gap: 8px; margin-top: 12px; }
   .w-request-card { border-color: #10b981; }
 
-  .w-widget { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-  .w-widget h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
-  .w-suggest-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .w-suggest-item { display: flex; align-items: center; gap: 10px; }
   .w-suggest-info { flex: 1; min-width: 0; }
-  .w-suggest-name { font-size: 14px; font-weight: 600; color: var(--wgold); text-decoration: none; }
-  .w-suggest-real { font-size: 13px; color: var(--wt3); }
-  .w-connect-sm { padding: 8px 20px; border-radius: 20px; border: none; background: #e8940c; color: #0f1724; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: inherit; transition: background 0.15s, transform 0.15s; }
-  .w-connect-sm:hover { background: #f5a623; transform: scale(1.03); }
-  .w-accept-sm { border-color: #10b981; color: #10b981; font-size: 13px; width: auto; padding: 6px 12px; border-radius: 12px; }
-  .w-footer { font-size: 13px; color: var(--wt3); }
-  .w-footer a { color: var(--wt3); text-decoration: none; }
-  .w-footer a:hover { color: var(--wgold); }
-  .w-copyright { margin-top: 8px; font-size: 13px; }
+  .w-suggest-name { font-size: 14px; font-weight: 600; color: var(--wgold); text-decoration: none; display: block; }
+  .w-suggest-name:hover { text-decoration: underline; }
+  .w-suggest-real { font-size: 13px; color: var(--wt2); }
 
   .w-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--wgold); color: #000; padding: 12px 26px; border-radius: 20px; font-weight: 700; font-size: 15px; z-index: 200; animation: slideUp 0.3s; }
   .w-empty { text-align: center; padding: 40px; color: var(--wt3); font-size: 16px; }
@@ -1766,26 +1806,54 @@
   .w-hashtag:hover { text-decoration: underline; }
   .w-mention { color: #3b82f6; text-decoration: none; font-weight: 600; }
   .w-mention:hover { text-decoration: underline; }
-  .w-sched-btn { background: none; border: none; color: var(--wt3); cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; }
-  .w-sched-btn:hover { color: var(--wgold); background: rgba(245,166,35,0.1); }
-  .w-sidebar-active { background: rgba(245,166,35,0.12) !important; color: var(--wgold) !important; font-weight: 600 !important; }
-  .w-trending { margin-bottom: 16px; }
-  .w-trending-item { display: flex; justify-content: space-between; padding: 8px 12px; text-decoration: none; border-radius: 6px; }
-  .w-trending-item:hover { background: rgba(255,255,255,0.04); }
-  .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 16px; }
-  .w-trending-count { color: var(--wt3); font-size: 14px; }
-  .w-trending-rank { font-size: 11px; font-weight: 700; color: #3d4554; min-width: 16px; margin-right: 8px; }
-  .w-follow-sm { font-weight: 700; }
-  .w-ad-block { border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; transition: border-color 0.2s; }
-  .w-ad-block:hover { border-color: rgba(232,148,12,0.3); }
-  .w-ad-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #3d4554; margin-bottom: 8px; }
-  .w-ad-hero { height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; background: rgba(232,148,12,0.06); margin-bottom: 12px; }
-  .w-ad-hero-text { font-size: 22px; font-weight: 800; color: #e8940c; letter-spacing: 2px; }
-  .w-ad-img { width: 100%; border-radius: 8px; margin-bottom: 10px; }
-  .w-ad-title { font-size: 14px; font-weight: 700; color: var(--wt); margin: 0 0 6px; }
-  .w-ad-desc { font-size: 12px; color: var(--wt2); margin: 0 0 12px; line-height: 1.4; }
-  .w-ad-cta { display: inline-flex; align-items: center; padding: 8px 20px; border-radius: 20px; background: #e8940c; color: #0f1724; font-weight: 700; font-size: 14px; text-decoration: none; transition: background 0.15s; }
-  .w-ad-cta:hover { background: #f5a623; }
+  /* Composer toolbar icon buttons */
+  .w-milestone-btn, .w-poll-btn, .w-sched-btn, .w-img-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 6px; border-radius: 6px; display: flex; align-items: center; transition: color 0.15s; }
+  .w-milestone-btn:hover, .w-poll-btn:hover, .w-sched-btn:hover, .w-img-btn:hover { color: var(--wt); }
+  .w-milestone-btn.active, .w-poll-btn.active, .w-sched-btn.active { color: var(--wgold); }
+  .w-sidebar-active { background: rgba(245,166,35,0.08) !important; color: var(--wgold) !important; font-weight: 700 !important; border-left-color: var(--wgold) !important; }
+  /* ═══ RIGHT SIDEBAR CARDS ═══ */
+  .w-rs-card { background: var(--wcard); border: 1px solid var(--wbd); border-radius: 14px; padding: 0; margin-bottom: 16px; overflow: hidden; }
+  .w-rs-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 0; }
+  .w-rs-header h3 { font-size: 15px; font-weight: 700; margin: 0; line-height: 1.2; }
+  .w-trending .w-rs-header h3 { font-size: 18px; font-weight: 800; }
+  .w-rs-see-all { background: none; border: none; color: var(--wgold); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; font-family: inherit; }
+  .w-rs-see-all:hover { text-decoration: underline; }
+  .w-rs-badge { background: var(--wgold); color: #000; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+
+  /* Trending */
+  .w-trending .w-rs-header { padding-bottom: 8px; }
+  .w-trending-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; text-decoration: none; border-top: 1px solid var(--wbd); transition: background 0.15s; }
+  .w-trending-item:hover { background: var(--whover); }
+  .w-trending-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .w-trending-rank { font-size: 13px; font-weight: 700; color: var(--wgold); min-width: 22px; flex-shrink: 0; }
+  .w-trending-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .w-trending-tag { color: var(--wgold); font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .w-trending-spark { flex-shrink: 0; }
+  .w-trending-count { font-size: 13px; color: var(--wt3); white-space: nowrap; flex-shrink: 0; }
+
+  /* People / Requests items */
+  .w-rs-card .w-suggest-item { padding: 10px 16px; }
+  .w-rs-card .w-suggest-item + .w-suggest-item { border-top: 1px solid var(--wbd); }
+  .w-avatar-36 { width: 36px; height: 36px; border-radius: 50%; background: var(--wgold); color: #000; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+  .w-av-img-36 { width: 100%; height: 100%; object-fit: cover; }
+  .w-follow-btn { padding: 6px 18px; border-radius: 20px; border: none; background: var(--wgold); color: #000; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; transition: background 0.15s; }
+  .w-follow-btn:hover { background: var(--wgold-hover, #d4a017); }
+  .w-pending-pill { font-size: 12px; color: var(--wt3); border: 1px solid var(--wbd); padding: 4px 12px; border-radius: 12px; white-space: nowrap; }
+
+  /* Sponsored ad */
+  .w-ad-block { padding: 16px !important; }
+  .w-ad-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--wt3); margin-bottom: 12px; }
+  .w-ad-title { font-size: 15px; font-weight: 700; color: var(--wt); margin: 0 0 6px; }
+  .w-ad-desc { font-size: 13px; color: var(--wt2); margin: 0 0 14px; line-height: 1.4; }
+  .w-ad-cta { display: inline-flex; align-items: center; margin-top: 14px; padding: 8px 20px; border-radius: 20px; border: 1px solid var(--wgold); background: transparent; color: var(--wgold); font-weight: 700; font-size: 14px; text-decoration: none; transition: all 0.15s; }
+  .w-ad-cta:hover { background: rgba(245,166,35,0.1); }
+
+  /* Right sidebar footer */
+  .w-rs-footer { padding: 12px 4px; }
+  .w-rs-footer-links { font-size: 12px; color: var(--wt3); }
+  .w-rs-footer-links a { color: var(--wt3); text-decoration: none; }
+  .w-rs-footer-links a:hover { color: var(--wgold); }
+  .w-rs-footer-copy { font-size: 11px; color: var(--wt3); margin-top: 6px; }
   .w-activity-header { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px; }
   .w-activity-count { font-size:14px;color:var(--wt3,#606770); }
   .w-activity-list { display:flex;flex-direction:column; }
@@ -1801,17 +1869,8 @@
   .w-activity-action { font-size:15px;font-weight:600;color:var(--wt1,#e4e6ea); }
   .w-activity-preview { font-size:14px;color:var(--wt2,#8a8d91);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
   .w-activity-time { font-size:13px;color:var(--wt3,#606770);white-space:nowrap;flex-shrink:0; }
-  .w-badge-count { background:var(--wgold);color:#000;font-size:13px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px; }
-  .w-pending-label { font-size:13px;color:var(--wt3);border:1px solid var(--wbd);padding:4px 10px;border-radius:12px;white-space:nowrap; }
-  .w-widget-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
-  .w-widget-head h3 { margin:0; }
-  .w-show-more { background:none;border:none;color:var(--wgold);font-size:14px;font-weight:600;cursor:pointer;padding:0;font-family:inherit; }
-  .w-show-more:hover { text-decoration:underline; }
-  .w-pending-badge { font-size:13px;color:var(--wt3);border:1px solid var(--wbd);padding:5px 12px;border-radius:12px; }
   .w-notif-btn { position: relative; }
-  .w-notif-badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; }
-  .w-img-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; }
-  .w-img-btn:hover { color: var(--wgold); background: rgba(255,255,255,0.06); }
+  .w-notif-badge { position: absolute; top: -4px; right: -4px; background: var(--wgold); color: #000; font-size: 9px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; pointer-events: none; }
   .w-img-preview { position: relative; margin: 8px 0; border-radius: 12px; overflow: hidden; max-height: 200px; }
   .w-img-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid var(--wbd); }
   .w-img-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
@@ -1896,10 +1955,6 @@
   .w-ud-divider { height: 1px; background: var(--wbd); margin: 4px 0; }
   .w-ud-danger { color: #ef4444 !important; }
   .w-ud-danger:hover { background: rgba(239,68,68,0.06) !important; }
-  /* Milestone toggle */
-  .w-milestone-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; }
-  .w-milestone-btn:hover { color: var(--wgold); background: rgba(255,255,255,0.06); }
-  .w-milestone-btn.active { color: var(--wgold); }
 
   /* Milestone form */
   .w-milestone-form { background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.02)); border: 1px solid rgba(245,166,35,0.2); border-radius: 12px; padding: 12px; margin: 8px 0; }
@@ -1934,6 +1989,7 @@
   /* ============================================ */
   @media (max-width: 1024px) {
     .w-sidebar-right { display: none; }
+    .w-main { max-width: none; }
   }
 
   /* ============================================ */
@@ -1943,6 +1999,7 @@
     /* Hide desktop elements */
     .w-sidebar-left { display: none; }
     .w-sidebar-right { display: none; }
+    .w-main { max-width: none; position: static; height: auto; overflow-y: visible; }
 
     /* Quick links strip — scrollable chips */
     .w-quick-links {
@@ -2008,8 +2065,8 @@
     /* Composer — full width, card style */
     .w-composer { margin: 0; border-radius: 0; border-left: none; border-right: none; padding: 12px 14px; }
     .w-composer-top { gap: 10px; }
-    .w-composer-top .w-avatar-sm { display: none; }
-    .w-composer-top textarea { font-size: 17px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+    .w-composer-avatar { display: none; }
+    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
     .w-composer-bottom { gap: 6px; flex-wrap: nowrap; align-items: center; }
     .w-feed-tabs { order: -1; }
     .w-feed-tabs button { font-size: 14px; padding: 7px 14px; border-radius: 16px; }
@@ -2301,9 +2358,6 @@
   .w-poll-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 10px; }
   .w-poll-ends { font-size: 15px; color: var(--wt2); display: flex; align-items: center; gap: 6px; }
   .w-poll-ends input { padding: 8px 10px; border: 1px solid var(--wbd); border-radius: 6px; background: var(--wb); color: var(--wt); font-size: 15px; }
-  .w-poll-btn, .w-sched-btn { background: none; border: none; color: var(--wt2); cursor: pointer; padding: 4px; border-radius: 6px; transition: color 0.15s; }
-  .w-poll-btn:hover, .w-sched-btn:hover { color: var(--wgold); }
-  .w-poll-btn.active, .w-sched-btn.active { color: var(--wgold); }
   .w-sched-textarea { min-height: 50px; resize: none; margin-bottom: 8px; }
 
   /* ═══ MODALS ═══ */

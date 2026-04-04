@@ -13,7 +13,8 @@ function mockFetchSuccess(data: any) {
 	(globalThis.fetch as any).mockResolvedValueOnce({
 		ok: true,
 		json: async () => data,
-		status: 200
+		status: 200,
+		headers: new Headers({ 'content-type': 'application/json' })
 	});
 }
 
@@ -21,7 +22,8 @@ function mockFetchError(status: number, detail: string) {
 	(globalThis.fetch as any).mockResolvedValueOnce({
 		ok: false,
 		json: async () => ({ detail }),
-		status
+		status,
+		headers: new Headers({ 'content-type': 'application/json' })
 	});
 }
 
@@ -79,7 +81,7 @@ describe('getMe', () => {
 		await api.getMe();
 
 		const [, opts] = vi.mocked(fetch).mock.calls[0];
-		expect(opts?.headers).toHaveProperty('Authorization', 'Bearer mytoken');
+		expect((opts?.headers as Headers)?.get('Authorization')).toBe('Bearer mytoken');
 	});
 });
 
@@ -190,7 +192,7 @@ describe('ApiError', () => {
 			expect.fail('Should have thrown');
 		} catch (e: any) {
 			expect(e.status).toBe(403);
-			expect(e.detail).toBe('Team management requires Agency plan.');
+			expect(e.message).toBe('Team management requires Agency plan.');
 		}
 	});
 });

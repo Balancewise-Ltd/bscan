@@ -132,6 +132,7 @@ interface AuthResponse {
 	token_type: string;
 	user: User;
 	requires_2fa?: boolean;
+	requires_verification?: boolean;
 }
 
 export async function login(email: string, password: string, totp_code?: string): Promise<AuthResponse> {
@@ -140,6 +141,13 @@ export async function login(email: string, password: string, totp_code?: string)
 	return request('/api/auth/login', {
 		method: 'POST',
 		body: JSON.stringify(body)
+	});
+}
+
+export async function verifyLoginCode(email: string, code: string): Promise<AuthResponse> {
+	return request('/api/auth/verify-login-code', {
+		method: 'POST',
+		body: JSON.stringify({ email, code })
 	});
 }
 
