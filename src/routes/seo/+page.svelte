@@ -90,6 +90,70 @@
 		return res;
 	}
 
+	// ── Keyword Suggest ─────────────────────────────────
+	let suggestInput = $state('');
+	let suggestLoading = $state(false);
+	let suggestData = $state<any>(null);
+	let suggestError = $state('');
+
+	async function searchSuggestions() {
+		if (!suggestInput.trim()) return;
+		suggestError = ''; suggestLoading = true; suggestData = null;
+		try {
+			suggestData = await api.getKeywordSuggestions(suggestInput.trim(), kwCountry);
+		} catch (err) { suggestError = err instanceof Error ? err.message : 'Failed.'; }
+		suggestLoading = false;
+	}
+
+	// ── Keyword Analyze ─────────────────────────────────
+	let analyzeDomain = $state('');
+	let analyzeKeywordsInput = $state('');
+	let analyzeLoading = $state(false);
+	let analyzeData = $state<any>(null);
+	let analyzeError = $state('');
+
+	async function runAnalysis() {
+		if (!analyzeDomain.trim() || !analyzeKeywordsInput.trim()) return;
+		analyzeError = ''; analyzeLoading = true; analyzeData = null;
+		try {
+			const keywords = analyzeKeywordsInput.split(',').map(k => k.trim()).filter(Boolean);
+			analyzeData = await api.analyzeKeywords(analyzeDomain.trim(), keywords);
+		} catch (err) { analyzeError = err instanceof Error ? err.message : 'Analysis failed.'; }
+		analyzeLoading = false;
+	}
+
+	// ── Backlink Compare ────────────────────────────────
+	let cmpDomainA = $state('');
+	let cmpDomainB = $state('');
+	let cmpLoading = $state(false);
+	let cmpData = $state<any>(null);
+	let cmpError = $state('');
+
+	async function runBacklinkCompare() {
+		if (!cmpDomainA.trim() || !cmpDomainB.trim()) return;
+		cmpError = ''; cmpLoading = true; cmpData = null;
+		try {
+			cmpData = await api.compareBacklinks(cmpDomainA.trim(), cmpDomainB.trim());
+		} catch (err) { cmpError = err instanceof Error ? err.message : 'Comparison failed.'; }
+		cmpLoading = false;
+	}
+
+	// ── Full SEO Report ─────────────────────────────────
+	let reportUrl = $state('');
+	let reportEmail = $state('');
+	let reportLoading = $state(false);
+	let reportData = $state<any>(null);
+	let reportError = $state('');
+
+	async function generateReport() {
+		if (!reportUrl.trim() || !reportEmail.trim()) return;
+		reportError = ''; reportLoading = true; reportData = null;
+		try {
+			reportData = await api.generateSeoReport(reportUrl.trim(), reportEmail.trim());
+		} catch (err) { reportError = err instanceof Error ? err.message : 'Report generation failed.'; }
+		reportLoading = false;
+	}
+
 	// ── SEO History ──────────────────────────────────────
 	let seoHistory = $state<any[]>([]);
 	let histLoading = $state(false);
@@ -398,6 +462,10 @@
 			<button class="seo-tab" class:active={activeTab === 'gsc'} onclick={() => { activeTab = 'gsc'; if (!gscConnected && $auth.user) checkGscStatus(); }}><TrendingUp size={14} strokeWidth={2} /> Search Console {#if gscConnected}<span class="gsc-dot"></span>{/if}</button>
 			<button class="seo-tab" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; loadSeoHistory(); }}><ClipboardList size={14} strokeWidth={2} /> History</button>
 			<button class="seo-tab" class:active={activeTab === 'ai-visibility'} onclick={() => { activeTab = 'ai-visibility'; }}><Eye size={14} strokeWidth={2} /> AI Visibility {#if !isPaid}<span class="badge badge-gold" style="margin-left:4px;font-size:9px;">PRO</span>{/if}</button>
+			<button class="seo-tab" class:active={activeTab === 'suggest'} onclick={() => activeTab = 'suggest'}><Sparkles size={14} strokeWidth={2} /> Suggest</button>
+			<button class="seo-tab" class:active={activeTab === 'analyze'} onclick={() => activeTab = 'analyze'}><Target size={14} strokeWidth={2} /> Analyze</button>
+			<button class="seo-tab" class:active={activeTab === 'compare'} onclick={() => activeTab = 'compare'}><Scale size={14} strokeWidth={2} /> Compare</button>
+			<button class="seo-tab" class:active={activeTab === 'report'} onclick={() => activeTab = 'report'}><ClipboardList size={14} strokeWidth={2} /> Report</button>
 		</div>
 
 		<!-- ════ KEYWORDS ════ -->
@@ -1449,6 +1517,164 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- ════ SUGGEST ════ -->
+		{#if activeTab === 'suggest'}
+			<div class="tab-panel animate-fade-up">
+				<div class="card">
+					<div class="card-header">
+						<span><Sparkles size={14} strokeWidth={2} /></span>
+						<span style="font-weight: 700;">Keyword Suggestions</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Get autocomplete-based keyword suggestions from Google.</p>
+						<div style="display: flex; gap: 8px; margin-bottom: 16px;">
+							<input class="input" type="text" placeholder="Enter a seed keyword..." bind:value={suggestInput} onkeydown={(e) => { if (e.key === 'Enter') searchSuggestions(); }} style="flex: 1;" />
+							<button class="btn btn-gold" disabled={suggestLoading || !suggestInput.trim()} onclick={searchSuggestions}>
+								{suggestLoading ? 'Loading...' : 'Get Suggestions'}
+							</button>
+						</div>
+						{#if suggestError}<div class="msg-error">{suggestError}</div>{/if}
+						{#if suggestData}
+							<p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Found {suggestData.total_keywords || suggestData.suggestions?.length || 0} suggestions</p>
+							<div style="max-height: 400px; overflow-y: auto;">
+								{#each (suggestData.suggestions || []) as s}
+									<div style="padding: 6px 0; border-bottom: 1px solid var(--clr-border); font-size: 13px; cursor: pointer;" onclick={() => { kwInput = s; activeTab = 'keywords'; searchKeywords(); }}>{s}</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- ════ ANALYZE ════ -->
+		{#if activeTab === 'analyze'}
+			<div class="tab-panel animate-fade-up">
+				<div class="card">
+					<div class="card-header">
+						<span><Target size={14} strokeWidth={2} /></span>
+						<span style="font-weight: 700;">AI Keyword Analysis</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Get AI-powered intent classification, topic clusters, and content gap analysis for your keywords.</p>
+						<div style="display: grid; gap: 12px; margin-bottom: 16px;">
+							<div class="field">
+								<label class="label" for="analyze-domain">Domain</label>
+								<input class="input" type="text" id="analyze-domain" placeholder="example.com" bind:value={analyzeDomain} />
+							</div>
+							<div class="field">
+								<label class="label" for="analyze-kw">Keywords (comma-separated)</label>
+								<input class="input" type="text" id="analyze-kw" placeholder="seo tools, keyword research, backlink checker" bind:value={analyzeKeywordsInput} />
+							</div>
+							<button class="btn btn-gold" disabled={analyzeLoading || !analyzeDomain.trim() || !analyzeKeywordsInput.trim()} onclick={runAnalysis}>
+								{analyzeLoading ? 'Analyzing...' : 'Run AI Analysis'}
+							</button>
+						</div>
+						{#if analyzeError}<div class="msg-error">{analyzeError}</div>{/if}
+						{#if analyzeData}
+							<div style="padding: 16px; background: var(--clr-bg-deep); border-radius: var(--radius-md); border: 1px solid var(--clr-border);">
+								{#if analyzeData.intent_classification}
+									<h4 style="font-size: 13px; margin-bottom: 8px;">Intent Classification</h4>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary); margin-bottom: 12px;">{JSON.stringify(analyzeData.intent_classification, null, 2)}</pre>
+								{/if}
+								{#if analyzeData.topic_clusters}
+									<h4 style="font-size: 13px; margin-bottom: 8px;">Topic Clusters</h4>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary); margin-bottom: 12px;">{JSON.stringify(analyzeData.topic_clusters, null, 2)}</pre>
+								{/if}
+								{#if analyzeData.content_gaps}
+									<h4 style="font-size: 13px; margin-bottom: 8px;">Content Gaps</h4>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary); margin-bottom: 12px;">{JSON.stringify(analyzeData.content_gaps, null, 2)}</pre>
+								{/if}
+								{#if analyzeData.strategy}
+									<h4 style="font-size: 13px; margin-bottom: 8px;">Strategy</h4>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary);">{JSON.stringify(analyzeData.strategy, null, 2)}</pre>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- ════ COMPARE ════ -->
+		{#if activeTab === 'compare'}
+			<div class="tab-panel animate-fade-up">
+				<div class="card">
+					<div class="card-header">
+						<span><Scale size={14} strokeWidth={2} /></span>
+						<span style="font-weight: 700;">Backlink Comparison</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Compare backlink profiles of two domains side-by-side.</p>
+						<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+							<input class="input" type="text" placeholder="Domain A (e.g. yoursite.com)" bind:value={cmpDomainA} />
+							<input class="input" type="text" placeholder="Domain B (e.g. competitor.com)" bind:value={cmpDomainB} />
+						</div>
+						<button class="btn btn-gold" disabled={cmpLoading || !cmpDomainA.trim() || !cmpDomainB.trim()} onclick={runBacklinkCompare}>
+							{cmpLoading ? 'Comparing...' : 'Compare Backlinks'}
+						</button>
+						{#if cmpError}<div class="msg-error" style="margin-top: 12px;">{cmpError}</div>{/if}
+						{#if cmpData}
+							<div style="margin-top: 16px; padding: 16px; background: var(--clr-bg-deep); border-radius: var(--radius-md); border: 1px solid var(--clr-border);">
+								<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary);">{JSON.stringify(cmpData, null, 2)}</pre>
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- ════ REPORT ════ -->
+		{#if activeTab === 'report'}
+			<div class="tab-panel animate-fade-up">
+				<div class="card">
+					<div class="card-header">
+						<span><ClipboardList size={14} strokeWidth={2} /></span>
+						<span style="font-weight: 700;">Full SEO Report</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Free</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Generate a comprehensive SEO report combining keyword suggestions, backlink profile, and AI analysis.</p>
+						<div style="display: grid; gap: 12px; margin-bottom: 16px;">
+							<div class="field">
+								<label class="label" for="report-url">Website URL</label>
+								<input class="input" type="url" id="report-url" placeholder="https://example.com" bind:value={reportUrl} />
+							</div>
+							<div class="field">
+								<label class="label" for="report-email">Your Email</label>
+								<input class="input" type="email" id="report-email" placeholder="you@example.com" bind:value={reportEmail} />
+							</div>
+							<button class="btn btn-gold" disabled={reportLoading || !reportUrl.trim() || !reportEmail.trim()} onclick={generateReport}>
+								{reportLoading ? 'Generating Report...' : 'Generate SEO Report'}
+							</button>
+						</div>
+						{#if reportError}<div class="msg-error">{reportError}</div>{/if}
+						{#if reportData}
+							<div style="padding: 16px; background: var(--clr-bg-deep); border-radius: var(--radius-md); border: 1px solid var(--clr-border);">
+								<h4 style="font-size: 14px; margin-bottom: 12px;">Report for {reportData.domain}</h4>
+								{#if reportData.keyword_suggestions}
+									<h5 style="font-size: 12px; margin-bottom: 6px;">Keyword Suggestions</h5>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary); margin-bottom: 12px;">{JSON.stringify(reportData.keyword_suggestions, null, 2)}</pre>
+								{/if}
+								{#if reportData.backlink_profile}
+									<h5 style="font-size: 12px; margin-bottom: 6px;">Backlink Profile</h5>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary); margin-bottom: 12px;">{JSON.stringify(reportData.backlink_profile, null, 2)}</pre>
+								{/if}
+								{#if reportData.ai_analysis}
+									<h5 style="font-size: 12px; margin-bottom: 6px;">AI Analysis</h5>
+									<pre style="font-size: 11px; white-space: pre-wrap; color: var(--clr-text-secondary);">{JSON.stringify(reportData.ai_analysis, null, 2)}</pre>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
+
 	{/if}
 </div>
 

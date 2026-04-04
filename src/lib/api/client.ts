@@ -167,6 +167,13 @@ export async function disable2fa(code: string, password: string): Promise<{ mess
 	return request('/api/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ code, password }) });
 }
 
+export async function recover2fa(email: string, backupCode: string): Promise<AuthResponse> {
+	return request('/api/auth/2fa/recover', {
+		method: 'POST',
+		body: JSON.stringify({ email, backup_code: backupCode })
+	});
+}
+
 export async function sendCode(email: string): Promise<{ message: string; email: string }> {
 	return request('/api/auth/send-code', {
 		method: 'POST',
@@ -201,6 +208,77 @@ export async function verifyPasskeyLogin(credential: any): Promise<AuthResponse>
 		method: 'POST',
 		body: JSON.stringify(credential)
 	});
+}
+
+// ── Sessions & Login History ─────────────────────────
+export async function getSessions(): Promise<{ sessions: any[] }> {
+	return request('/api/auth/sessions');
+}
+
+export async function revokeSession(tokenId: string): Promise<{ message: string }> {
+	return request(`/api/auth/sessions/${tokenId}`, { method: 'DELETE' });
+}
+
+export async function getLoginHistory(): Promise<{ history: any[] }> {
+	return request('/api/auth/login-history');
+}
+
+// ── Change Email ─────────────────────────────────────
+export async function changeEmail(newEmail: string, password: string): Promise<{ message: string }> {
+	return request('/api/auth/change-email', {
+		method: 'POST',
+		body: JSON.stringify({ new_email: newEmail, password })
+	});
+}
+
+export async function verifyEmailChange(code: string): Promise<{ message: string }> {
+	return request('/api/auth/verify-email-change', {
+		method: 'POST',
+		body: JSON.stringify({ code })
+	});
+}
+
+// ── GDPR Consent ─────────────────────────────────────
+export async function getConsentStatus(): Promise<{ consents: any[] }> {
+	return request('/api/gdpr/consent');
+}
+
+// ── Content Appeals ──────────────────────────────────
+export async function createAppeal(contentId: string, contentType: string, reason: string): Promise<{ message: string }> {
+	return request('/api/community/appeal', {
+		method: 'POST',
+		body: JSON.stringify({ content_id: contentId, content_type: contentType, reason })
+	});
+}
+
+export async function getAppealStatus(): Promise<{ appeals: any[] }> {
+	return request('/api/community/appeal/status');
+}
+
+// ── Notification Preferences ─────────────────────────
+export async function getNotificationPreferences(): Promise<Record<string, boolean>> {
+	return request('/api/community/notification-preferences');
+}
+
+export async function updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>> {
+	return request('/api/community/notification-preferences', {
+		method: 'PUT',
+		body: JSON.stringify(prefs)
+	});
+}
+
+// ── Account Deactivation ─────────────────────────────
+export async function deactivateAccount(): Promise<{ message: string }> {
+	return request('/api/auth/deactivate', { method: 'POST' });
+}
+
+export async function reactivateAccount(): Promise<{ message: string }> {
+	return request('/api/auth/reactivate', { method: 'POST' });
+}
+
+// ── Rate Limit Status ────────────────────────────────
+export async function getRateLimitStatus(): Promise<{ remaining: number; limit: number; resets_in: number }> {
+	return request('/api/auth/rate-limit-status');
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
@@ -282,6 +360,10 @@ export function getScanBadgeUrl(scanId: string): string {
 
 export function getAchievementBadgeUrl(scanId: string, achievementId: string): string {
 	return `${API_BASE}/api/scan/${scanId}/achievement/${achievementId}`;
+}
+
+export async function getScanBadgeCode(scanId: string): Promise<{ html: string; markdown: string; image_url: string; scan_url: string }> {
+	return request(`/api/scan/${scanId}/badge-code`);
 }
 
 /** Compare — POST /api/scan/compare */
@@ -652,6 +734,41 @@ export async function getSeoAutocomplete(query: string): Promise<any> {
 	return request(`/api/seo/autocomplete?q=${encodeURIComponent(query)}`);
 }
 
+export async function getKeywordSuggestions(keyword: string, country: string = 'uk'): Promise<any> {
+	return request('/api/seo/keywords/suggest', {
+		method: 'POST',
+		body: JSON.stringify({ keyword, country })
+	});
+}
+
+export async function getKeywordIdeas(url: string, email: string, country: string = 'uk'): Promise<any> {
+	return request('/api/seo/keywords/ideas', {
+		method: 'POST',
+		body: JSON.stringify({ url, email, country })
+	});
+}
+
+export async function analyzeKeywords(domain: string, keywords: string[]): Promise<any> {
+	return request('/api/seo/keywords/analyze', {
+		method: 'POST',
+		body: JSON.stringify({ domain, keywords })
+	});
+}
+
+export async function compareBacklinks(domainA: string, domainB: string): Promise<any> {
+	return request('/api/seo/backlinks/compare', {
+		method: 'POST',
+		body: JSON.stringify({ domain_a: domainA, domain_b: domainB })
+	});
+}
+
+export async function generateSeoReport(url: string, email: string, includeBacklinks: boolean = true, includeAiAnalysis: boolean = true): Promise<any> {
+	return request('/api/seo/report', {
+		method: 'POST',
+		body: JSON.stringify({ url, email, include_backlinks: includeBacklinks, include_ai_analysis: includeAiAnalysis })
+	});
+}
+
 // ══════════════════════════════════════════════════════════
 // PDF — GET /api/scan/{id}/pdf (auth required)
 // ══════════════════════════════════════════════════════════
@@ -891,6 +1008,20 @@ export async function uploadMedia(file: File): Promise<{id: string, url: string,
   return request('/api/media/upload', { method: 'POST', body: fd });
 }
 
+export async function uploadMediaAvatar(file: File): Promise<{ url: string }> {
+  const fd = new FormData();
+  fd.append('file', file);
+  return request('/api/media/upload/avatar', { method: 'POST', body: fd });
+}
+
+export async function getMedia(mediaId: string): Promise<any> {
+  return request(`/api/media/${mediaId}`);
+}
+
+export async function deleteMedia(mediaId: string): Promise<{ message: string }> {
+  return request(`/api/media/${mediaId}`, { method: 'DELETE' });
+}
+
 export async function createPost(content: string, postType: string = 'text', scanUrl: string = '', scanScore: number = 0, imageUrl: string = '', mediaIds: string[] = []): Promise<any> {
 	const body: Record<string, any> = { content, post_type: postType, scan_url: scanUrl, scan_score: scanScore, image_url: imageUrl };
 	if (mediaIds.length > 0) body.media_ids = mediaIds;
@@ -994,6 +1125,30 @@ export async function getHelpArticle(slug: string): Promise<any> {
 // ── Reports ──
 export async function reportContent(type: string, id: number, reason: string): Promise<any> {
   return request('/api/community/report', { method: 'POST', body: JSON.stringify({ type, id, reason }) });
+}
+
+export async function reportContentV2(postId: number | null, commentId: number | null, userId: string | null, reason: string, details?: string): Promise<any> {
+  return request('/api/community/report/v2', { method: 'POST', body: JSON.stringify({ post_id: postId, comment_id: commentId, user_id: userId, reason, details }) });
+}
+
+export async function getEngagementCheck(): Promise<{ show_community_card: boolean; show_post_card: boolean; communities: any[] }> {
+  return request('/api/community/engagement-check');
+}
+
+export async function checkPostLiked(postId: number): Promise<{ liked: boolean }> {
+  return request(`/api/community/posts/${postId}/liked`);
+}
+
+export async function getMyReactions(postId: number): Promise<{ liked: boolean; rocketed: boolean; reposted: boolean }> {
+  return request(`/api/community/post/${postId}/my-reactions`);
+}
+
+export async function getIdVerificationStatus(): Promise<any> {
+  return request('/api/community/id-verification/status');
+}
+
+export async function submitIdVerification(documentUrl: string, documentType: string, fullName: string): Promise<any> {
+  return request('/api/community/id-verification/submit', { method: 'POST', body: JSON.stringify({ document_url: documentUrl, document_type: documentType, full_name: fullName }) });
 }
 
 // ── Rockets & Reposts ──
@@ -1369,6 +1524,14 @@ export async function updateCommunity(slug: string, data: { name?: string; descr
   return request('/api/wisers/communities/' + slug, { method: 'PUT', body: JSON.stringify(data) });
 }
 
+export async function uploadCommunityIcon(slug: string): Promise<{ message: string }> {
+  return request(`/api/wisers/communities/${slug}/icon`, { method: 'POST' });
+}
+
+export async function uploadCommunityCover(slug: string): Promise<{ message: string }> {
+  return request(`/api/wisers/communities/${slug}/cover`, { method: 'POST' });
+}
+
 export async function deleteCommunity(slug: string): Promise<any> {
   return request('/api/wisers/communities/' + slug, { method: 'DELETE' });
 }
@@ -1419,6 +1582,10 @@ export async function getKeyBackup(): Promise<{ encrypted_key: string }> {
 }
 export async function deleteKeyBackup(): Promise<any> {
 	return request('/api/keys/backup', { method: 'DELETE' });
+}
+
+export async function validateEncryptionKey(publicKey: string): Promise<{ valid: boolean; error?: string }> {
+	return request('/api/keys/validate', { method: 'POST', body: JSON.stringify({ public_key: publicKey }) });
 }
 
 // ═══════════════════════════════════════════════

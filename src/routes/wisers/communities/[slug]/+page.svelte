@@ -56,9 +56,15 @@
     if (!file) return;
     iconUploading = true;
     try {
-      const res = await api.uploadMedia(file);
-      await api.updateCommunity(slug, { icon_url: res.url } as any);
-      community = { ...community, icon_url: res.url };
+      // Try dedicated endpoint first, fallback to generic upload + update
+      try {
+        const res = await api.uploadCommunityIcon(slug);
+        community = { ...community, icon_url: (res as any).url || community?.icon_url };
+      } catch {
+        const res = await api.uploadMedia(file);
+        await api.updateCommunity(slug, { icon_url: res.url } as any);
+        community = { ...community, icon_url: res.url };
+      }
     } catch {}
     iconUploading = false;
   }
@@ -68,9 +74,15 @@
     if (!file) return;
     coverUploading = true;
     try {
-      const res = await api.uploadMedia(file);
-      await api.updateCommunity(slug, { cover_url: res.url } as any);
-      community = { ...community, cover_url: res.url };
+      // Try dedicated endpoint first, fallback to generic upload + update
+      try {
+        const res = await api.uploadCommunityCover(slug);
+        community = { ...community, cover_url: (res as any).url || community?.cover_url };
+      } catch {
+        const res = await api.uploadMedia(file);
+        await api.updateCommunity(slug, { cover_url: res.url } as any);
+        community = { ...community, cover_url: res.url };
+      }
     } catch {}
     coverUploading = false;
   }

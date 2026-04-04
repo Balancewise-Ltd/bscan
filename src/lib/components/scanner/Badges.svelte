@@ -14,11 +14,15 @@
 	let challenge = $state<ChallengeData | null>(null);
 	let loading = $state(true);
 	let copied = $state(false);
+	let badgeCode = $state<{ html: string; markdown: string; image_url: string; scan_url: string } | null>(null);
 
 	onMount(async () => {
 		try {
 			challenge = await api.getScanChallenge(scanId);
 		} catch { challenge = null; }
+		try {
+			badgeCode = await api.getScanBadgeCode(scanId);
+		} catch { badgeCode = null; }
 		loading = false;
 	});
 
@@ -33,9 +37,9 @@
 		navigator.clipboard.writeText(code);
 	}
 
-	const badgeUrl = $derived(api.getScanBadgeUrl(scanId));
-	const embedHtml = $derived(`<a href="https://bscan.balancewises.io" target="_blank" rel="noopener"><img src="${badgeUrl}" alt="Website Score — BSCAN" width="200" height="80"></a>`);
-	const embedMd = $derived(`[![Website Score](${badgeUrl})](https://bscan.balancewises.io)`);
+	const badgeUrl = $derived(badgeCode?.image_url || api.getScanBadgeUrl(scanId));
+	const embedHtml = $derived(badgeCode?.html || `<a href="https://bscan.balancewises.io" target="_blank" rel="noopener"><img src="${badgeUrl}" alt="Website Score — BSCAN" width="200" height="80"></a>`);
+	const embedMd = $derived(badgeCode?.markdown || `[![Website Score](${badgeUrl})](https://bscan.balancewises.io)`);
 </script>
 
 {#if !loading}

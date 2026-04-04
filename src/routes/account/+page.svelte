@@ -98,12 +98,26 @@
 	let newKeyName = $state('');
 	let newKeyResult = $state<string | null>(null);
 
+	// ── Change Email state ───────────────────────────────
+	let ceNewEmail = $state('');
+	let cePassword = $state('');
+	let ceLoading = $state(false);
+	let ceMsg = $state('');
+	let ceError = $state('');
+	let ceCodeSent = $state(false);
+	let ceCode = $state('');
+	let ceVerifyLoading = $state(false);
+
 	// ── Password state ───────────────────────────────────
 	let pwCurrent = $state('');
 	let pwNew = $state('');
 	let pwConfirm = $state('');
 	let pwError = $state('');
 	let pwSuccess = $state('');
+
+	// ── Deactivation state ──────────────────────────────
+	let deactivateLoading = $state(false);
+	let deactivateMsg = $state('');
 
 	// __ Delete Account state
 	let showDeleteConfirm = $state(false);
@@ -138,6 +152,35 @@
 	let twoFaDisableCode = $state('');
 	let twoFaDisablePassword = $state('');
 
+	// ── Sessions & Login History state ────────────────
+	let sessions = $state<any[]>([]);
+	let sessionsLoading = $state(true);
+	let revokeLoadingId = $state<string | null>(null);
+	let loginHistory = $state<any[]>([]);
+	let loginHistoryLoading = $state(true);
+
+	// ── GDPR Consent state ───────────────────────────
+	let consents = $state<any[]>([]);
+	let consentsLoading = $state(true);
+
+	// ── Content Appeals state ─────────────────────────
+	let appeals = $state<any[]>([]);
+	let appealsLoading = $state(true);
+
+	// ── Notification Preferences state ────────────────
+	let notifPrefs = $state<Record<string, boolean>>({});
+	let notifPrefsLoading = $state(true);
+	let notifPrefsSaving = $state(false);
+	let notifPrefsMsg = $state('');
+
+	// ── 2FA Recovery state ────────────────────────────
+	let show2faRecover = $state(false);
+	let recoverEmail = $state('');
+	let recoverCode = $state('');
+	let recoverLoading = $state(false);
+	let recoverMsg = $state('');
+	let recoverError = $state('');
+
 	// ── Passkey state ──────────────────────────────────
 	let passkeyRegLoading = $state(false);
 	let passkeyRegMsg = $state('');
@@ -162,6 +205,16 @@
 	let pushMsg = $state('');
 	let pushError = $state('');
 	let pushTestLoading = $state(false);
+
+	// ── ID Verification state ────────────────────────
+	let idVerifStatus = $state<any>(null);
+	let idVerifLoading = $state(true);
+	let idVerifDocUrl = $state('');
+	let idVerifDocType = $state('passport');
+	let idVerifFullName = $state('');
+	let idVerifSubmitting = $state(false);
+	let idVerifMsg = $state('');
+	let idVerifError = $state('');
 
 	// ── E2E Key Backup state ─────────────────────────
 	let e2eHasKey = $state(false);
@@ -204,6 +257,27 @@
 		mutedLoading = false;
 	}
 
+	async function loadSessions() {
+		sessionsLoading = true;
+		try { sessions = (await api.getSessions()).sessions || []; } catch { sessions = []; }
+		sessionsLoading = false;
+	}
+
+	async function handleRevokeSession(tokenId: string) {
+		revokeLoadingId = tokenId;
+		try {
+			await api.revokeSession(tokenId);
+			sessions = sessions.filter(s => s.id !== tokenId);
+		} catch {}
+		revokeLoadingId = null;
+	}
+
+	async function loadLoginHistory() {
+		loginHistoryLoading = true;
+		try { loginHistory = (await api.getLoginHistory()).history || []; } catch { loginHistory = []; }
+		loginHistoryLoading = false;
+	}
+
 	async function handleUnblock(username: string) {
 		try { await api.unblockUser(username); blockedUsers = blockedUsers.filter(u => u.username !== username); } catch {}
 	}
@@ -215,6 +289,100 @@
 	async function handleLogoutAll() {
 		if (!confirm('This will sign you out on every device. Continue?')) return;
 		try { await api.logoutAll(); auth.logout(); window.location.href = '/account'; } catch {}
+	}
+
+	async function handleChangeEmail() {
+		ceLoading = true; ceError = ''; ceMsg = '';
+		try {
+			const res = await api.changeEmail(ceNewEmail.trim(), cePassword);
+			ceMsg = res.message;
+			ceCodeSent = true;
+		} catch (err: any) { ceError = err?.message || 'Failed to send verification code'; }
+		ceLoading = false;
+	}
+
+	async function handleVerifyEmailChange() {
+		ceVerifyLoading = true; ceError = '';
+		try {
+			const res = await api.verifyEmailChange(ceCode.trim());
+			ceMsg = 'Email updated successfully!';
+			ceCodeSent = false; ceNewEmail = ''; cePassword = ''; ceCode = '';
+			await auth.refresh();
+		} catch (err: any) { ceError = err?.message || 'Invalid verification code'; }
+		ceVerifyLoading = false;
+	}
+
+	async function handleDeactivate() {
+		if (!confirm('Deactivate your account? Your profile and posts will be hidden. You can reactivate by logging in again.')) return;
+		deactivateLoading = true; deactivateMsg = '';
+		try {
+			const res = await api.deactivateAccount();
+			deactivateMsg = res.message;
+			auth.logout();
+			setTimeout(() => { window.location.href = '/account'; }, 2000);
+		} catch (err: any) { deactivateMsg = err?.message || 'Failed to deactivate'; }
+		deactivateLoading = false;
+	}
+
+	async function handle2faRecover() {
+		recoverLoading = true; recoverError = ''; recoverMsg = '';
+		try {
+			const res = await api.recover2fa(recoverEmail.trim(), recoverCode.trim());
+			if (res.access_token) {
+				await auth.loginWithToken(res.access_token, res.refresh_token);
+				recoverMsg = 'Recovery successful! Logging you in...';
+				setTimeout(() => { show2faRecover = false; loadDashboard(); }, 1500);
+			}
+		} catch (err: any) { recoverError = err?.message || 'Invalid backup code'; }
+		recoverLoading = false;
+	}
+
+	async function loadConsents() {
+		consentsLoading = true;
+		try { consents = (await api.getConsentStatus()).consents || []; } catch { consents = []; }
+		consentsLoading = false;
+	}
+
+	async function loadAppeals() {
+		appealsLoading = true;
+		try { appeals = (await api.getAppealStatus()).appeals || []; } catch { appeals = []; }
+		appealsLoading = false;
+	}
+
+	async function loadNotifPrefs() {
+		notifPrefsLoading = true;
+		try { notifPrefs = await api.getNotificationPreferences(); } catch { notifPrefs = {}; }
+		notifPrefsLoading = false;
+	}
+
+	async function toggleNotifPref(key: string) {
+		const newVal = !notifPrefs[key];
+		notifPrefs[key] = newVal;
+		notifPrefsSaving = true; notifPrefsMsg = '';
+		try {
+			await api.updateNotificationPreferences({ [key]: newVal });
+			notifPrefsMsg = 'Saved';
+			setTimeout(() => { notifPrefsMsg = ''; }, 1500);
+		} catch { notifPrefs[key] = !newVal; }
+		notifPrefsSaving = false;
+	}
+
+	async function loadIdVerifStatus() {
+		idVerifLoading = true;
+		try { idVerifStatus = await api.getIdVerificationStatus(); } catch { idVerifStatus = null; }
+		idVerifLoading = false;
+	}
+
+	async function submitIdVerification() {
+		if (!idVerifDocUrl.trim() || !idVerifFullName.trim()) { idVerifError = 'All fields required'; return; }
+		idVerifSubmitting = true; idVerifMsg = ''; idVerifError = '';
+		try {
+			const res = await api.submitIdVerification(idVerifDocUrl.trim(), idVerifDocType, idVerifFullName.trim());
+			idVerifMsg = res.message || 'Verification submitted';
+			idVerifDocUrl = ''; idVerifFullName = '';
+			await loadIdVerifStatus();
+		} catch (e) { idVerifError = e instanceof Error ? e.message : 'Submission failed'; }
+		idVerifSubmitting = false;
 	}
 
 	async function handle2faSetup() {
@@ -325,7 +493,15 @@
 		if (e2eBackupPassphrase.length < 8) { e2eBackupError = 'Passphrase must be at least 8 characters'; return; }
 		e2eBackupLoading = true; e2eBackupError = ''; e2eBackupMsg = '';
 		try {
-			const { encryptPrivateKeyWithPassphrase } = await import('$lib/stores/encryption');
+			const { encryptPrivateKeyWithPassphrase, getPublicKey } = await import('$lib/stores/encryption');
+			// Validate the key with backend before backing up
+			const pubKey = getPublicKey();
+			if (pubKey) {
+				try {
+					const validation = await api.validateEncryptionKey(pubKey);
+					if (!validation.valid) { e2eBackupError = validation.error || 'Encryption key is invalid'; e2eBackupLoading = false; return; }
+				} catch { /* validation endpoint unavailable, proceed anyway */ }
+			}
 			const encrypted = encryptPrivateKeyWithPassphrase(e2eBackupPassphrase);
 			if (!encrypted) { e2eBackupError = 'No encryption key found. Send a message first to generate one.'; e2eBackupLoading = false; return; }
 			await api.backupKey(encrypted);
@@ -391,6 +567,12 @@
 		try { const s = await api.get2faStatus(); twoFaEnabled = s.enabled; } catch {}
 		loadBlockedUsers();
 		loadMutedUsers();
+		loadSessions();
+		loadLoginHistory();
+		loadNotifPrefs();
+		loadAppeals();
+		loadConsents();
+		loadIdVerifStatus();
 
 		const params = new URLSearchParams(window.location.search);
 
@@ -1241,6 +1423,32 @@
 			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { showLoginCode = false; loginCode = ''; loginCodeError = ''; }}>Back to login</button>
 		</div>
 		<p class="text-muted" style="margin-top: 16px; font-size: 11px;">Code expires in 5 minutes. Check spam if you don't see it.</p>
+		<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 12px; cursor: pointer; font-family: inherit; text-decoration: underline; margin-top: 8px;" onclick={() => { show2faRecover = true; showLoginCode = false; recoverEmail = loginCodeEmail; }}>Lost access to authenticator? Use backup code</button>
+	</div>
+	{:else if show2faRecover}
+	<!-- ══════ 2FA BACKUP CODE RECOVERY ══════ -->
+	<div class="auth-section animate-fade-up" style="text-align: center;">
+		<div style="font-size: 56px; margin-bottom: 16px;">&#128273;</div>
+		<h2>Recover with <span class="text-gold">backup code</span></h2>
+		<p class="text-muted" style="margin-bottom: 20px;">Enter your email and one of your saved backup codes to sign in.</p>
+		<div style="max-width: 320px; margin: 0 auto; text-align: left;">
+			<div class="field" style="margin-bottom: 12px;">
+				<label class="label" for="recover-email">Email</label>
+				<input class="input" type="email" id="recover-email" bind:value={recoverEmail} />
+			</div>
+			<div class="field" style="margin-bottom: 12px;">
+				<label class="label" for="recover-code">Backup Code</label>
+				<input class="input" type="text" id="recover-code" placeholder="xxxx-xxxx-xxxx" bind:value={recoverCode} style="font-family: monospace; letter-spacing: 1px;" />
+			</div>
+			{#if recoverError}<div class="msg-error" style="margin-bottom: 12px;">{recoverError}</div>{/if}
+			{#if recoverMsg}<div class="msg-success" style="margin-bottom: 12px;">{recoverMsg}</div>{/if}
+			<button class="btn btn-gold" style="width: 100%;" disabled={recoverLoading || !recoverEmail || !recoverCode} onclick={handle2faRecover}>
+				{recoverLoading ? 'Recovering...' : 'Sign In with Backup Code'}
+			</button>
+		</div>
+		<div style="margin-top: 16px;">
+			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { show2faRecover = false; }}>Back to login</button>
+		</div>
 	</div>
 	{:else}
 	<!-- ══════ AUTH FORM ══════ -->
@@ -1576,8 +1784,16 @@
 						return;
 					}
 					try {
-						const res = await api.uploadAvatar(file);
-						avatarUrl = res.avatar_url;
+						// Try media avatar endpoint first, fallback to legacy
+						let url = '';
+						try {
+							const mres = await api.uploadMediaAvatar(file);
+							url = mres.url;
+						} catch {
+							const res = await api.uploadAvatar(file);
+							url = res.avatar_url;
+						}
+						avatarUrl = url;
 						profileMsg = 'Avatar uploaded!';
 						auth.refresh();
 					} catch (err) {
@@ -2570,8 +2786,43 @@
 					</div>
 				</div>
 
+				<!-- Notification Preferences -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F514;</span>
+						<span style="font-weight: 700; font-size: 14px;">Notification Preferences</span>
+						{#if notifPrefsMsg}<span style="margin-left: auto; font-size: 11px; color: var(--clr-success);">{notifPrefsMsg}</span>{/if}
+					</div>
+					<div class="card-body">
+						{#if notifPrefsLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading preferences...</p>
+						{:else}
+							<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Choose which notifications you receive.</p>
+							{#each [
+								{ key: 'likes', label: 'Likes', desc: 'When someone likes your post' },
+								{ key: 'comments', label: 'Comments', desc: 'When someone comments on your post' },
+								{ key: 'follows', label: 'Follows', desc: 'When someone follows you' },
+								{ key: 'dms', label: 'Messages', desc: 'Direct message notifications' },
+								{ key: 'mentions', label: 'Mentions', desc: 'When someone mentions you' },
+								{ key: 'community', label: 'Community', desc: 'Community updates and announcements' },
+								{ key: 'digest', label: 'Weekly Digest', desc: 'Weekly summary email' },
+							] as item}
+								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
+									<div>
+										<p style="font-size: 13px; font-weight: 600;">{item.label}</p>
+										<p class="text-muted" style="font-size: 11px;">{item.desc}</p>
+									</div>
+									<button class="push-toggle" class:active={notifPrefs[item.key]} disabled={notifPrefsSaving} onclick={() => toggleNotifPref(item.key)} aria-label="Toggle {item.label}">
+										<span class="push-toggle-knob"></span>
+									</button>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				</div>
+
 				<!-- Change Password -->
-				<div class="card">
+				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
 						<span><ShieldCheck size={16} strokeWidth={1.8} /></span>
 						<span style="font-weight: 700; font-size: 14px;">Change Password</span>
@@ -2592,6 +2843,45 @@
 						{#if pwError}<div class="msg-error">{pwError}</div>{/if}
 						{#if pwSuccess}<div class="msg-success">{pwSuccess}</div>{/if}
 						<button class="btn btn-gold" style="margin-top: 16px;" onclick={changePassword}>Update Password</button>
+					</div>
+				</div>
+
+				<!-- Change Email -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x2709;</span>
+						<span style="font-weight: 700; font-size: 14px;">Change Email</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">A 6-digit code will be sent to your new email to verify the change.</p>
+						{#if !ceCodeSent}
+							<div class="field">
+								<label class="label" for="ce-email">New Email Address</label>
+								<input class="input" type="email" id="ce-email" placeholder="newemail@example.com" bind:value={ceNewEmail} />
+							</div>
+							<div class="field" style="margin-top: 12px;">
+								<label class="label" for="ce-pw">Current Password</label>
+								<input class="input" type="password" id="ce-pw" bind:value={cePassword} />
+							</div>
+							{#if ceError}<div class="msg-error" style="margin-top: 8px;">{ceError}</div>{/if}
+							{#if ceMsg}<div class="msg-success" style="margin-top: 8px;">{ceMsg}</div>{/if}
+							<button class="btn btn-gold" style="margin-top: 16px;" disabled={ceLoading || !ceNewEmail || !cePassword} onclick={handleChangeEmail}>
+								{ceLoading ? 'Sending code...' : 'Send Verification Code'}
+							</button>
+						{:else}
+							<p style="font-size: 13px; margin-bottom: 12px;">Enter the 6-digit code sent to <strong>{ceNewEmail}</strong></p>
+							<div class="field">
+								<input class="input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" bind:value={ceCode} style="text-align: center; letter-spacing: 4px; font-family: monospace; font-size: 18px;" />
+							</div>
+							{#if ceError}<div class="msg-error" style="margin-top: 8px;">{ceError}</div>{/if}
+							{#if ceMsg}<div class="msg-success" style="margin-top: 8px;">{ceMsg}</div>{/if}
+							<div style="display: flex; gap: 8px; margin-top: 12px;">
+								<button class="btn btn-gold" disabled={ceVerifyLoading || ceCode.length !== 6} onclick={handleVerifyEmailChange}>
+									{ceVerifyLoading ? 'Verifying...' : 'Verify & Update Email'}
+								</button>
+								<button class="btn btn-outline btn-sm" onclick={() => { ceCodeSent = false; ceCode = ''; ceError = ''; ceMsg = ''; }}>Cancel</button>
+							</div>
+						{/if}
 					</div>
 				</div>
 
@@ -2718,18 +3008,68 @@
 					</div>
 				</div>
 
-				<!-- Active Sessions Info -->
+				<!-- Active Sessions -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
 						<span>🛡️</span>
-						<span style="font-weight: 700; font-size: 14px;">Session</span>
+						<span style="font-weight: 700; font-size: 14px;">Active Sessions</span>
 					</div>
 					<div class="card-body">
-						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Your login session is valid for 30 days.</p>
-						<div style="display: flex; gap: 8px;">
+						{#if sessionsLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading sessions...</p>
+						{:else if sessions.length === 0}
+							<p class="text-muted" style="font-size: 12px;">No active sessions found.</p>
+						{:else}
+							<div style="margin-bottom: 12px;">
+								{#each sessions as s}
+									<div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--clr-border);">
+										<div style="min-width: 0; flex: 1;">
+											<p style="font-size: 13px; font-weight: 600;">{s.device_info || 'Unknown device'}</p>
+											<p class="text-muted" style="font-size: 11px;">{s.ip_address || '—'} &middot; Created {new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+										</div>
+										<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3); flex-shrink: 0;" disabled={revokeLoadingId === s.id} onclick={() => handleRevokeSession(s.id)}>
+											{revokeLoadingId === s.id ? '...' : 'Revoke'}
+										</button>
+									</div>
+								{/each}
+							</div>
+						{/if}
+						<div style="display: flex; gap: 8px; margin-top: 12px;">
 							<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
 							<button class="btn btn-outline btn-sm" onclick={handleLogoutAll}>Sign Out All Devices</button>
 						</div>
+					</div>
+				</div>
+
+				<!-- Login History -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F4CB;</span>
+						<span style="font-weight: 700; font-size: 14px;">Login History</span>
+					</div>
+					<div class="card-body">
+						{#if loginHistoryLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading history...</p>
+						{:else if loginHistory.length === 0}
+							<p class="text-muted" style="font-size: 12px;">No login history available.</p>
+						{:else}
+							<div style="max-height: 300px; overflow-y: auto;">
+								{#each loginHistory as h}
+									<div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
+										<div style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: {h.status === 'success' ? 'var(--clr-success)' : 'var(--clr-danger)'};">
+										</div>
+										<div style="min-width: 0; flex: 1;">
+											<p style="font-size: 12px; font-weight: 500;">{h.ip || '—'}</p>
+											<p class="text-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{h.user_agent || '—'}</p>
+										</div>
+										<div style="text-align: right; flex-shrink: 0;">
+											<p style="font-size: 11px; font-weight: 600; color: {h.status === 'success' ? 'var(--clr-success)' : 'var(--clr-danger)'};">{h.status}</p>
+											<p class="text-muted" style="font-size: 10px;">{new Date(h.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</div>
 
@@ -2773,6 +3113,40 @@
 					</div>
 				</div>
 
+				<!-- Content Appeals -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x2696;</span>
+						<span style="font-weight: 700; font-size: 14px;">Content Appeals</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">If content was removed by moderation, you can appeal here. Under the UK Online Safety Act, you have the right to appeal content decisions.</p>
+						{#if appealsLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading appeals...</p>
+						{:else if appeals.length === 0}
+							<p class="text-muted" style="font-size: 12px;">No appeals submitted.</p>
+						{:else}
+							<div style="max-height: 250px; overflow-y: auto;">
+								{#each appeals as a}
+									<div style="padding: 10px 0; border-bottom: 1px solid var(--clr-border);">
+										<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+											<span style="font-size: 12px; font-weight: 600;">{a.content_type} #{a.content_id}</span>
+											<span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+												background: {a.status === 'pending' ? 'rgba(245,166,35,0.1)' : a.status === 'approved' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};
+												color: {a.status === 'pending' ? 'var(--clr-warning)' : a.status === 'approved' ? 'var(--clr-success)' : 'var(--clr-danger)'};">
+												{a.status}
+											</span>
+										</div>
+										<p class="text-muted" style="font-size: 11px; line-height: 1.5;">{a.reason}</p>
+										{#if a.admin_notes}<p style="font-size: 11px; color: var(--clr-text-secondary); margin-top: 4px;">Admin: {a.admin_notes}</p>{/if}
+										<p class="text-muted" style="font-size: 10px; margin-top: 4px;">{new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+
 				<!-- GDPR — Your Data -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
@@ -2785,6 +3159,86 @@
 							{#if gdprExportLoading}Generating...{:else}Download My Data{/if}
 						</button>
 						{#if gdprExportMsg}<p style="font-size: 12px; margin-top: 8px; color: var(--clr-success);">{gdprExportMsg}</p>{/if}
+
+						<!-- Consent Status -->
+						<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--clr-border);">
+							<p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Consent Status</p>
+							{#if consentsLoading}
+								<p class="text-muted" style="font-size: 12px;">Loading...</p>
+							{:else}
+								{#each consents as c}
+									<div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--clr-border);">
+										<div>
+											<p style="font-size: 12px; font-weight: 500; text-transform: capitalize;">{c.consent_type}</p>
+											{#if c.note}<p class="text-muted" style="font-size: 10px;">{c.note}</p>{/if}
+										</div>
+										<span style="font-size: 11px; font-weight: 600; color: {c.granted ? 'var(--clr-success)' : 'var(--clr-text-muted)'};">
+											{c.granted ? 'Granted' : 'Not granted'}
+										</span>
+									</div>
+								{/each}
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<!-- ID Verification -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F4CB;</span>
+						<span style="font-weight: 700; font-size: 14px;">Identity Verification</span>
+					</div>
+					<div class="card-body">
+						{#if idVerifLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading...</p>
+						{:else if idVerifStatus?.status === 'verified'}
+							<div style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(16,185,129,0.08); border-radius: 8px; border: 1px solid rgba(16,185,129,0.2);">
+								<span style="font-size: 18px;">&#x2705;</span>
+								<div>
+									<p style="font-size: 13px; font-weight: 600; color: var(--clr-success);">Identity Verified</p>
+									<p class="text-muted" style="font-size: 11px;">Your identity has been confirmed</p>
+								</div>
+							</div>
+						{:else if idVerifStatus?.status === 'pending'}
+							<div style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(245,166,35,0.08); border-radius: 8px; border: 1px solid rgba(245,166,35,0.2);">
+								<span style="font-size: 18px;">&#x23F3;</span>
+								<div>
+									<p style="font-size: 13px; font-weight: 600; color: var(--clr-warning);">Verification Pending</p>
+									<p class="text-muted" style="font-size: 11px;">Your submission is being reviewed</p>
+								</div>
+							</div>
+						{:else}
+							<p class="text-muted" style="font-size: 12px; line-height: 1.6; margin-bottom: 12px;">Verify your identity to unlock trust badges and higher limits. Upload a government-issued ID.</p>
+							{#if idVerifError}<div class="msg-error" style="margin-bottom: 8px; font-size: 12px;">{idVerifError}</div>{/if}
+							{#if idVerifMsg}<div class="msg-success" style="margin-bottom: 8px; font-size: 12px;">{idVerifMsg}</div>{/if}
+							<div style="display: flex; flex-direction: column; gap: 10px;">
+								<input class="input" type="text" placeholder="Full legal name" bind:value={idVerifFullName} />
+								<select class="input" bind:value={idVerifDocType}>
+									<option value="passport">Passport</option>
+									<option value="driving_license">Driving License</option>
+									<option value="national_id">National ID Card</option>
+								</select>
+								<input class="input" type="url" placeholder="Document image URL (upload to R2 first)" bind:value={idVerifDocUrl} />
+								<button class="btn btn-primary btn-sm" disabled={idVerifSubmitting} onclick={submitIdVerification}>
+									{idVerifSubmitting ? 'Submitting...' : 'Submit Verification'}
+								</button>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Deactivate Account -->
+				<div class="card" style="margin-top: 20px; border-color: rgba(245,166,35,0.2);">
+					<div class="card-header">
+						<span>&#x23F8;</span>
+						<span style="font-weight: 700; font-size: 14px;">Deactivate Account</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; line-height: 1.6; margin-bottom: 12px;">Temporarily hide your profile and posts. Your data is preserved and you can reactivate any time by logging in again.</p>
+						{#if deactivateMsg}<div class="msg-success" style="margin-bottom: 12px; font-size: 12px;">{deactivateMsg}</div>{/if}
+						<button class="btn btn-outline btn-sm" style="color: var(--clr-warning); border-color: rgba(245,166,35,0.3);" disabled={deactivateLoading} onclick={handleDeactivate}>
+							{deactivateLoading ? 'Deactivating...' : 'Deactivate Account'}
+						</button>
 					</div>
 				</div>
 

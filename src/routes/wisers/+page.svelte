@@ -101,6 +101,8 @@
   function removeMediaAttachment(idx: number) {
     const a = mediaAttachments[idx];
     if (a && a.preview) URL.revokeObjectURL(a.preview);
+    // Delete from server if already uploaded
+    if (a?.mediaId) api.deleteMedia(a.mediaId).catch(() => {});
     mediaAttachments = mediaAttachments.filter((_, i) => i !== idx);
   }
 
@@ -139,6 +141,7 @@
   let scheduledLoading = $state(false);
   let birthdays = $state<any[]>([]);
   let dismissedNudges = $state<Set<string>>(new Set());
+  let engagementData = $state<{ show_community_card: boolean; show_post_card: boolean; communities: any[] } | null>(null);
   let postComments = $state<Record<number, any[]>>({});
   let actionMsg = $state('');
   let openPostMenu = $state<number | null>(null);
@@ -191,6 +194,7 @@
       } catch {}
       try { const bk = await api.getBookmarks(); bookmarkedPosts = new Set((bk.posts || []).map((p: any) => p.id)); } catch {}
       try { const bd = await api.getBirthdaysToday(); birthdays = bd.birthdays || []; } catch {}
+      try { engagementData = await api.getEngagementCheck(); } catch {}
       // Load dismissed nudges from localStorage
       try { const dn = localStorage.getItem('wisers-nudges-dismissed'); if (dn) dismissedNudges = new Set(JSON.parse(dn)); } catch {}
     }
@@ -360,6 +364,13 @@
           const res = await api.getPost(postId);
           postComments = { ...postComments, [postId]: res.comments || [] };
         } catch (e) { console.error('Failed to load comments', e); postComments = { ...postComments, [postId]: [] }; }
+      }
+      // Refresh reaction state from server
+      if ($auth.token) {
+        try {
+          const reactions = await api.getMyReactions(postId);
+          posts = posts.map(p => p.id === postId ? { ...p, _liked: !!reactions.liked, my_rocket: !!reactions.rocketed, my_repost: !!reactions.reposted } : p);
+        } catch {}
       }
     }
     expandedComments = s;
@@ -1164,7 +1175,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             Copy link
                           </button>
-                          <button class="w-menu-danger" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContent('post', post.id, r).then(() => { actionMsg = 'Report submitted'; setTimeout(() => actionMsg = '', 2000); }).catch(() => {}); openPostMenu = null; }}>
+                          <button class="w-menu-danger" onclick={() => { const r = prompt('Why are you reporting this post?'); if (r) api.reportContentV2(post.id, null, null, r).then(() => { actionMsg = 'Report submitted'; setTimeout(() => actionMsg = '', 2000); }).catch(() => {}); openPostMenu = null; }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
                             Report post
                           </button>
@@ -1526,6 +1537,16 @@
               <button class="w-nudge-x" onclick={() => dismissNudge('first_post')}>&#x2715;</button>
               <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Write your first post</p>
               <p style="font-size:12px;color:var(--wt2);">Share what you're working on</p>
+            </div>
+          {/if}
+          {#if engagementData?.show_community_card && !dismissedNudges.has('join_community')}
+            <div class="w-rs-card w-nudge">
+              <button class="w-nudge-x" onclick={() => dismissNudge('join_community')}>&#x2715;</button>
+              <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Join a community</p>
+              <p style="font-size:12px;color:var(--wt2);margin-bottom:8px;">Connect with others who share your interests</p>
+              {#each (engagementData.communities || []).slice(0, 3) as c}
+                <a href="/wisers/communities/{c.slug}" style="display:block;font-size:12px;color:var(--wgold);padding:2px 0;">{c.icon || ''} {c.name}</a>
+              {/each}
             </div>
           {/if}
         {/if}
