@@ -31,6 +31,11 @@
   let attachment = $state<any>(null);
   let uploading = $state(false);
   let fileInput: HTMLInputElement | undefined = $state(undefined);
+  let readStatusMap = $state<Record<number, string>>({}); // msg_id → read_at
+  let msgObserver: IntersectionObserver | null = null;
+  let activeTab = $state<'chats' | 'requests'>('chats');
+  let messageRequests = $state<any[]>([]);
+  let loadingRequests = $state(false);
   const filteredConvs = $derived(
     searchQuery.trim()
       ? conversations.filter(c =>
@@ -60,6 +65,14 @@
             user_name: msg.user_name || ''
           }];
           scrollBottom();
+          // Observe the new message for read marking
+          setTimeout(() => {
+            if (msgObserver) {
+              const container = document.getElementById('msg-scroll');
+              const newEl = container?.querySelector(`[data-msg-id="${msg.id || Date.now()}"]`);
+              if (newEl) msgObserver.observe(newEl);
+            }
+          }, 200);
         }
       }
     });
@@ -79,6 +92,7 @@
     const saved = localStorage.getItem('wisers-theme');
     if (saved === 'light') { theme = 'light'; document.documentElement.setAttribute('data-wisers-theme', 'light'); }
     await loadConversations();
+    await loadMessageRequests();
     loading = false;
 
     // wsLastMessage store drives real-time updates via $effect (below onMount)
@@ -107,6 +121,7 @@
     // wsHandler replaced by $effect — no manual cleanup needed
     if (typingHandler) window.removeEventListener('wisers:typing', typingHandler);
     if (typingTimeout) clearTimeout(typingTimeout);
+    if (msgObserver) { msgObserver.disconnect(); msgObserver = null; }
   });
 
 
@@ -122,16 +137,47 @@
     try { friendsList = (await api.getFriends()).friends || []; } catch {}
   }
 
+  async function loadMessageRequests() {
+    loadingRequests = true;
+    try { messageRequests = (await api.getMessageRequests()).requests || []; } catch {}
+    loadingRequests = false;
+  }
+
+  async function acceptRequest(conv: any) {
+    activeTab = 'chats';
+    await selectConv(conv.id);
+  }
+
+  async function declineRequest(conv: any) {
+    try {
+      await api.blockUser(conv.other_username);
+      messageRequests = messageRequests.filter(r => r.id !== conv.id);
+    } catch {}
+  }
+
   async function loadMessages(convId: number) {
     try { messages = (await api.getMessages(convId, true)).messages || []; scrollBottom(); } catch {}
   }
 
   async function selectConv(convId: number) {
     activeConv = convId;
+    // Tear down previous observer
+    if (msgObserver) { msgObserver.disconnect(); msgObserver = null; }
     await loadMessages(convId);
     const conv = conversations.find((c: any) => c.id === convId);
     if (conv && $auth.token) {
       markConvRead($auth.token, convId, conv.my_unread || 0);
+      // Fetch accurate read status for ✓✓
+      try {
+        const rs = await api.getReadStatus(convId);
+        const map: Record<number, string> = {};
+        if (rs && Array.isArray(rs.statuses)) {
+          for (const s of rs.statuses) { if (s.read_at) map[s.message_id] = s.read_at; }
+        }
+        readStatusMap = map;
+      } catch { readStatusMap = {}; }
+      // Set up IntersectionObserver to mark unread messages as read
+      setupReadObserver(convId);
       // E2E: fetch recipient's public key
       const otherId = conv.user_a === $auth.user?.id ? conv.user_b : conv.user_a;
       if (otherId && hasKeyPair()) {
@@ -142,6 +188,36 @@
         e2eActive = false;
       }
     }
+  }
+
+  function setupReadObserver(convId: number) {
+    if (typeof IntersectionObserver === 'undefined') return;
+    msgObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const el = entry.target as HTMLElement;
+        const msgId = parseInt(el.dataset.msgId || '0', 10);
+        if (!msgId) continue;
+        // Only mark others' messages (not mine)
+        const senderId = el.dataset.senderId || '';
+        if (senderId === $auth.user?.id) continue;
+        // Already read? skip
+        if (readStatusMap[msgId]) continue;
+        // Mark read
+        api.markMessageRead(msgId).then(() => {
+          readStatusMap = { ...readStatusMap, [msgId]: new Date().toISOString() };
+        }).catch(() => {});
+        // Stop observing once marked
+        msgObserver?.unobserve(el);
+      }
+    }, { threshold: 0.5 });
+    // Observe after a tick so DOM is ready
+    setTimeout(() => {
+      const container = document.getElementById('msg-scroll');
+      if (!container) return;
+      const msgEls = container.querySelectorAll('[data-msg-id]');
+      msgEls.forEach(el => msgObserver?.observe(el));
+    }, 200);
   }
 
   async function send() {
@@ -264,6 +340,12 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
+      <div class="m-tabs">
+        <button class="m-tab" class:active={activeTab === 'chats'} onclick={() => activeTab = 'chats'}>Chats</button>
+        <button class="m-tab" class:active={activeTab === 'requests'} onclick={() => { activeTab = 'requests'; loadMessageRequests(); }}>
+          Requests{#if messageRequests.length > 0}<span class="m-tab-badge">{messageRequests.length}</span>{/if}
+        </button>
+      </div>
 
       {#if showNewConv}
         <div class="m-new-conv">
@@ -273,7 +355,34 @@
       {/if}
 
       <div class="m-convos-list">
-        {#if loading}
+        {#if activeTab === 'requests'}
+          {#if loadingRequests}
+            <div class="m-empty-conv">Loading requests...</div>
+          {:else if messageRequests.length === 0}
+            <div class="m-empty-conv">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              <p>No message requests</p>
+              <p class="m-empty-sub">Messages from people you don't follow will appear here</p>
+            </div>
+          {:else}
+            {#each messageRequests as req (req.id)}
+              <div class="m-conv m-conv-request">
+                <div class="m-conv-avatar">{(req.other_display_name || req.other_username || '?')[0].toUpperCase()}</div>
+                <div class="m-conv-body">
+                  <div class="m-conv-top">
+                    <span class="m-conv-name">@{req.other_username}</span>
+                    {#if req.last_message_at}<span class="m-conv-time">{timeAgo(req.last_message_at)}</span>{/if}
+                  </div>
+                  <div class="m-conv-preview">{req.last_message || 'Wants to message you'}</div>
+                  <div class="m-req-actions">
+                    <button class="m-req-accept" onclick={() => acceptRequest(req)}>Accept</button>
+                    <button class="m-req-decline" onclick={() => declineRequest(req)}>Decline</button>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          {/if}
+        {:else if loading}
           <div class="m-empty-conv">Loading...</div>
         {:else if conversations.length === 0}
           <div class="m-empty-conv">
@@ -362,7 +471,7 @@
             <div class="m-msg-empty">Start the conversation! Say hi.</div>
           {/if}
           {#each messages as msg (msg.id)}
-            <div class="m-msg" class:mine={msg.sender_id === $auth.user?.id}>
+            <div class="m-msg" class:mine={msg.sender_id === $auth.user?.id} data-msg-id={msg.id} data-sender-id={msg.sender_id}>
               <div class="m-msg-bubble">
                 {#if msg.attachment}
                   <div class="m-msg-attachment">
@@ -398,7 +507,7 @@
                 <span class="m-msg-time">
                   {timeFull(msg.created_at)}
                   {#if msg.sender_id === $auth.user?.id}
-                    {#if msg.read_at}<span class="m-tick m-tick-read">✓✓</span>{:else}<span class="m-tick">✓</span>{/if}
+                    {#if msg.read_at || readStatusMap[msg.id]}<span class="m-tick m-tick-read">✓✓</span>{:else}<span class="m-tick">✓</span>{/if}
                   {/if}
                 </span>
               </div>
@@ -626,5 +735,20 @@
   .m-msg-doc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .m-msg-doc-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .m-msg-doc-size { font-size: 11px; color: var(--mt3); }
+
+  /* Tabs */
+  .m-tabs { display: flex; border-bottom: 1px solid var(--mbd); flex-shrink: 0; }
+  .m-tab { flex: 1; padding: 10px 0; background: none; border: none; color: var(--mt2); font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .m-tab.active { color: var(--mgold); border-bottom-color: var(--mgold); }
+  .m-tab:hover { color: var(--mt); }
+  .m-tab-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; }
+
+  /* Message Requests */
+  .m-conv-request { border-left: 3px solid var(--mgold); }
+  .m-req-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .m-req-accept { padding: 4px 14px; border-radius: 6px; border: none; background: var(--mgold); color: #000; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .m-req-accept:hover { opacity: 0.9; }
+  .m-req-decline { padding: 4px 14px; border-radius: 6px; border: 1px solid var(--mbd); background: none; color: var(--mt2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .m-req-decline:hover { border-color: #ef4444; color: #ef4444; }
 
   </style>

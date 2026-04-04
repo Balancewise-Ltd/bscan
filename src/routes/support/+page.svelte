@@ -18,6 +18,47 @@
   let rated = $state(false);
   let ws: WebSocket | null = null;
 
+  // ── Support Ticket (non-live) ─���───────────────────
+  let supportTab = $state<'chat' | 'ticket'>('chat');
+  let ticket = $state<any>(null);
+  let ticketLoading = $state(false);
+  let ticketReply = $state('');
+  let ticketSending = $state(false);
+
+  async function loadTicket() {
+    ticketLoading = true;
+    try {
+      ticket = await api.getSupportTicket();
+    } catch { ticket = null; }
+    ticketLoading = false;
+  }
+
+  async function sendTicketReply() {
+    if (!ticketReply.trim() || ticketSending) return;
+    ticketSending = true;
+    try {
+      await api.sendSupportMessage(ticketReply.trim());
+      ticketReply = '';
+      await loadTicket();
+    } catch {}
+    ticketSending = false;
+  }
+
+  // ── Resume support session ────────────────────────
+  async function resumeSession(sid: string) {
+    sessionId = sid;
+    try {
+      const res = await api.getSupportSession(sid);
+      sessionStatus = res.status || 'active';
+      handlerName = res.handler_name || null;
+      messages = res.messages || [];
+      if (res.status !== 'closed') connectWS(sid);
+    } catch {
+      messages = [{ sender_type: 'system', sender_name: 'System', content: 'Could not load session.' }];
+    }
+    scrollBottom();
+  }
+
   const categories = [
     { value: '', label: 'General' },
     { value: 'bug', label: 'Bug Report' },
@@ -31,6 +72,10 @@
       sender_type: 'ai', sender_name: 'BSCAN Support',
       content: "Hi! I'm BSCAN's support assistant. I can help with scanning, SEO tools, pricing, billing, and account questions.\n\nType your question below and I'll do my best to help. If I can't resolve it, I'll connect you with our team."
     }];
+    // Resume session if returning via URL param
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get('session');
+    if (sid) { resumeSession(sid); window.history.replaceState({}, '', '/support'); }
   });
 
   onDestroy(() => {
@@ -192,6 +237,53 @@
 <svelte:head><title>Support — BSCAN</title></svelte:head>
 
 <div class="sp">
+  <!-- Tab toggle -->
+  <div class="sp-tabs">
+    <button class="sp-tab" class:sp-tab-active={supportTab === 'chat'} onclick={() => supportTab = 'chat'}>Live Chat</button>
+    <button class="sp-tab" class:sp-tab-active={supportTab === 'ticket'} onclick={() => { supportTab = 'ticket'; if (!ticket) loadTicket(); }}>My Ticket</button>
+  </div>
+
+  {#if supportTab === 'ticket'}
+    <div class="sp-ticket-card">
+      {#if ticketLoading}
+        <div style="padding: 48px; text-align: center;"><span class="spinner"></span></div>
+      {:else if !ticket}
+        <div style="padding: 48px; text-align: center;">
+          <p style="font-size: 14px; color: var(--clr-text-muted);">No open ticket found. Use Live Chat to contact support.</p>
+        </div>
+      {:else}
+        <div class="sp-ticket-header">
+          <div>
+            <div class="sp-ticket-title">Support Ticket</div>
+            <span class="sp-ticket-badge" class:sp-badge-open={ticket.status === 'open'} class:sp-badge-progress={ticket.status === 'in_progress'} class:sp-badge-resolved={ticket.status === 'resolved'}>{ticket.status?.replace('_', ' ')}</span>
+          </div>
+          {#if ticket.created_at}<span class="text-muted" style="font-size: 11px;">Opened {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>{/if}
+        </div>
+        <div class="sp-ticket-thread">
+          {#each (ticket.messages || []) as msg}
+            <div class="sp-msg" class:sp-mine={msg.sender_type === 'user'}>
+              <div class="sp-bubble"
+                class:sp-bubble-user={msg.sender_type === 'user'}
+                class:sp-bubble-staff={msg.sender_type === 'staff' || msg.sender_type === 'admin'}
+              >
+                {#if msg.sender_name && msg.sender_type !== 'user'}<div class="sp-sender" class:sp-sender-staff={msg.sender_type === 'staff'}>{msg.sender_name}</div>{/if}
+                <div class="sp-text">{msg.content}</div>
+                {#if msg.created_at}<div class="sp-time">{timeAgo(msg.created_at)}</div>{/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+        {#if ticket.status !== 'resolved'}
+          <div class="sp-input-bar">
+            <textarea class="sp-input" bind:value={ticketReply} placeholder="Reply to your ticket..." rows={1} onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTicketReply(); } }}></textarea>
+            <button class="sp-send" onclick={sendTicketReply} disabled={!ticketReply.trim() || ticketSending}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        {/if}
+      {/if}
+    </div>
+  {:else}
   <div class="sp-card">
     <!-- Header -->
     <div class="sp-header">
@@ -298,6 +390,7 @@
       </div>
     {/if}
   </div>
+  {/if}
 </div>
 
 <style>
@@ -357,6 +450,21 @@
 
   @media (max-width: 480px) {
     .sp { padding: 12px 8px; align-items: flex-start; }
-    .sp-card { height: calc(100vh - 100px); border-radius: 12px; }
+    .sp-card { height: calc(100vh - 140px); border-radius: 12px; }
   }
+
+  /* ── Tabs ───────────────────── */
+  .sp-tabs { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; background: var(--clr-bg-deep, #0d0d1a); border-radius: 10px; width: 100%; max-width: 600px; }
+  .sp-tab { flex: 1; padding: 8px; font-size: 12px; font-weight: 700; border: none; background: none; color: var(--clr-text-muted, #666); cursor: pointer; border-radius: 8px; transition: all 0.15s; font-family: inherit; }
+  .sp-tab-active { background: var(--clr-bg-card, #1a1a2e); color: var(--clr-text, #e0e0f0); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+
+  /* ── Ticket view ────────────── */
+  .sp-ticket-card { width: 100%; max-width: 600px; border-radius: 16px; border: 1px solid var(--clr-border, #2a2a3e); background: var(--clr-bg-card, #1a1a2e); overflow: hidden; display: flex; flex-direction: column; min-height: 400px; }
+  .sp-ticket-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--clr-border); }
+  .sp-ticket-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .sp-ticket-badge { font-size: 10px; padding: 2px 10px; border-radius: 20px; font-weight: 700; font-family: var(--font-mono, monospace); text-transform: uppercase; }
+  .sp-badge-open { background: rgba(59,130,246,0.12); color: #3b82f6; }
+  .sp-badge-progress { background: rgba(245,166,35,0.12); color: #f5a623; }
+  .sp-badge-resolved { background: rgba(34,197,94,0.12); color: #22c55e; }
+  .sp-ticket-thread { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 </style>

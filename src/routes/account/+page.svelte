@@ -9,7 +9,7 @@
 	import type { ScanResult } from '$lib/types';
 	import Seo from '$lib/components/ui/Seo.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
-	import { LayoutDashboard, User, CreditCard, ClipboardList, Key, Palette, ShieldCheck, Search, Scale, Target, Users, Gift, Link2, Trophy, MessageCircle, Camera } from '@lucide/svelte';
+	import { LayoutDashboard, User, CreditCard, ClipboardList, Key, Palette, ShieldCheck, Search, Scale, Target, Users, Gift, Link2, Trophy, MessageCircle, Camera, BarChart3 } from '@lucide/svelte';
 
 	// ── Auth form state ──────────────────────────────────
 	let isRegister = $state(false);
@@ -71,7 +71,7 @@
 	let claimMsg = $state('');
 
 	// ── Dashboard tabs ───────────────────────────────────
-	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding' | 'reports';
+	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding' | 'reports' | 'api-usage';
 	let activeTab = $state<Tab>('overview');
 
 	// ── Profile state ────────────────────────────────────
@@ -111,6 +111,38 @@
 	let deleteLoading = $state(false);
 	let deleteMsg = $state('');
 
+	// ── GDPR state ─────────────────────────
+	let gdprExportLoading = $state(false);
+	let gdprExportMsg = $state('');
+	let gdprDeletePassword = $state('');
+	let gdprDeleteLoading = $state(false);
+	let gdprDeleteMsg = $state('');
+	let gdprDeleteError = $state('');
+	let gdprDeletionPending = $state(false);
+	let gdprCancelLoading = $state(false);
+
+	// ── Blocked / Muted Users ──────────────────────────
+	let blockedUsers = $state<any[]>([]);
+	let mutedUsers = $state<any[]>([]);
+	let blockedLoading = $state(true);
+	let mutedLoading = $state(true);
+
+	// ── 2FA state ──────────────────────────────────────
+	let twoFaEnabled = $state(false);
+	let twoFaSetupData = $state<{ secret: string; provisioning_uri: string } | null>(null);
+	let twoFaCode = $state('');
+	let twoFaLoading = $state(false);
+	let twoFaMsg = $state('');
+	let twoFaError = $state('');
+	let twoFaBackupCodes = $state<string[]>([]);
+	let twoFaDisableCode = $state('');
+	let twoFaDisablePassword = $state('');
+
+	// ── Passkey state ──────────────────────────────────
+	let passkeyRegLoading = $state(false);
+	let passkeyRegMsg = $state('');
+	let passkeyRegError = $state('');
+
 	// ── Branding state (Agency white-label) ────────────────
 	let brandName = $state('');
 	let brandColor = $state('#f0a500');
@@ -131,6 +163,18 @@
 	let pushError = $state('');
 	let pushTestLoading = $state(false);
 
+	// ── E2E Key Backup state ─────────────────────────
+	let e2eHasKey = $state(false);
+	let e2eBackupPassphrase = $state('');
+	let e2eBackupLoading = $state(false);
+	let e2eBackupMsg = $state('');
+	let e2eBackupError = $state('');
+	let e2eRestorePassphrase = $state('');
+	let e2eRestoreLoading = $state(false);
+	let e2eRestoreMsg = $state('');
+	let e2eRestoreError = $state('');
+	let e2eHasBackup = $state(false);
+
 	async function saveBranding() {
 		if (!user) return;
 		brandSaving = true;
@@ -148,16 +192,205 @@
 		brandSaving = false;
 	}
 
+	async function loadBlockedUsers() {
+		blockedLoading = true;
+		try { blockedUsers = (await api.getBlockedUsers()).users || []; } catch { blockedUsers = []; }
+		blockedLoading = false;
+	}
+
+	async function loadMutedUsers() {
+		mutedLoading = true;
+		try { mutedUsers = (await api.getMutedUsers()).users || []; } catch { mutedUsers = []; }
+		mutedLoading = false;
+	}
+
+	async function handleUnblock(username: string) {
+		try { await api.unblockUser(username); blockedUsers = blockedUsers.filter(u => u.username !== username); } catch {}
+	}
+
+	async function handleUnmute(username: string) {
+		try { await api.unmuteUser(username); mutedUsers = mutedUsers.filter(u => u.username !== username); } catch {}
+	}
+
+	async function handleLogoutAll() {
+		if (!confirm('This will sign you out on every device. Continue?')) return;
+		try { await api.logoutAll(); auth.logout(); window.location.href = '/account'; } catch {}
+	}
+
+	async function handle2faSetup() {
+		twoFaLoading = true; twoFaError = ''; twoFaMsg = '';
+		try {
+			const data = await api.setup2fa();
+			twoFaSetupData = data;
+		} catch (err) { twoFaError = err instanceof Error ? err.message : 'Failed to setup 2FA'; }
+		twoFaLoading = false;
+	}
+
+	async function handle2faVerify() {
+		if (!twoFaCode || twoFaCode.length !== 6) { twoFaError = 'Enter 6-digit code'; return; }
+		twoFaLoading = true; twoFaError = '';
+		try {
+			const res = await api.verify2fa(twoFaCode);
+			twoFaEnabled = true;
+			twoFaBackupCodes = res.backup_codes || [];
+			twoFaSetupData = null;
+			twoFaCode = '';
+			twoFaMsg = '2FA enabled successfully! Save your backup codes.';
+		} catch (err) { twoFaError = err instanceof Error ? err.message : 'Invalid code'; }
+		twoFaLoading = false;
+	}
+
+	async function handle2faDisable() {
+		if (!twoFaDisableCode || !twoFaDisablePassword) { twoFaError = 'Enter code and password'; return; }
+		twoFaLoading = true; twoFaError = '';
+		try {
+			await api.disable2fa(twoFaDisableCode, twoFaDisablePassword);
+			twoFaEnabled = false;
+			twoFaMsg = '2FA disabled.';
+			twoFaDisableCode = ''; twoFaDisablePassword = '';
+		} catch (err) { twoFaError = err instanceof Error ? err.message : 'Failed to disable 2FA'; }
+		twoFaLoading = false;
+	}
+
+	async function handlePasskeyRegister() {
+		passkeyRegLoading = true; passkeyRegError = ''; passkeyRegMsg = '';
+		try {
+			const options = await api.getPasskeyRegisterOptions();
+			options.challenge = Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+			options.user.id = Uint8Array.from(atob(options.user.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+			if (options.excludeCredentials) {
+				options.excludeCredentials = options.excludeCredentials.map((c: any) => ({ ...c, id: Uint8Array.from(atob(c.id.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0)) }));
+			}
+			const credential = await navigator.credentials.create({ publicKey: options }) as PublicKeyCredential;
+			if (!credential) { passkeyRegError = 'Registration cancelled'; passkeyRegLoading = false; return; }
+			const response = credential.response as AuthenticatorAttestationResponse;
+			const toB64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+			await api.verifyPasskeyRegister({
+				id: credential.id,
+				rawId: toB64(credential.rawId),
+				type: credential.type,
+				response: {
+					attestationObject: toB64(response.attestationObject),
+					clientDataJSON: toB64(response.clientDataJSON)
+				}
+			});
+			passkeyRegMsg = 'Passkey registered successfully!';
+		} catch (err) { passkeyRegError = err instanceof Error ? err.message : 'Passkey registration failed'; }
+		passkeyRegLoading = false;
+	}
+
+	async function handleGdprExport() {
+		gdprExportLoading = true; gdprExportMsg = '';
+		try {
+			const data = await api.gdprExport();
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url; a.download = 'wisers-data.json'; a.click();
+			URL.revokeObjectURL(url);
+			gdprExportMsg = 'Download started!';
+		} catch (err) {
+			gdprExportMsg = err instanceof Error ? err.message : 'Export failed';
+		}
+		gdprExportLoading = false;
+	}
+
+	async function handleGdprDelete() {
+		if (!gdprDeletePassword) { gdprDeleteError = 'Password required'; return; }
+		gdprDeleteLoading = true; gdprDeleteError = ''; gdprDeleteMsg = '';
+		try {
+			await api.gdprDeleteRequest(gdprDeletePassword);
+			gdprDeleteMsg = 'Account deletion scheduled. You have 30 days to cancel.';
+			gdprDeletionPending = true;
+			gdprDeletePassword = '';
+		} catch (err) {
+			gdprDeleteError = err instanceof Error ? err.message : 'Failed to request deletion';
+		}
+		gdprDeleteLoading = false;
+	}
+
+	async function handleGdprCancelDeletion() {
+		gdprCancelLoading = true;
+		try {
+			await api.gdprCancelDeletion();
+			gdprDeletionPending = false;
+			gdprDeleteMsg = 'Deletion cancelled. Your account is safe.';
+		} catch (err) {
+			gdprDeleteError = err instanceof Error ? err.message : 'Failed to cancel';
+		}
+		gdprCancelLoading = false;
+	}
+
+	async function backupE2EKey() {
+		if (e2eBackupPassphrase.length < 8) { e2eBackupError = 'Passphrase must be at least 8 characters'; return; }
+		e2eBackupLoading = true; e2eBackupError = ''; e2eBackupMsg = '';
+		try {
+			const { encryptPrivateKeyWithPassphrase } = await import('$lib/stores/encryption');
+			const encrypted = encryptPrivateKeyWithPassphrase(e2eBackupPassphrase);
+			if (!encrypted) { e2eBackupError = 'No encryption key found. Send a message first to generate one.'; e2eBackupLoading = false; return; }
+			await api.backupKey(encrypted);
+			e2eBackupMsg = 'Key backed up successfully. Keep your passphrase safe!';
+			e2eHasBackup = true;
+			e2eBackupPassphrase = '';
+		} catch (err) {
+			e2eBackupError = err instanceof Error ? err.message : 'Backup failed';
+		}
+		e2eBackupLoading = false;
+	}
+
+	async function restoreE2EKey() {
+		if (!e2eRestorePassphrase) { e2eRestoreError = 'Enter your backup passphrase'; return; }
+		e2eRestoreLoading = true; e2eRestoreError = ''; e2eRestoreMsg = '';
+		try {
+			const backup = await api.getKeyBackup();
+			if (!backup || !backup.encrypted_key) { e2eRestoreError = 'No backup found on server'; e2eRestoreLoading = false; return; }
+			const { decryptPrivateKeyWithPassphrase } = await import('$lib/stores/encryption');
+			const ok = decryptPrivateKeyWithPassphrase(backup.encrypted_key, e2eRestorePassphrase);
+			if (ok) {
+				e2eRestoreMsg = 'Key restored successfully! Your encrypted messages will now be readable.';
+				e2eHasKey = true;
+				e2eRestorePassphrase = '';
+			} else {
+				e2eRestoreError = 'Wrong passphrase. Please try again.';
+			}
+		} catch (err) {
+			e2eRestoreError = err instanceof Error ? err.message : 'Restore failed';
+		}
+		e2eRestoreLoading = false;
+	}
+
+	async function deleteE2EBackup() {
+		if (!confirm('Delete your key backup from the server? You will not be able to restore your encryption key on a new device.')) return;
+		try {
+			await api.deleteKeyBackup();
+			e2eHasBackup = false;
+			e2eBackupMsg = 'Backup deleted from server.';
+		} catch {}
+	}
+
 	const user = $derived($auth.user);
 	const plan = $derived(user?.plan || 'free');
 	const planLabel = $derived(plan.charAt(0).toUpperCase() + plan.slice(1));
 	const isPaid = $derived(plan === 'pro' || plan === 'agency');
 	const isAgency = $derived(plan === 'agency');
 
-	onMount(() => {
+	onMount(async () => {
 		const saved = safeGetStorage('bscan_email');
 		if (saved) authEmail = saved;
 		if (user) loadDashboard();
+		// Check E2E key state
+		try {
+			const { hasKeyPair } = await import('$lib/stores/encryption');
+			e2eHasKey = hasKeyPair();
+		} catch {}
+		try {
+			const backup = await api.getKeyBackup();
+			e2eHasBackup = !!(backup && backup.encrypted_key);
+		} catch {}
+		// Load security data
+		try { const s = await api.get2faStatus(); twoFaEnabled = s.enabled; } catch {}
+		loadBlockedUsers();
+		loadMutedUsers();
 
 		const params = new URLSearchParams(window.location.search);
 
@@ -532,6 +765,47 @@
 	}
 
 	let billingError = $state('');
+
+	// ── API Usage ────────────────────────────────────────
+	let apiUsage = $state<any>(null);
+	let apiUsageHistory = $state<any[]>([]);
+	let apiUsageLogs = $state<any[]>([]);
+	let apiUsageMonthly = $state<any[]>([]);
+	let apiUsageLoading = $state(false);
+	let apiLogsOffset = $state(0);
+
+	async function loadApiUsage() {
+		apiUsageLoading = true;
+		try {
+			const [usage, history, logs, monthly] = await Promise.allSettled([
+				api.getApiUsage(),
+				api.getApiUsageHistory(30),
+				api.getApiUsageLogs(50, 0),
+				api.getApiUsageMonthly(12)
+			]);
+			if (usage.status === 'fulfilled') apiUsage = usage.value;
+			if (history.status === 'fulfilled') apiUsageHistory = history.value?.data || history.value?.history || [];
+			if (logs.status === 'fulfilled') apiUsageLogs = logs.value?.logs || logs.value?.items || [];
+			if (monthly.status === 'fulfilled') apiUsageMonthly = monthly.value?.data || monthly.value?.months || [];
+		} catch {}
+		apiUsageLoading = false;
+	}
+
+	$effect(() => {
+		if (activeTab === 'api-usage' && !apiUsage && !apiUsageLoading) {
+			loadApiUsage();
+		}
+	});
+
+	async function loadMoreLogs() {
+		apiLogsOffset += 50;
+		try {
+			const res = await api.getApiUsageLogs(50, apiLogsOffset);
+			const more = res?.logs || res?.items || [];
+			apiUsageLogs = [...apiUsageLogs, ...more];
+		} catch {}
+	}
+
 	// ── Report Scheduling ────────────────────────────────
 	let reportSchedules = $state<any[]>([]);
 	let reportStats     = $state<any>(null);
@@ -541,6 +815,21 @@
 	let reportError     = $state('');
 	let showNewSchedule = $state(false);
 	let sendingNow      = $state<string | null>(null);
+	let rptHistoryOpen  = $state<string | null>(null);
+	let rptHistoryData  = $state<Record<string, any[]>>({});
+	let rptHistoryLoading = $state<string | null>(null);
+
+	async function loadReportHistory(schedId: string) {
+		if (rptHistoryOpen === schedId) { rptHistoryOpen = null; return; }
+		rptHistoryOpen = schedId;
+		if (rptHistoryData[schedId]) return;
+		rptHistoryLoading = schedId;
+		try {
+			const res = await api.getReportHistory(schedId);
+			rptHistoryData = { ...rptHistoryData, [schedId]: res.history || [] };
+		} catch { rptHistoryData = { ...rptHistoryData, [schedId]: [] }; }
+		rptHistoryLoading = null;
+	}
 	let newSched        = $state({
 		url: '', recipient_email: '', recipient_name: '',
 		frequency: 'monthly', branding_company: '',
@@ -880,6 +1169,7 @@
 		{ key: 'api-keys', label: 'API Keys', icon: Key, show: () => isPaid },
 		{ key: 'branding', label: 'Branding', icon: Palette, show: () => isAgency },
 		{ key: 'reports', label: 'Reports', icon: Target },
+		{ key: 'api-usage', label: 'API Usage', icon: BarChart3, show: () => isPaid },
 		{ key: 'security', label: 'Security', icon: ShieldCheck },
 	];
 </script>
@@ -1958,6 +2248,98 @@
 			</div>
 		{/if}
 
+		<!-- ── API USAGE TAB ───────────────────── -->
+		{#if activeTab === 'api-usage'}
+			<div class="tab-content animate-fade-up">
+				<h3 style="margin-bottom: 20px;">API Usage</h3>
+
+				{#if apiUsageLoading}
+					<div style="padding: 48px; text-align: center;"><span class="spinner"></span></div>
+				{:else if !apiUsage}
+					<div style="text-align: center; padding: 24px;">
+						<button class="btn btn-gold" onclick={loadApiUsage}>Load Usage Data</button>
+					</div>
+				{:else}
+					<!-- Usage Summary -->
+					<div class="api-usage-grid">
+						<div class="api-stat"><div class="api-stat-val">{apiUsage.credits_used ?? 0}</div><div class="api-stat-lbl">Credits Used</div></div>
+						<div class="api-stat"><div class="api-stat-val">{apiUsage.credits_remaining ?? 0}</div><div class="api-stat-lbl">Remaining</div></div>
+						<div class="api-stat"><div class="api-stat-val">{apiUsage.plan || '—'}</div><div class="api-stat-lbl">Plan</div></div>
+						<div class="api-stat"><div class="api-stat-val">{apiUsage.days_left ?? '—'}</div><div class="api-stat-lbl">Days Left</div></div>
+					</div>
+
+					<!-- Usage History (bar chart) -->
+					{#if apiUsageHistory.length > 0}
+						<div class="card" style="margin-bottom: 16px;">
+							<div class="card-header">
+								<span><BarChart3 size={14} strokeWidth={2} /></span>
+								<span style="font-weight: 700; font-size: 13px;">Daily Usage (Last 30 Days)</span>
+							</div>
+							<div class="card-body">
+								<div class="api-chart">
+									{#each apiUsageHistory as d}
+										{@const maxCredits = Math.max(...apiUsageHistory.map((x: any) => x.credits || 0), 1)}
+										<div class="api-chart-bar" title="{d.date}: {d.credits} credits">
+											<div class="api-chart-fill" style="height: {((d.credits || 0) / maxCredits) * 100}%;"></div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Monthly Breakdown -->
+					{#if apiUsageMonthly.length > 0}
+						<div class="card" style="margin-bottom: 16px;">
+							<div class="card-header">
+								<span>📅</span>
+								<span style="font-weight: 700; font-size: 13px;">Monthly Breakdown</span>
+							</div>
+							<div class="card-body" style="padding: 0;">
+								{#each apiUsageMonthly as m}
+									<div class="api-month-row">
+										<span class="api-month-label">{m.month || m.period || '—'}</span>
+										<span class="api-month-val">{m.credits ?? m.total ?? 0} credits</span>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<!-- API Call Logs -->
+					{#if apiUsageLogs.length > 0}
+						<div class="card">
+							<div class="card-header">
+								<span>📋</span>
+								<span style="font-weight: 700; font-size: 13px;">Recent API Calls</span>
+							</div>
+							<div class="card-body" style="padding: 0;">
+								<div class="api-log-header">
+									<span>Endpoint</span>
+									<span>Method</span>
+									<span>Status</span>
+									<span>Credits</span>
+									<span>Date</span>
+								</div>
+								{#each apiUsageLogs as log}
+									<div class="api-log-row">
+										<span class="api-log-endpoint font-mono">{log.endpoint || log.path || '—'}</span>
+										<span class="api-log-method">{log.method || '—'}</span>
+										<span class="api-log-status" class:api-ok={log.status < 400} class:api-err={log.status >= 400}>{log.status || '—'}</span>
+										<span>{log.credits ?? 0}</span>
+										<span class="text-muted">{log.created_at ? new Date(log.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>
+									</div>
+								{/each}
+								<div style="padding: 12px; text-align: center;">
+									<button class="btn btn-ghost btn-sm" onclick={loadMoreLogs}>Load More</button>
+								</div>
+							</div>
+						</div>
+					{/if}
+				{/if}
+			</div>
+		{/if}
+
 		<!-- ── SECURITY TAB ─────────────────────── -->
 
 		{#if activeTab === 'reports'}
@@ -2040,11 +2422,29 @@
 								{#if s.next_run_at}<span class="text-muted" style="font-size: 11px;">Next: {new Date(s.next_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>{/if}
 							</div>
 							<div style="display: flex; gap: 6px;">
+								<button class="btn btn-ghost btn-sm" onclick={() => loadReportHistory(s.id)}>{rptHistoryOpen === s.id ? 'Hide History' : 'History'}</button>
 								<button class="btn btn-ghost btn-sm" onclick={() => sendReportNow(s.id)} disabled={sendingNow === s.id}>{sendingNow === s.id ? '...' : 'Send Now'}</button>
 								<button class="btn btn-ghost btn-sm" onclick={() => toggleSched(s.id, s.status)}>{s.status === 'active' ? 'Pause' : 'Resume'}</button>
 								<button class="btn btn-ghost btn-sm" style="color: var(--clr-danger);" onclick={() => deleteSched(s.id)}>Delete</button>
 							</div>
 						</div>
+						{#if rptHistoryOpen === s.id}
+							<div class="rpt-history">
+								{#if rptHistoryLoading === s.id}
+									<p class="text-muted" style="font-size: 12px; padding: 12px;">Loading history...</p>
+								{:else if (rptHistoryData[s.id] || []).length === 0}
+									<p class="text-muted" style="font-size: 12px; padding: 12px;">No delivery history yet.</p>
+								{:else}
+									{#each rptHistoryData[s.id] as h}
+										<div class="rpt-hist-row">
+											<span class="rpt-hist-date">{new Date(h.sent_at || h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+											<span class="rpt-hist-recip">{h.recipient || h.recipient_email || '—'}</span>
+											<span class="rpt-hist-status" class:rpt-delivered={h.status === 'delivered'} class:rpt-failed={h.status === 'failed' || h.status === 'bounced'}>{h.status}</span>
+										</div>
+									{/each}
+								{/if}
+							</div>
+						{/if}
 					</div>
 					{/each}
 				{/if}
@@ -2195,6 +2595,129 @@
 					</div>
 				</div>
 
+				<!-- Two-Factor Authentication -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span><Key size={16} strokeWidth={1.8} /></span>
+						<span style="font-weight: 700; font-size: 14px;">Two-Factor Authentication</span>
+					</div>
+					<div class="card-body">
+						{#if twoFaMsg}<div class="msg-success" style="margin-bottom: 12px; font-size: 12px;">{twoFaMsg}</div>{/if}
+						{#if twoFaError}<div class="msg-error" style="margin-bottom: 12px; font-size: 12px;">{twoFaError}</div>{/if}
+						{#if twoFaBackupCodes.length > 0}
+							<div style="padding: 12px; background: rgba(245,166,35,0.08); border: 1px solid rgba(245,166,35,0.2); border-radius: var(--radius-md); margin-bottom: 12px;">
+								<p style="font-size: 12px; font-weight: 700; margin-bottom: 8px;">Save your backup codes:</p>
+								<div style="font-family: monospace; font-size: 13px; line-height: 1.8;">{#each twoFaBackupCodes as code}<div>{code}</div>{/each}</div>
+								<p class="text-muted" style="font-size: 11px; margin-top: 8px;">Store these in a safe place. Each code can only be used once.</p>
+							</div>
+						{/if}
+						{#if !twoFaEnabled}
+							{#if twoFaSetupData}
+								<p class="text-muted" style="font-size: 12px; margin-bottom: 10px;">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
+								<div style="text-align: center; margin-bottom: 12px;">
+									<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encodeURIComponent(twoFaSetupData.provisioning_uri)}" alt="2FA QR Code" style="border-radius: 8px; border: 1px solid var(--clr-border);" width="200" height="200" />
+								</div>
+								<p class="text-muted" style="font-size: 11px; margin-bottom: 10px;">Or enter manually: <code style="background: var(--clr-bg-secondary); padding: 2px 6px; border-radius: 4px; font-size: 12px;">{twoFaSetupData.secret}</code></p>
+								<div class="field">
+									<label class="label" for="2fa-code">Enter 6-digit code from app</label>
+									<input class="input" id="2fa-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" bind:value={twoFaCode} style="text-align: center; letter-spacing: 4px; font-family: monospace; font-size: 18px;" />
+								</div>
+								<button class="btn btn-gold" style="margin-top: 12px;" disabled={twoFaLoading || twoFaCode.length !== 6} onclick={handle2faVerify}>
+									{#if twoFaLoading}Verifying...{:else}Enable 2FA{/if}
+								</button>
+							{:else}
+								<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Add an extra layer of security to your account by enabling two-factor authentication.</p>
+								<button class="btn btn-outline btn-sm" disabled={twoFaLoading} onclick={handle2faSetup}>
+									{#if twoFaLoading}Setting up...{:else}Enable 2FA{/if}
+								</button>
+							{/if}
+						{:else}
+							<p style="font-size: 13px; font-weight: 600; color: var(--clr-success); margin-bottom: 12px;">&#x2713; 2FA is enabled</p>
+							<div class="field" style="margin-bottom: 8px;">
+								<label class="label" for="2fa-disable-code">Authenticator code</label>
+								<input class="input" id="2fa-disable-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" bind:value={twoFaDisableCode} />
+							</div>
+							<div class="field" style="margin-bottom: 12px;">
+								<label class="label" for="2fa-disable-pw">Password</label>
+								<input class="input" id="2fa-disable-pw" type="password" bind:value={twoFaDisablePassword} />
+							</div>
+							<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" disabled={twoFaLoading} onclick={handle2faDisable}>Disable 2FA</button>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Passkey Registration -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F511;</span>
+						<span style="font-weight: 700; font-size: 14px;">Passkeys</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Sign in with your fingerprint, face, or device PIN. Passkeys are more secure than passwords.</p>
+						{#if passkeyRegMsg}<div class="msg-success" style="margin-bottom: 12px; font-size: 12px;">{passkeyRegMsg}</div>{/if}
+						{#if passkeyRegError}<div class="msg-error" style="margin-bottom: 12px; font-size: 12px;">{passkeyRegError}</div>{/if}
+						<button class="btn btn-outline btn-sm" disabled={passkeyRegLoading} onclick={handlePasskeyRegister}>
+							{#if passkeyRegLoading}Registering...{:else}Add Passkey{/if}
+						</button>
+					</div>
+				</div>
+
+				<!-- Blocked Users -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F6AB;</span>
+						<span style="font-weight: 700; font-size: 14px;">Blocked Users</span>
+					</div>
+					<div class="card-body">
+						{#if blockedLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading...</p>
+						{:else if blockedUsers.length === 0}
+							<p class="text-muted" style="font-size: 12px;">No blocked users</p>
+						{:else}
+							{#each blockedUsers as u}
+								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<div style="width: 32px; height: 32px; border-radius: 50%; background: var(--clr-bg-secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">{(u.display_name || u.username || '?')[0].toUpperCase()}</div>
+										<div>
+											<p style="font-size: 13px; font-weight: 600;">@{u.username}</p>
+											{#if u.display_name}<p class="text-muted" style="font-size: 11px;">{u.display_name}</p>{/if}
+										</div>
+									</div>
+									<button class="btn btn-outline btn-sm" onclick={() => handleUnblock(u.username)}>Unblock</button>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				</div>
+
+				<!-- Muted Users -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F507;</span>
+						<span style="font-weight: 700; font-size: 14px;">Muted Users</span>
+					</div>
+					<div class="card-body">
+						{#if mutedLoading}
+							<p class="text-muted" style="font-size: 12px;">Loading...</p>
+						{:else if mutedUsers.length === 0}
+							<p class="text-muted" style="font-size: 12px;">No muted users</p>
+						{:else}
+							{#each mutedUsers as u}
+								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<div style="width: 32px; height: 32px; border-radius: 50%; background: var(--clr-bg-secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">{(u.display_name || u.username || '?')[0].toUpperCase()}</div>
+										<div>
+											<p style="font-size: 13px; font-weight: 600;">@{u.username}</p>
+											{#if u.display_name}<p class="text-muted" style="font-size: 11px;">{u.display_name}</p>{/if}
+										</div>
+									</div>
+									<button class="btn btn-outline btn-sm" onclick={() => handleUnmute(u.username)}>Unmute</button>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				</div>
+
 				<!-- Active Sessions Info -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
@@ -2202,42 +2725,109 @@
 						<span style="font-weight: 700; font-size: 14px;">Session</span>
 					</div>
 					<div class="card-body">
-						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Your login session is valid for 30 days. Sign out on all devices by changing your password.</p>
-						<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Your login session is valid for 30 days.</p>
+						<div style="display: flex; gap: 8px;">
+							<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => { auth.logout(); window.location.href = '/account'; }}>Sign Out</button>
+							<button class="btn btn-outline btn-sm" onclick={handleLogoutAll}>Sign Out All Devices</button>
+						</div>
 					</div>
 				</div>
 
-				<!-- Delete Account -->
+				<!-- E2E Key Backup -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F512;</span>
+						<span style="font-weight: 700; font-size: 14px;">Message Encryption Key</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px; line-height: 1.6;">
+							Your messages are end-to-end encrypted. Back up your key to restore encrypted messages on a new device.
+							{#if e2eHasKey}<span style="color: var(--clr-success); font-weight: 600;"> Key active on this device.</span>{:else}<span style="color: var(--clr-danger); font-weight: 600;"> No key on this device.</span>{/if}
+						</p>
+						{#if e2eHasKey}
+							<div style="margin-bottom: 12px;">
+								<label class="label" for="e2e-backup-pw" style="font-size: 11px; margin-bottom: 4px;">Backup passphrase (min 8 chars)</label>
+								<input class="input" type="password" id="e2e-backup-pw" placeholder="Enter a strong passphrase..." bind:value={e2eBackupPassphrase} />
+							</div>
+							{#if e2eBackupError}<div class="msg-error" style="margin-bottom: 8px;">{e2eBackupError}</div>{/if}
+							{#if e2eBackupMsg}<div class="msg-success" style="margin-bottom: 8px;">{e2eBackupMsg}</div>{/if}
+							<div style="display: flex; gap: 8px;">
+								<button class="btn btn-gold btn-sm" disabled={e2eBackupLoading} onclick={backupE2EKey}>
+									{#if e2eBackupLoading}Backing up...{:else}Backup Key{/if}
+								</button>
+								{#if e2eHasBackup}
+									<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={deleteE2EBackup}>Delete Backup</button>
+								{/if}
+							</div>
+						{:else}
+							<div style="margin-bottom: 12px;">
+								<label class="label" for="e2e-restore-pw" style="font-size: 11px; margin-bottom: 4px;">Backup passphrase</label>
+								<input class="input" type="password" id="e2e-restore-pw" placeholder="Enter your backup passphrase..." bind:value={e2eRestorePassphrase} />
+							</div>
+							{#if e2eRestoreError}<div class="msg-error" style="margin-bottom: 8px;">{e2eRestoreError}</div>{/if}
+							{#if e2eRestoreMsg}<div class="msg-success" style="margin-bottom: 8px;">{e2eRestoreMsg}</div>{/if}
+							<button class="btn btn-gold btn-sm" disabled={e2eRestoreLoading} onclick={restoreE2EKey}>
+								{#if e2eRestoreLoading}Restoring...{:else}Restore Key from Backup{/if}
+							</button>
+						{/if}
+					</div>
+				</div>
+
+				<!-- GDPR — Your Data -->
+				<div class="card" style="margin-top: 20px;">
+					<div class="card-header">
+						<span>&#x1F4E6;</span>
+						<span style="font-weight: 700; font-size: 14px;">Your Data</span>
+					</div>
+					<div class="card-body">
+						<p class="text-muted" style="font-size: 12px; line-height: 1.6; margin-bottom: 12px;">Download a copy of all your data or request account deletion. Under UK GDPR and EU GDPR, you have the right to access, port, and erase your personal data.</p>
+						<button class="btn btn-outline btn-sm" disabled={gdprExportLoading} onclick={handleGdprExport}>
+							{#if gdprExportLoading}Generating...{:else}Download My Data{/if}
+						</button>
+						{#if gdprExportMsg}<p style="font-size: 12px; margin-top: 8px; color: var(--clr-success);">{gdprExportMsg}</p>{/if}
+					</div>
+				</div>
+
+				<!-- Danger Zone -->
 				<div class="card" style="margin-top: 20px; border-color: rgba(239,68,68,0.2);">
 					<div class="card-header">
 						<span>&#x26A0;&#xFE0F;</span>
 						<span style="font-weight: 700; font-size: 14px; color: var(--clr-danger);">Danger Zone</span>
 					</div>
 					<div class="card-body">
+						{#if gdprDeletionPending}
+							<div style="padding: 16px; background: rgba(245,166,35,0.08); border: 1px solid rgba(245,166,35,0.2); border-radius: var(--radius-md); margin-bottom: 12px;">
+								<p style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Account deletion scheduled</p>
+								<p class="text-muted" style="font-size: 12px; line-height: 1.6;">Your account will be permanently deleted in 30 days. You can cancel this any time before then.</p>
+								<button class="btn btn-outline btn-sm" style="margin-top: 10px;" disabled={gdprCancelLoading} onclick={handleGdprCancelDeletion}>
+									{#if gdprCancelLoading}Cancelling...{:else}Cancel Deletion{/if}
+								</button>
+							</div>
+						{/if}
+						{#if gdprDeleteMsg}<div class="msg-success" style="margin-bottom: 12px; font-size: 12px;">{gdprDeleteMsg}</div>{/if}
 						{#if !showDeleteConfirm}
-							<p style="font-size: 13px; color: var(--clr-text-secondary); line-height: 1.6; margin-bottom: 12px;">Permanently delete your account and all associated data. This action cannot be undone after the retention period.</p>
+							<p style="font-size: 13px; color: var(--clr-text-secondary); line-height: 1.6; margin-bottom: 12px;">Permanently delete your account and all associated data. Your data is kept for 30 days in case you change your mind.</p>
 							<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={() => showDeleteConfirm = true}>Delete My Account</button>
 						{:else}
 							<div style="padding: 16px; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.15); border-radius: var(--radius-md);">
 								<h4 style="color: var(--clr-danger); font-size: 14px; margin-bottom: 12px;">Are you sure?</h4>
 								<div style="font-size: 12px; color: var(--clr-text-secondary); line-height: 1.7; margin-bottom: 16px;">
 									<p style="margin-bottom: 8px;">If you delete your account:</p>
-									<p style="padding-left: 12px;">&#x2022; You will lose access immediately</p>
-									<p style="padding-left: 12px;">&#x2022; Your scan history, API keys, and team data will be removed</p>
-									<p style="padding-left: 12px;">&#x2022; Your data is kept for 6 months in case you change your mind</p>
-									<p style="padding-left: 12px;">&#x2022; To reinstate, simply log in again within 6 months</p>
-									<p style="padding-left: 12px;">&#x2022; After 6 months, your data is permanently and irreversibly deleted</p>
+									<p style="padding-left: 12px;">&#x2022; Your data is kept for 30 days, then permanently erased</p>
+									<p style="padding-left: 12px;">&#x2022; You can cancel within 30 days by logging in</p>
+									<p style="padding-left: 12px;">&#x2022; Posts, messages, and scan history will be removed</p>
+									<p style="padding-left: 12px;">&#x2022; Active subscriptions will be cancelled</p>
 								</div>
 								<div style="margin-bottom: 12px;">
-									<label class="label" for="delete-confirm" style="font-size: 11px; margin-bottom: 6px;">Type DELETE to confirm</label>
-									<input id="delete-confirm" class="input" type="text" placeholder="DELETE" bind:value={deleteConfirmText} style="text-transform: uppercase; font-family: var(--font-mono);" />
+									<label class="label" for="gdpr-delete-pw" style="font-size: 11px; margin-bottom: 6px;">Enter your password to confirm</label>
+									<input id="gdpr-delete-pw" class="input" type="password" placeholder="Your password" bind:value={gdprDeletePassword} />
 								</div>
-								{#if deleteMsg}<div class="msg-error" style="margin-bottom: 12px;">{deleteMsg}</div>{/if}
+								{#if gdprDeleteError}<div class="msg-error" style="margin-bottom: 12px; font-size: 12px;">{gdprDeleteError}</div>{/if}
 								<div style="display: flex; gap: 8px;">
-									<button class="btn" style="background: var(--clr-danger); color: white; border: none; flex: 1;" disabled={deleteLoading || deleteConfirmText !== 'DELETE'} onclick={handleDeleteAccount}>
-										{#if deleteLoading}Deleting...{:else}Delete My Account{/if}
+									<button class="btn" style="background: var(--clr-danger); color: white; border: none; flex: 1;" disabled={gdprDeleteLoading || !gdprDeletePassword} onclick={handleGdprDelete}>
+										{#if gdprDeleteLoading}Processing...{:else}Delete My Account{/if}
 									</button>
-									<button class="btn btn-outline" style="border-color: var(--clr-border);" onclick={() => { showDeleteConfirm = false; deleteConfirmText = ''; deleteMsg = ''; }}>Cancel</button>
+									<button class="btn btn-outline" style="border-color: var(--clr-border);" onclick={() => { showDeleteConfirm = false; gdprDeletePassword = ''; gdprDeleteError = ''; }}>Cancel</button>
 								</div>
 							</div>
 						{/if}
@@ -2611,6 +3201,37 @@
 		.rpt-stats { grid-template-columns: repeat(2, 1fr); }
 		.rpt-card-btm { flex-direction: column; gap: 10px; align-items: flex-start; }
 	}
+
+	/* ── API Usage ───────────────────── */
+	.api-usage-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+	.api-stat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 16px; text-align: center; }
+	.api-stat-val { font-size: 24px; font-weight: 800; font-family: var(--font-mono); color: var(--clr-gold); }
+	.api-stat-lbl { font-size: 11px; color: var(--clr-text-muted); margin-top: 4px; text-transform: uppercase; font-weight: 600; }
+	.api-chart { display: flex; align-items: flex-end; gap: 2px; height: 80px; }
+	.api-chart-bar { flex: 1; background: var(--clr-border); border-radius: 2px 2px 0 0; min-height: 2px; position: relative; height: 100%; display: flex; align-items: flex-end; }
+	.api-chart-fill { width: 100%; background: var(--clr-gold); border-radius: 2px 2px 0 0; transition: height 0.3s; }
+	.api-month-row { display: flex; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); font-size: 13px; }
+	.api-month-row:last-child { border-bottom: none; }
+	.api-month-label { font-weight: 600; }
+	.api-month-val { font-family: var(--font-mono); color: var(--clr-gold); }
+	.api-log-header { display: grid; grid-template-columns: 1fr 60px 50px 50px 80px; gap: 8px; padding: 8px 16px; font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; border-bottom: 1px solid var(--clr-border); }
+	.api-log-row { display: grid; grid-template-columns: 1fr 60px 50px 50px 80px; gap: 8px; padding: 8px 16px; font-size: 12px; border-bottom: 1px solid var(--clr-border); align-items: center; }
+	.api-log-row:last-child { border-bottom: none; }
+	.api-log-endpoint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.api-log-method { font-weight: 700; font-size: 10px; }
+	.api-ok { color: var(--clr-success); font-weight: 700; }
+	.api-err { color: var(--clr-danger); font-weight: 700; }
+	@media (max-width: 640px) { .api-usage-grid { grid-template-columns: repeat(2, 1fr); } .api-log-header, .api-log-row { grid-template-columns: 1fr 50px 50px; } .api-log-row span:nth-child(4), .api-log-row span:nth-child(5), .api-log-header span:nth-child(4), .api-log-header span:nth-child(5) { display: none; } }
+
+	/* ── Report History ──────────────── */
+	.rpt-history { border-top: 1px solid var(--clr-border); padding: 8px 16px; background: var(--clr-bg-deep); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+	.rpt-hist-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--clr-border); }
+	.rpt-hist-row:last-child { border-bottom: none; }
+	.rpt-hist-date { font-family: var(--font-mono); color: var(--clr-text-secondary); min-width: 100px; }
+	.rpt-hist-recip { flex: 1; color: var(--clr-text-primary); }
+	.rpt-hist-status { font-weight: 700; font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: var(--radius-full); }
+	.rpt-delivered { background: rgba(34,197,94,0.12); color: var(--clr-success); }
+	.rpt-failed { background: rgba(239,68,68,0.12); color: var(--clr-danger); }
 
 </style>
 

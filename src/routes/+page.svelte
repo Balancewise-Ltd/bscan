@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { scan } from '$lib/stores/scan';
 	import { auth } from '$lib/stores/auth';
@@ -45,6 +45,16 @@
 	let aiFixes = $state<Record<string, any>>({});
 	let aiFixLoading = $state<Record<string, boolean>>({});
 
+	// Fix All Issues (bulk)
+	let fixAllLoading = $state(false);
+	let fixAllResult = $state<{ fixes: any[]; total_issues: number; fixes_generated: number } | null>(null);
+	let showFixAllPanel = $state(false);
+
+	// Scan detail + achievements
+	let scanDetail = $state<any>(null);
+	let scanAchievements = $state<any[]>([]);
+	let detailLoading = $state(false);
+
 	async function getAiFixForIssue(issue: any) {
 		const key = issue.title;
 		if (aiFixes[key] || aiFixLoading[key]) return;
@@ -64,6 +74,32 @@
 		}
 		aiFixLoading = { ...aiFixLoading, [key]: false };
 	}
+	async function handleFixAll() {
+		if (!r?.id || fixAllLoading) return;
+		fixAllLoading = true;
+		try {
+			const res = await api.getAiFixesForScan(r.id);
+			fixAllResult = res;
+			showFixAllPanel = true;
+		} catch {
+			fixAllResult = null;
+		}
+		fixAllLoading = false;
+	}
+
+	async function loadScanExtras(scanId: string) {
+		detailLoading = true;
+		try {
+			const [detail, achs] = await Promise.allSettled([
+				api.getScanDetail(scanId),
+				api.getScanAchievements(scanId)
+			]);
+			if (detail.status === 'fulfilled') scanDetail = detail.value;
+			if (achs.status === 'fulfilled') scanAchievements = achs.value?.achievements || [];
+		} catch { /* silently fail */ }
+		detailLoading = false;
+	}
+
 	async function handlePdfDownload() {
 		if (!r?.id || pdfDownloading) return;
 		pdfDownloading = true;
@@ -238,6 +274,14 @@
 
 	const isPaid = $derived($auth.isPaid || userPlan === 'pro' || userPlan === 'agency');
 
+	// Load scan detail + achievements when scan completes
+	$effect(() => {
+		if ($scan.status === 'done' && r?.id) {
+			const sid = r.id;
+			untrack(() => { loadScanExtras(sid); });
+		}
+	});
+
 	// Load sparkline when auth resolves
 	$effect(() => {
 		if ($auth.user && sparklineScans.length === 0 && !sparklineLoading) {
@@ -377,10 +421,14 @@
 				<span class="results-url font-mono">{$scan.currentUrl}</span>
 				<div class="results-actions">
 					{#if $auth.user && ($auth.isPaid)}
+						<button class="btn btn-gold btn-sm" disabled={fixAllLoading} onclick={handleFixAll}>
+							{#if fixAllLoading}<span class="spinner spinner-sm"></span> Fixing...{:else}Fix All Issues{/if}
+						</button>
 						<button class="btn btn-gold btn-sm" disabled={pdfDownloading} onclick={handlePdfDownload}>
 							{#if pdfDownloading}<span class="spinner spinner-sm"></span>{:else}📄 Download PDF{/if}
 						</button>
 					{:else}
+						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('AI Fix All', 'Get AI-generated code fixes for every issue in your scan. Available on Pro and Agency.')}>Fix All</button>
 						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download a professional audit report as PDF. Upgrade to Pro to unlock.')}>📄 PDF Report</button>
 					{/if}
 					<button class="btn btn-outline btn-sm" onclick={() => { scan.reset(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>New Scan</button>
@@ -396,6 +444,17 @@
 					<p class="text-secondary">{overallDesc}</p>
 				</div>
 			</div>
+
+			<!-- Achievements earned (below score) -->
+			{#if scanAchievements.length > 0}
+				<div class="scan-achievements-row">
+					{#each scanAchievements as ach}
+						<span class="scan-ach-pill" style="background: {ach.color}12; border-color: {ach.color}30; color: {ach.color};">
+							{ach.icon} {sanitize(ach.title)}
+						</span>
+					{/each}
+				</div>
+			{/if}
 
 			<!-- Summary -->
 			{#if r.summary}
@@ -423,6 +482,67 @@
 
 			<!-- Intelligence Feature Cards -->
 			<FeatureCards scanData={r} {isPaid} />
+
+			<!-- Scan Detail (full category breakdowns from /detail endpoint) -->
+			{#if scanDetail?.categories && scanDetail.categories.length > 0}
+				<div class="scan-detail-section">
+					<h3 class="scan-detail-heading">Full Category Breakdown</h3>
+					<div class="scan-detail-grid">
+						{#each scanDetail.categories as cat}
+							<div class="scan-detail-cat">
+								<div class="sdc-header">
+									<span class="sdc-label">{cat.name || cat.category}</span>
+									<span class="sdc-score" style="color: {scoreColor(cat.score || 0)};">{cat.score || 0}/100</span>
+								</div>
+								{#if cat.summary}
+									<p class="sdc-summary">{cat.summary}</p>
+								{/if}
+								<div class="sdc-bar">
+									<div class="sdc-bar-fill" style="width: {cat.score || 0}%; background: {scoreColor(cat.score || 0)};"></div>
+								</div>
+								{#if cat.issues?.length}
+									<div class="sdc-issues">{cat.issues.length} issue{cat.issues.length !== 1 ? 's' : ''} found</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Fix All Issues Panel -->
+			{#if showFixAllPanel && fixAllResult}
+				<div class="fix-all-panel animate-fade-up">
+					<div class="fix-all-header">
+						<div>
+							<h3 style="margin: 0; font-size: 18px; font-weight: 800;">AI Fix Report</h3>
+							<p class="text-secondary" style="margin: 4px 0 0; font-size: 13px;">{fixAllResult.fixes_generated} fixes generated for {fixAllResult.total_issues} issues</p>
+						</div>
+						<button class="btn btn-outline btn-sm" onclick={() => showFixAllPanel = false}>Close</button>
+					</div>
+					{#each fixAllResult.fixes as fix}
+						<div class="fix-all-item">
+							<div class="fix-all-issue-title">
+								<span class="fix-all-sev {fix.severity || 'warning'}">{fix.severity === 'critical' ? '!!' : '!'}</span>
+								{fix.issue_title || fix.title || 'Issue'}
+							</div>
+							{#if fix.fix_summary}
+								<p class="fix-all-summary">{fix.fix_summary}</p>
+							{/if}
+							{#each (fix.code_snippets || []) as snippet}
+								<div class="ai-code-block">
+									<div class="ai-code-header">
+										<span class="ai-code-lang">{snippet.language}</span>
+										<span class="ai-code-file">{snippet.filename}</span>
+										<button class="ai-copy-btn" onclick={() => navigator.clipboard.writeText(snippet.code)}>Copy</button>
+									</div>
+									<pre class="ai-code">{snippet.code}</pre>
+									{#if snippet.explanation}<p class="ai-code-explain">{snippet.explanation}</p>{/if}
+								</div>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{/if}
 
 			<!-- Detail Panel -->
 			{#if openDetail}
@@ -1207,4 +1327,32 @@
 	.sparkline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 	.sparkline-chart { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 20px 12px 12px; overflow-x: auto; }
 	.sparkline-svg { width: 100%; min-width: 300px; height: 140px; display: block; }
+
+	/* ── Achievements row below score ─────────── */
+	.scan-achievements-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: -8px 0 16px; }
+	.scan-ach-pill { font-size: 12px; padding: 4px 14px; border-radius: var(--radius-full); border: 1px solid; font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
+
+	/* ── Scan detail section ──────────────────── */
+	.scan-detail-section { margin: 24px 0; }
+	.scan-detail-heading { font-size: 16px; font-weight: 800; margin: 0 0 14px; }
+	.scan-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+	.scan-detail-cat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); padding: 16px; }
+	.sdc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+	.sdc-label { font-weight: 700; font-size: 14px; }
+	.sdc-score { font-weight: 800; font-size: 16px; font-family: var(--font-mono); }
+	.sdc-summary { font-size: 12px; color: var(--clr-text-secondary); margin: 0 0 10px; line-height: 1.5; }
+	.sdc-bar { height: 6px; background: var(--clr-border); border-radius: 3px; overflow: hidden; }
+	.sdc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s var(--ease-out); }
+	.sdc-issues { font-size: 11px; color: var(--clr-text-muted); margin-top: 6px; font-family: var(--font-mono); }
+
+	/* ── Fix All panel ────────────────────────── */
+	.fix-all-panel { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: 24px; margin: 24px 0; }
+	.fix-all-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--clr-border); }
+	.fix-all-item { padding: 16px 0; border-bottom: 1px solid var(--clr-border); }
+	.fix-all-item:last-child { border-bottom: none; }
+	.fix-all-issue-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+	.fix-all-sev { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 800; flex-shrink: 0; }
+	.fix-all-sev.critical { background: rgba(239,68,68,0.15); color: var(--clr-danger); }
+	.fix-all-sev.warning { background: rgba(245,166,35,0.15); color: var(--clr-gold); }
+	.fix-all-summary { font-size: 13px; color: var(--clr-text-secondary); margin: 6px 0 10px; line-height: 1.6; }
 </style>

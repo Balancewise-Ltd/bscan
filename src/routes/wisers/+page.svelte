@@ -129,6 +129,16 @@
   const emojis = ['😀','😂','🤣','😍','🥰','😎','🤩','🥳','😭','😤','🔥','💯','👏','🙌','💪','🚀','⭐','💡','✅','❌','👀','💬','❤️','💙','💚','💛','🧡','💜','🖤','🤍','👍','👎','🎉','🎊','🏆','💎','🌟','⚡','🎯','🔑','📈','📉','🛠️','💻','🌐','🔍','📱','🤖','🧠','💭','📌','📎','✨','🙏','🤝','👋','✌️','🤞','💀','🤡','👑','🦾'];
   let commentInputs = $state<Record<number, string>>({});
   let expandedComments = $state<Set<number>>(new Set());
+  let editHistoryPost = $state<number | null>(null);
+  let editHistory = $state<any[]>([]);
+  let editHistoryLoading = $state(false);
+  let pollData = $state<Record<number, any>>({});
+  let pollVoting = $state<Record<number, boolean>>({});
+  let scheduledPosts = $state<any[]>([]);
+  let showScheduledList = $state(false);
+  let scheduledLoading = $state(false);
+  let birthdays = $state<any[]>([]);
+  let dismissedNudges = $state<Set<string>>(new Set());
   let postComments = $state<Record<number, any[]>>({});
   let actionMsg = $state('');
   let openPostMenu = $state<number | null>(null);
@@ -180,6 +190,9 @@
         suggested = sg.users || [];
       } catch {}
       try { const bk = await api.getBookmarks(); bookmarkedPosts = new Set((bk.posts || []).map((p: any) => p.id)); } catch {}
+      try { const bd = await api.getBirthdaysToday(); birthdays = bd.birthdays || []; } catch {}
+      // Load dismissed nudges from localStorage
+      try { const dn = localStorage.getItem('wisers-nudges-dismissed'); if (dn) dismissedNudges = new Set(JSON.parse(dn)); } catch {}
     }
     // Layered profile completion check:
     // 1. No username → full onboarding wizard (new user from any source)
@@ -358,6 +371,68 @@
     try {
       await api.addComment(postId, t);
       commentInputs = { ...commentInputs, [postId]: '' };
+      const res = await api.getPost(postId);
+      postComments = { ...postComments, [postId]: res.comments || [] };
+      posts = posts.map(p => p.id === postId ? { ...p, comments_count: (res.comments || []).length } : p);
+    } catch {}
+  }
+
+  function dismissNudge(key: string) {
+    dismissedNudges = new Set([...dismissedNudges, key]);
+    localStorage.setItem('wisers-nudges-dismissed', JSON.stringify([...dismissedNudges]));
+    api.dismissNudge(key).catch(() => {});
+  }
+
+  async function loadScheduledPosts() {
+    scheduledLoading = true;
+    try {
+      const res = await api.getScheduledPosts();
+      scheduledPosts = res.posts || [];
+    } catch { scheduledPosts = []; }
+    scheduledLoading = false;
+  }
+
+  async function cancelScheduledPost(id: number) {
+    if (!confirm('Cancel this scheduled post?')) return;
+    try {
+      await api.deleteScheduledPost(id);
+      scheduledPosts = scheduledPosts.filter(p => p.id !== id);
+    } catch {}
+  }
+
+  async function loadPoll(postId: number) {
+    if (pollData[postId]) return;
+    try {
+      const res = await api.getPoll(postId);
+      pollData = { ...pollData, [postId]: res };
+    } catch {}
+  }
+
+  async function handleVote(postId: number, pollId: number, optionId: number) {
+    if (pollVoting[postId]) return;
+    pollVoting = { ...pollVoting, [postId]: true };
+    try {
+      await api.votePoll(pollId, optionId);
+      const res = await api.getPoll(postId);
+      pollData = { ...pollData, [postId]: res };
+    } catch {}
+    pollVoting = { ...pollVoting, [postId]: false };
+  }
+
+  async function showEditHistory(postId: number) {
+    editHistoryPost = postId;
+    editHistoryLoading = true;
+    try {
+      const res = await api.getPostEdits(postId);
+      editHistory = res.edits || [];
+    } catch { editHistory = []; }
+    editHistoryLoading = false;
+  }
+
+  async function removeComment(postId: number, commentId: number) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await api.deleteComment(commentId);
       const res = await api.getPost(postId);
       postComments = { ...postComments, [postId]: res.comments || [] };
       posts = posts.map(p => p.id === postId ? { ...p, comments_count: (res.comments || []).length } : p);
@@ -898,6 +973,28 @@
                 <input type="datetime-local" bind:value={scheduleDate} class="w-sched-date" />
                 <button class="w-post-btn" onclick={handleSchedulePost} disabled={!scheduleContent.trim() || !scheduleDate}>Schedule</button>
               </div>
+              <button class="w-sched-view-btn" onclick={() => { showScheduledList = !showScheduledList; if (showScheduledList) loadScheduledPosts(); }} type="button">
+                {showScheduledList ? 'Hide' : 'View'} Scheduled Posts
+              </button>
+              {#if showScheduledList}
+                <div class="w-sched-list">
+                  {#if scheduledLoading}
+                    <p style="color:var(--wt3);font-size:13px;padding:8px 0;">Loading...</p>
+                  {:else if scheduledPosts.length === 0}
+                    <p style="color:var(--wt3);font-size:13px;padding:8px 0;">No scheduled posts</p>
+                  {:else}
+                    {#each scheduledPosts as sp (sp.id)}
+                      <div class="w-sched-item">
+                        <div class="w-sched-content">{(sp.content || '').substring(0, 80)}{(sp.content || '').length > 80 ? '...' : ''}</div>
+                        <div class="w-sched-meta">
+                          <span>{new Date(sp.scheduled_for).toLocaleString()}</span>
+                          <button class="w-sched-cancel" onclick={() => cancelScheduledPost(sp.id)}>Cancel</button>
+                        </div>
+                      </div>
+                    {/each}
+                  {/if}
+                </div>
+              {/if}
             </div>
             {/if}
             {#if postImagePreview}<div class="w-img-preview"><img src={postImagePreview} alt="Preview" /><button class="w-img-remove" onclick={removeImage}>✕</button></div>{/if}
@@ -1017,7 +1114,7 @@
                   <span class="w-post-handle">@{post.username}</span>
                   <span class="w-post-dot">·</span>
                   <span class="w-post-time">{timeAgo(post.created_at)}</span>
-                  {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
+                  {#if post.edited}<button class="w-post-edited" onclick={(e) => { e.stopPropagation(); showEditHistory(post.id); }}>(edited)</button>{/if}
                 </div>
                 {#if $auth.token && post.username !== $auth.user?.username && post.user_id !== $auth.user?.id}
                   <button class="w-follow-inline" class:following={followStates[post.username]} onclick={() => toggleFeedFollow(post.username)}>
@@ -1085,6 +1182,28 @@
               </div>
               {/if}
               <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
+              {#if post.post_type === 'poll'}
+                {#if !pollData[post.id]}
+                  <button class="w-poll-load" onclick={() => loadPoll(post.id)}>View Poll</button>
+                {:else}
+                  {@const pd = pollData[post.id]}
+                  {@const totalVotes = (pd.options || []).reduce((s: number, o: any) => s + (o.votes || 0), 0)}
+                  <div class="w-poll-render">
+                    {#each pd.options || [] as opt}
+                      {#if pd.my_vote != null}
+                        <div class="w-poll-bar">
+                          <div class="w-poll-fill" style="width:{totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0}%"></div>
+                          <span class="w-poll-label">{opt.text} {#if opt.id === pd.my_vote}&#x2713;{/if}</span>
+                          <span class="w-poll-pct">{totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0}%</span>
+                        </div>
+                      {:else}
+                        <button class="w-poll-option" disabled={pollVoting[post.id]} onclick={() => handleVote(post.id, pd.id, opt.id)}>{opt.text}</button>
+                      {/if}
+                    {/each}
+                    <p class="w-poll-total">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</p>
+                  </div>
+                {/if}
+              {/if}
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
               {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onclick={() => openLightbox(post.image_url)} onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" /></div>{/if}
               {#if post.media?.filter((m: any) => m.url && m.url.trim()).length}
@@ -1152,6 +1271,11 @@
                       <a href="/wisers/{c.username}" class="w-comment-author">@{c.username}</a>
                       <span class="w-comment-text">{c.content}</span>
                       <span class="w-comment-time">{timeAgo(c.created_at)}</span>
+                      {#if c.user_id === $auth.user?.id || c.username === $auth.user?.username}
+                        <button class="w-comment-del" title="Delete comment" onclick={() => removeComment(post.id, c.id)}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      {/if}
                     </div>
                   {/each}
                   {#if $auth.token}
@@ -1228,7 +1352,7 @@
                     <span class="w-post-handle">@{post.username}</span>
                     <span class="w-post-dot">·</span>
                     <span class="w-post-time">{timeAgo(post.created_at)}</span>
-                    {#if post.edited}<span class="w-post-edited">Edited</span>{/if}
+                    {#if post.edited}<button class="w-post-edited" onclick={(e) => { e.stopPropagation(); showEditHistory(post.id); }}>(edited)</button>{/if}
                   </div>
                 </div>
                 {#if post.milestone_type && post.milestone_value}
@@ -1369,6 +1493,41 @@
               </a>
             {/each}
           </div>
+        {/if}
+
+        <!-- Birthdays -->
+        {#if birthdays.length > 0}
+          <div class="w-rs-card">
+            <div class="w-rs-header"><h3>&#x1F382; Birthdays</h3></div>
+            {#each birthdays.slice(0, 3) as bd}
+              <a href="/wisers/{bd.username}" class="w-suggest-item" style="text-decoration:none;color:inherit;">
+                <div class="w-avatar-36">{(bd.display_name || bd.username || '?')[0].toUpperCase()}</div>
+                <div class="w-suggest-info">
+                  <span class="w-suggest-name">@{bd.username}</span>
+                  <span class="w-suggest-real">Happy Birthday!</span>
+                </div>
+              </a>
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Nudges -->
+        {#if $auth.token && $auth.user}
+          {#if !$auth.user.avatar_url && !dismissedNudges.has('complete_profile')}
+            <div class="w-rs-card w-nudge">
+              <button class="w-nudge-x" onclick={() => dismissNudge('complete_profile')}>&#x2715;</button>
+              <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Complete your profile</p>
+              <p style="font-size:12px;color:var(--wt2);">Add an avatar to stand out</p>
+              <a href="/account" class="w-nudge-btn">Go to Settings</a>
+            </div>
+          {/if}
+          {#if !dismissedNudges.has('first_post') && posts.filter(p => p.user_id === $auth.user?.id).length === 0}
+            <div class="w-rs-card w-nudge">
+              <button class="w-nudge-x" onclick={() => dismissNudge('first_post')}>&#x2715;</button>
+              <p style="font-size:13px;font-weight:600;margin-bottom:4px;">Write your first post</p>
+              <p style="font-size:12px;color:var(--wt2);">Share what you're working on</p>
+            </div>
+          {/if}
         {/if}
 
         <!-- Section 2: People You May Know -->
@@ -1587,6 +1746,31 @@
 {/if}
 {/if}
 
+{#if editHistoryPost !== null}
+  <div class="w-modal-overlay" onclick={() => editHistoryPost = null} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()} role="dialog">
+      <div class="w-modal-header">
+        <h3>Edit History</h3>
+        <button class="w-modal-close" onclick={() => editHistoryPost = null}>&#x2715;</button>
+      </div>
+      <div class="w-modal-body">
+        {#if editHistoryLoading}
+          <p style="text-align:center;padding:20px;color:var(--wt2);">Loading...</p>
+        {:else if editHistory.length === 0}
+          <p style="text-align:center;padding:20px;color:var(--wt2);">No edit history found</p>
+        {:else}
+          {#each editHistory as edit, i}
+            <div style="padding:12px 0;border-bottom:1px solid var(--wbd);{i === 0 ? 'opacity:1' : 'opacity:0.7'}">
+              <p style="font-size:13px;color:var(--wt);line-height:1.5;white-space:pre-wrap;">{edit.content}</p>
+              <p style="font-size:11px;color:var(--wt3);margin-top:6px;">{new Date(edit.edited_at || edit.created_at).toLocaleString()}</p>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   :global([data-wisers-theme="light"]) {
     --wb: #ffffff; --wc: #ffffff; --wdeep: #f0f2f5; --whover: #f5f6f8;
@@ -1753,6 +1937,26 @@
   .w-comment-author { color: var(--wgold); font-weight: 600; text-decoration: none; font-size: 14px; }
   .w-comment-text { color: var(--wt2); margin-left: 6px; }
   .w-comment-time { font-size: 13px; color: var(--wt3); margin-left: 6px; }
+  .w-comment-del { background: none; border: none; color: var(--wt3); cursor: pointer; padding: 2px 4px; margin-left: 4px; opacity: 0; transition: opacity 0.15s; }
+  .w-comment:hover .w-comment-del { opacity: 1; }
+  .w-comment-del:hover { color: var(--wdanger, #ef4444); }
+
+  /* Poll rendering */
+  .w-poll-load { background: none; border: 1px solid var(--wbd); color: var(--wgold); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; margin-top: 8px; font-family: inherit; }
+  .w-poll-load:hover { border-color: var(--wgold); }
+  .w-poll-render { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .w-poll-option { background: none; border: 1px solid var(--wbd); color: var(--wt); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; text-align: left; font-family: inherit; transition: border-color 0.15s; }
+  .w-poll-option:hover { border-color: var(--wgold); }
+  .w-poll-option:disabled { opacity: 0.6; cursor: not-allowed; }
+  .w-poll-bar { position: relative; background: var(--wc); border: 1px solid var(--wbd); border-radius: 8px; padding: 10px 14px; overflow: hidden; display: flex; justify-content: space-between; }
+  .w-poll-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(245,166,35,0.12); border-radius: 8px; transition: width 0.3s; }
+  .w-poll-label { position: relative; font-size: 14px; z-index: 1; }
+  .w-poll-pct { position: relative; font-size: 13px; font-weight: 600; color: var(--wgold); z-index: 1; }
+  .w-poll-total { font-size: 12px; color: var(--wt3); margin-top: 4px; }
+
+  /* Edit history button */
+  button.w-post-edited { background: none; border: none; color: var(--wt3); font-size: 12px; cursor: pointer; font-family: inherit; padding: 0; margin-left: 4px; }
+  button.w-post-edited:hover { color: var(--wgold); text-decoration: underline; }
   .w-comment-input { display: flex; gap: 6px; margin-top: 8px; }
   .w-comment-input input { flex: 1; padding: 10px 14px; border: 1px solid var(--wbd); border-radius: 20px; background: var(--wc); color: var(--wt); font-size: 14px; outline: none; font-family: inherit; }
   .w-comment-input button { padding: 10px 16px; border: none; background: var(--wgold); color: #000; font-weight: 700; font-size: 13px; border-radius: 20px; cursor: pointer; font-family: inherit; }
@@ -2359,6 +2563,20 @@
   .w-poll-ends { font-size: 15px; color: var(--wt2); display: flex; align-items: center; gap: 6px; }
   .w-poll-ends input { padding: 8px 10px; border: 1px solid var(--wbd); border-radius: 6px; background: var(--wb); color: var(--wt); font-size: 15px; }
   .w-sched-textarea { min-height: 50px; resize: none; margin-bottom: 8px; }
+  .w-sched-view-btn { background: none; border: none; color: var(--wgold); font-size: 13px; cursor: pointer; padding: 6px 0; font-family: inherit; font-weight: 600; }
+  .w-sched-view-btn:hover { text-decoration: underline; }
+  .w-sched-list { margin-top: 8px; border-top: 1px solid var(--wbd); }
+  .w-sched-item { padding: 10px 0; border-bottom: 1px solid var(--wbd); }
+  .w-sched-content { font-size: 13px; color: var(--wt); line-height: 1.4; }
+  .w-sched-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .w-sched-meta span { font-size: 11px; color: var(--wt3); }
+  .w-sched-cancel { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; }
+  .w-sched-cancel:hover { background: rgba(239,68,68,0.1); }
+
+  /* Nudges */
+  .w-nudge { position: relative; border-left: 3px solid var(--wgold); }
+  .w-nudge-x { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--wt3); cursor: pointer; font-size: 14px; padding: 2px 6px; }
+  .w-nudge-btn { display: inline-block; margin-top: 8px; padding: 5px 12px; background: var(--wgold); color: #000; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; }
 
   /* ═══ MODALS ═══ */
   .w-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }

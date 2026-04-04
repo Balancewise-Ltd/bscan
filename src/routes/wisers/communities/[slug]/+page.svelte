@@ -29,6 +29,8 @@
   let settingsCategory = $state('');
   let settingsPrivacy = $state('public');
   let savingSettings = $state(false);
+  let iconUploading = $state(false);
+  let coverUploading = $state(false);
 
   function openSettings() {
     settingsName = community?.name || '';
@@ -47,6 +49,34 @@
       showSettings = false;
     } catch {}
     savingSettings = false;
+  }
+
+  async function handleIconUpload(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    iconUploading = true;
+    try {
+      const res = await api.uploadMedia(file);
+      await api.updateCommunity(slug, { icon_url: res.url } as any);
+      community = { ...community, icon_url: res.url };
+    } catch {}
+    iconUploading = false;
+  }
+
+  async function handleCoverUpload(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    coverUploading = true;
+    try {
+      const res = await api.uploadMedia(file);
+      await api.updateCommunity(slug, { cover_url: res.url } as any);
+      community = { ...community, cover_url: res.url };
+    } catch {}
+    coverUploading = false;
+  }
+
+  async function handleRoleChange(username: string, role: string) {
+    try { await api.updateMemberRole(slug, username, role); } catch {}
   }
 
   async function handleDelete() {
@@ -314,13 +344,22 @@
       {:else}
         <div class="cd-members">
           {#each members as m}
-            <a href="/wisers/{m.username}" class="cd-member">
-              <div class="cd-m-avatar">{#if m.avatar_url}<img src={m.avatar_url} alt="" />{:else}{initial(m.display_name || m.username)}{/if}</div>
-              <div class="cd-m-info">
-                <div class="cd-m-name">{m.display_name || m.username}</div>
-                <div class="cd-m-role">{m.role}</div>
-              </div>
-            </a>
+            <div class="cd-member">
+              <a href="/wisers/{m.username}" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;flex:1;">
+                <div class="cd-m-avatar">{#if m.avatar_url}<img src={m.avatar_url} alt="" />{:else}{initial(m.display_name || m.username)}{/if}</div>
+                <div class="cd-m-info">
+                  <div class="cd-m-name">{m.display_name || m.username}</div>
+                  <div class="cd-m-role">{m.role}</div>
+                </div>
+              </a>
+              {#if (community.my_role === 'admin' || community.my_role === 'creator') && m.role !== 'creator'}
+                <select class="cd-role-select" value={m.role} onchange={(e) => { const r = (e.target as HTMLSelectElement).value; handleRoleChange(m.username, r); m.role = r; }}>
+                  <option value="member">Member</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              {/if}
+            </div>
           {/each}
         </div>
       {/if}
@@ -468,6 +507,26 @@
           <span>Rules (one per line)</span>
           <textarea bind:value={settingsRules} rows="4" placeholder="Be respectful&#10;No spam&#10;Stay on topic"></textarea>
         </label>
+        <div class="cd-field">
+          <span>Community Icon</span>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            {#if community?.icon_url}<img src={community.icon_url} alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover;" />{/if}
+            <label class="cd-upload-btn">
+              {iconUploading ? 'Uploading...' : 'Upload Icon'}
+              <input type="file" accept="image/*" style="display:none;" onchange={handleIconUpload} disabled={iconUploading} />
+            </label>
+          </div>
+        </div>
+        <div class="cd-field">
+          <span>Cover Image</span>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            {#if community?.cover_url}<img src={community.cover_url} alt="" style="width:80px;height:40px;border-radius:8px;object-fit:cover;" />{/if}
+            <label class="cd-upload-btn">
+              {coverUploading ? 'Uploading...' : 'Upload Cover'}
+              <input type="file" accept="image/*" style="display:none;" onchange={handleCoverUpload} disabled={coverUploading} />
+            </label>
+          </div>
+        </div>
       </div>
       <div class="cd-modal-footer">
         <button class="cd-delete-btn" onclick={handleDelete}>Delete Community</button>
@@ -533,6 +592,9 @@
   .cd-members { display: flex; flex-direction: column; gap: 8px; }
   .cd-member { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 12px; text-decoration: none; color: inherit; }
   .cd-member:hover { border-color: var(--cd-gold); }
+  .cd-role-select { background: var(--cd-bg); color: var(--cd-t); border: 1px solid var(--cd-bd); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: inherit; cursor: pointer; }
+  .cd-upload-btn { display: inline-block; padding: 6px 14px; background: var(--cd-card); border: 1px solid var(--cd-bd); border-radius: 8px; color: var(--cd-gold); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .cd-upload-btn:hover { border-color: var(--cd-gold); }
   .cd-m-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #f5a623, #e09100); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 18px; overflow: hidden; flex-shrink: 0; }
   .cd-m-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .cd-m-name { font-weight: 600; font-size: 16px; }

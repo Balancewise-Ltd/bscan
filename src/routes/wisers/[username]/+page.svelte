@@ -380,7 +380,11 @@
           {#if status === 'friends'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-g" onclick={removeFriend}>Friends</button>
           {:else if status === 'request_sent'}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-o" disabled>Pending</button>
           {:else}<a href="/wisers/messages?user={profile.username}" class="pr-btn pr-btn-o">Message</a><button class="pr-btn pr-btn-p" onclick={addFriend}>Connect</button>{/if}
-          <button class="pr-btn pr-btn-follow" class:following={followStatus.i_follow} onclick={() => handleFollow()}>{followStatus.i_follow ? 'Following' : 'Follow'}</button>
+          {#if isBlocked}
+            <button class="pr-btn pr-btn-block" onclick={async () => { try { await api.unblockUser(profile.username); isBlocked = false; } catch {} }}>Unblock</button>
+          {:else}
+            <button class="pr-btn pr-btn-follow" class:following={followStatus.i_follow} onclick={() => handleFollow()}>{followStatus.i_follow ? 'Following' : 'Follow'}</button>
+          {/if}
         {/if}
     </div>
 

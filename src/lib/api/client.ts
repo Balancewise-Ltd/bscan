@@ -1420,3 +1420,59 @@ export async function getKeyBackup(): Promise<{ encrypted_key: string }> {
 export async function deleteKeyBackup(): Promise<any> {
 	return request('/api/keys/backup', { method: 'DELETE' });
 }
+
+// ═══════════════════════════════════════════════
+// GDPR
+// ═══════════════════════════════════════════════
+
+export async function getBirthdaysToday(): Promise<{ birthdays: any[]; count: number }> {
+	return request('/api/community/birthdays/today');
+}
+
+export async function getPasskeyRegisterOptions(): Promise<any> {
+	return request('/api/auth/passkey/register-options', { method: 'POST' });
+}
+
+export async function verifyPasskeyRegister(credential: any): Promise<any> {
+	return request('/api/auth/passkey/register-verify', { method: 'POST', body: JSON.stringify(credential) });
+}
+
+export async function getBackupCodes(): Promise<{ backup_codes: string[] }> {
+	return request('/api/auth/2fa/backup-codes', { method: 'POST' });
+}
+
+export async function gdprExport(): Promise<any> {
+	return request('/api/gdpr/export');
+}
+
+export async function gdprDeleteRequest(password: string): Promise<any> {
+	return request('/api/gdpr/delete-request', { method: 'POST', body: JSON.stringify({ password }) });
+}
+
+export async function gdprCancelDeletion(): Promise<any> {
+	return request('/api/gdpr/cancel-deletion', { method: 'POST' });
+}
+
+export async function gdprDeletionStatus(): Promise<any> {
+	return request('/api/gdpr/deletion-status');
+}
+
+// ══════════════════════════════════════════════════════════
+// API USAGE — GET /api/usage/*
+// ══════════════════════════════════════════════════════════
+
+export async function getApiUsage(): Promise<any> {
+	return request('/api/usage');
+}
+
+export async function getApiUsageHistory(days: number = 30): Promise<any> {
+	return request(`/api/usage/history?days=${days}`);
+}
+
+export async function getApiUsageLogs(limit: number = 50, offset: number = 0): Promise<any> {
+	return request(`/api/usage/logs?limit=${limit}&offset=${offset}`);
+}
+
+export async function getApiUsageMonthly(months: number = 12): Promise<any> {
+	return request(`/api/usage/monthly?months=${months}`);
+}

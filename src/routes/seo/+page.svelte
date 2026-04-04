@@ -117,7 +117,80 @@
 		histLoading = false;
 	}
 
-	function kwKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchKeywords(); }
+	// ── Keyword autocomplete ────────────────────────────
+	let acSuggestions = $state<string[]>([]);
+	let acLoading = $state(false);
+	let acShow = $state(false);
+	let acTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function handleKwInput() {
+		if (acTimer) clearTimeout(acTimer);
+		const q = kwInput.trim();
+		if (q.length < 2) { acSuggestions = []; acShow = false; return; }
+		acTimer = setTimeout(async () => {
+			acLoading = true;
+			try {
+				const res = await api.getSeoAutocomplete(q);
+				acSuggestions = res?.suggestions || res || [];
+				acShow = acSuggestions.length > 0;
+			} catch { acSuggestions = []; acShow = false; }
+			acLoading = false;
+		}, 300);
+	}
+
+	function selectAcSuggestion(s: string) {
+		kwInput = s;
+		acShow = false;
+		searchKeywords();
+	}
+
+	// ── GSC Keywords + Pages (dedicated endpoints) ──────
+	let gscKwData = $state<any[]>([]);
+	let gscKwLoading = $state(false);
+	let gscKwSort = $state<'clicks' | 'impressions' | 'ctr' | 'position'>('clicks');
+	let gscKwSortAsc = $state(false);
+	let gscKwDays = $state(28);
+
+	let gscPagesData = $state<any[]>([]);
+	let gscPagesLoading = $state(false);
+	let gscPagesDays = $state(28);
+
+	let gscSubTab = $state<'overview' | 'keywords' | 'pages'>('overview');
+
+	async function loadGscKeywords() {
+		if (!gscSelectedSite) return;
+		gscKwLoading = true;
+		try {
+			const res = await api.gscKeywords(gscSelectedSite, gscKwDays, 100);
+			gscKwData = res?.keywords || res?.items || [];
+		} catch { gscKwData = []; }
+		gscKwLoading = false;
+	}
+
+	async function loadGscPages() {
+		if (!gscSelectedSite) return;
+		gscPagesLoading = true;
+		try {
+			const res = await api.gscPages(gscSelectedSite, gscPagesDays);
+			gscPagesData = res?.pages || res?.items || [];
+		} catch { gscPagesData = []; }
+		gscPagesLoading = false;
+	}
+
+	function sortGscKw(col: 'clicks' | 'impressions' | 'ctr' | 'position') {
+		if (gscKwSort === col) gscKwSortAsc = !gscKwSortAsc;
+		else { gscKwSort = col; gscKwSortAsc = false; }
+	}
+
+	const sortedGscKw = $derived(
+		[...gscKwData].sort((a, b) => {
+			const va = a[gscKwSort] ?? 0;
+			const vb = b[gscKwSort] ?? 0;
+			return gscKwSortAsc ? va - vb : vb - va;
+		})
+	);
+
+	function kwKeydown(e: KeyboardEvent) { if (e.key === 'Enter') { acShow = false; searchKeywords(); } }
 	function blKeydown(e: KeyboardEvent) { if (e.key === 'Enter') searchBacklinks(); }
 
 	// ── AI Visibility ────────────────────────────────────
@@ -338,7 +411,16 @@
 					</div>
 					<div class="card-body">
 						<div class="search-row">
-							<input class="input" type="text" placeholder="Enter a keyword or topic..." bind:value={kwInput} onkeydown={kwKeydown} style="flex: 1;" />
+							<div style="flex: 1; position: relative;">
+								<input class="input" type="text" placeholder="Enter a keyword or topic..." bind:value={kwInput} onkeydown={kwKeydown} oninput={handleKwInput} onfocus={() => { if (acSuggestions.length) acShow = true; }} onblur={() => setTimeout(() => acShow = false, 200)} style="width: 100%;" />
+								{#if acShow && acSuggestions.length > 0}
+									<div class="ac-dropdown">
+										{#each acSuggestions.slice(0, 8) as s}
+											<button class="ac-item" onmousedown={() => selectAcSuggestion(s)}>{sanitize(s)}</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
 							<select class="input" bind:value={kwCountry} style="width: 80px; flex: none;">
 								<option value="uk">UK</option>
 								<option value="us">US</option>
@@ -956,6 +1038,92 @@
 						</div>
 					</div>
 
+					<!-- GSC sub-tabs -->
+					{#if gscConnected && gscSites.length > 0}
+						<div class="gsc-subtabs">
+							<button class="gsc-subtab" class:active={gscSubTab === 'overview'} onclick={() => gscSubTab = 'overview'}>Overview</button>
+							<button class="gsc-subtab" class:active={gscSubTab === 'keywords'} onclick={() => { gscSubTab = 'keywords'; if (gscKwData.length === 0) loadGscKeywords(); }}>All Keywords</button>
+							<button class="gsc-subtab" class:active={gscSubTab === 'pages'} onclick={() => { gscSubTab = 'pages'; if (gscPagesData.length === 0) loadGscPages(); }}>All Pages</button>
+						</div>
+					{/if}
+
+					<!-- GSC Keywords Tab -->
+					{#if gscSubTab === 'keywords' && gscConnected}
+						{#if gscKwLoading}
+							<Skeleton lines={8} />
+						{:else if gscKwData.length > 0}
+							<div class="card animate-fade-up">
+								<div class="card-header">
+									<span><Search size={14} strokeWidth={2} /></span>
+									<span style="font-weight: 700; font-size: 13px;">Keywords ({gscKwData.length})</span>
+									<select class="input" bind:value={gscKwDays} onchange={loadGscKeywords} style="width: 100px; margin-left: auto; flex: none; font-size: 11px;">
+										<option value={7}>7 days</option>
+										<option value={28}>28 days</option>
+										<option value={90}>90 days</option>
+									</select>
+								</div>
+								<div class="card-body" style="padding: 0;">
+									<div class="gsc-table-header">
+										<span class="gsc-th-kw">Keyword</span>
+										<button class="gsc-th gsc-th-sort" onclick={() => sortGscKw('clicks')}>Clicks {gscKwSort === 'clicks' ? (gscKwSortAsc ? '↑' : '↓') : ''}</button>
+										<button class="gsc-th gsc-th-sort" onclick={() => sortGscKw('impressions')}>Impr. {gscKwSort === 'impressions' ? (gscKwSortAsc ? '↑' : '↓') : ''}</button>
+										<button class="gsc-th gsc-th-sort" onclick={() => sortGscKw('ctr')}>CTR {gscKwSort === 'ctr' ? (gscKwSortAsc ? '↑' : '↓') : ''}</button>
+										<button class="gsc-th gsc-th-sort" onclick={() => sortGscKw('position')}>Pos. {gscKwSort === 'position' ? (gscKwSortAsc ? '↑' : '↓') : ''}</button>
+									</div>
+									{#each sortedGscKw as kw}
+										<div class="gsc-table-row">
+											<span class="gsc-td-kw font-mono">{kw.keyword}</span>
+											<span class="gsc-td">{kw.clicks}</span>
+											<span class="gsc-td">{kw.impressions?.toLocaleString()}</span>
+											<span class="gsc-td">{kw.ctr}%</span>
+											<span class="gsc-td" style="color: {posColor(kw.position)}; font-weight: 700;">{kw.position}</span>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{:else}
+							<div class="card"><div class="card-body" style="text-align: center; padding: 24px;"><p class="text-muted">No keyword data found for this period.</p></div></div>
+						{/if}
+					{/if}
+
+					<!-- GSC Pages Tab -->
+					{#if gscSubTab === 'pages' && gscConnected}
+						{#if gscPagesLoading}
+							<Skeleton lines={8} />
+						{:else if gscPagesData.length > 0}
+							<div class="card animate-fade-up">
+								<div class="card-header">
+									<span>📄</span>
+									<span style="font-weight: 700; font-size: 13px;">Pages ({gscPagesData.length})</span>
+									<select class="input" bind:value={gscPagesDays} onchange={loadGscPages} style="width: 100px; margin-left: auto; flex: none; font-size: 11px;">
+										<option value={7}>7 days</option>
+										<option value={28}>28 days</option>
+										<option value={90}>90 days</option>
+									</select>
+								</div>
+								<div class="card-body" style="padding: 0;">
+									<div class="gsc-table-header" style="grid-template-columns: 1fr 60px 70px 55px;">
+										<span class="gsc-th-kw">Page URL</span>
+										<span class="gsc-th">Clicks</span>
+										<span class="gsc-th">Impr.</span>
+										<span class="gsc-th">CTR</span>
+									</div>
+									{#each gscPagesData as pg}
+										<div class="gsc-table-row" style="grid-template-columns: 1fr 60px 70px 55px;">
+											<span class="gsc-td-kw font-mono">{pg.page?.replace('https://', '').replace('http://', '') || '—'}</span>
+											<span class="gsc-td">{pg.clicks}</span>
+											<span class="gsc-td">{pg.impressions?.toLocaleString()}</span>
+											<span class="gsc-td">{pg.ctr}%</span>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{:else}
+							<div class="card"><div class="card-body" style="text-align: center; padding: 24px;"><p class="text-muted">No page data found for this period.</p></div></div>
+						{/if}
+					{/if}
+
+					{#if gscSubTab === 'overview'}
 					{#if gscOverviewLoading}
 						<Skeleton lines={6} />
 					{/if}
@@ -1088,6 +1256,7 @@
 								</div>
 							</div>
 						{/if}
+					{/if}
 					{/if}
 				{/if}
 			</div>
@@ -1523,4 +1692,18 @@
   .btn-ai-fix { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; font-size: 11px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.03em; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: var(--clr-blue); border-radius: var(--radius-full); cursor: pointer; transition: all 0.15s; }
   .btn-ai-fix:hover { background: rgba(59,130,246,0.15); border-color: var(--clr-blue); }
   .btn-ai-fix:disabled { opacity: 0.5; cursor: wait; }
+
+  /* ── Autocomplete dropdown ─────────── */
+  .ac-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-md); margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); max-height: 240px; overflow-y: auto; }
+  .ac-item { display: block; width: 100%; text-align: left; padding: 10px 14px; font-size: 13px; background: none; border: none; color: var(--clr-text-primary); cursor: pointer; font-family: var(--font-mono); border-bottom: 1px solid var(--clr-border); }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover { background: rgba(245,166,35,0.08); color: var(--clr-gold); }
+
+  /* ── GSC sub-tabs ──────────────────── */
+  .gsc-subtabs { display: flex; gap: 4px; margin: 12px 0; padding: 4px; background: var(--clr-bg-deep); border-radius: var(--radius-md); }
+  .gsc-subtab { flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 700; border: none; background: none; color: var(--clr-text-muted); cursor: pointer; border-radius: 6px; transition: all 0.15s; font-family: var(--font-mono); }
+  .gsc-subtab.active { background: var(--clr-bg-card); color: var(--clr-text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .gsc-subtab:hover:not(.active) { color: var(--clr-text-primary); }
+  .gsc-th-sort { background: none; border: none; cursor: pointer; color: var(--clr-text-muted); font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; padding: 0; text-align: left; }
+  .gsc-th-sort:hover { color: var(--clr-gold); }
 </style>

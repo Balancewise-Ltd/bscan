@@ -3,6 +3,7 @@ import { disconnectWS } from './wisers-ws';
 import type { User, Plan } from '$lib/types';
 import { safeGetStorage, safeSetStorage, safeRemoveStorage } from '$lib/utils/security';
 import * as api from '$lib/api/client';
+import { hasKeyPair, generateAndStoreKeyPair, uploadPublicKey } from './encryption';
 
 const _user = writable<User | null>(null);
 const _token = writable<string | null>(null);
@@ -68,6 +69,11 @@ async function register(email: string, password: string, name: string, referral_
 		safeSetStorage('bscan_email', email);
 		_token.set(result.access_token);
 		_user.set(result.user);
+		// Generate E2E encryption keypair on registration
+		if (!hasKeyPair()) {
+			generateAndStoreKeyPair();
+			uploadPublicKey(result.access_token).catch(() => {});
+		}
 	}
 	return result;
 }
