@@ -132,8 +132,8 @@
   </div>
 
   {#if showCreate}
-    <div class="cp-modal-overlay" onclick={() => showCreate = false} role="presentation">
-      <div class="cp-modal" onclick={(e) => e.stopPropagation()} role="dialog">
+    <div class="cp-modal-overlay" onclick={() => showCreate = false} onkeydown={(e) => { if (e.key === 'Escape') showCreate = false; }} role="presentation">
+      <div class="cp-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
         <div class="cp-modal-header">
           <h2>Create a community</h2>
           <button class="cp-modal-close" onclick={() => showCreate = false} aria-label="Close">
@@ -318,7 +318,7 @@
   .cp-card-name { font-weight: 600; font-size: 18px; margin-bottom: 4px; }
   .cp-card-cat { font-size: 14px; color: var(--cp-t3); }
   .cp-role { color: var(--cp-gold); font-weight: 500; }
-  .cp-card-desc { font-size: 15px; color: var(--cp-t2); line-height: 1.55; margin: 0 0 18px; flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .cp-card-desc { font-size: 15px; color: var(--cp-t2); line-height: 1.55; margin: 0 0 18px; flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
   .cp-card-bottom { display: flex; align-items: center; justify-content: space-between; }
   .cp-card-stats { display: flex; align-items: center; gap: 14px; }
   .cp-card-stats span { font-size: 15px; color: var(--cp-t3); display: flex; align-items: center; gap: 5px; }

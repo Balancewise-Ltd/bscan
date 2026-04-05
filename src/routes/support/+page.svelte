@@ -276,7 +276,7 @@
         {#if ticket.status !== 'resolved'}
           <div class="sp-input-bar">
             <textarea class="sp-input" bind:value={ticketReply} placeholder="Reply to your ticket..." rows={1} onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTicketReply(); } }}></textarea>
-            <button class="sp-send" onclick={sendTicketReply} disabled={!ticketReply.trim() || ticketSending}>
+            <button class="sp-send" aria-label="Send reply" onclick={sendTicketReply} disabled={!ticketReply.trim() || ticketSending}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
@@ -382,6 +382,7 @@
         ></textarea>
         <button
           class="sp-send"
+          aria-label="Send message"
           onclick={() => sessionId ? send() : startSession()}
           disabled={!input.trim() || loading || sending}
         >

@@ -45,7 +45,7 @@
 {/if}
 
 <ErrorBoundary>
-	<main class="page" id="main-content" role="main">
+	<main class="page" id="main-content">
 		{@render children()}
 	</main>
 </ErrorBoundary>

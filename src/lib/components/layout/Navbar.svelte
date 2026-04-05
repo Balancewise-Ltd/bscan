@@ -60,10 +60,11 @@
       </button>
 
       {#if toolsOpen}
-        <div class="tools-dropdown" onclick={(e) => e.stopPropagation()}>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="tools-dropdown" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="menu" tabindex="-1">
           {#each tools as tool}
             <a href={tool.href} class="tools-item" class:active={$page.url.pathname === tool.href} onclick={closeTools}>
-              <span class="tools-icon"><svelte:component this={tool.icon} size={18} strokeWidth={1.8} /></span>
+              <span class="tools-icon"><tool.icon size={18} strokeWidth={1.8} /></span>
               <div>
                 <div class="tools-label">{tool.label}</div>
                 <div class="tools-desc">{tool.desc}</div>
@@ -122,7 +123,7 @@
   <div class="mobile-menu">
     {#each mobileLinks as link}
       <a href={link.href} class="mobile-item" onclick={() => ui.closeMobileMenu()}>
-        <span class="mobile-icon"><svelte:component this={link.icon} size={18} strokeWidth={1.8} /></span>
+        <span class="mobile-icon"><link.icon size={18} strokeWidth={1.8} /></span>
         <span>{link.label}</span>
         <span class="mobile-arrow">›</span>
       </a>
@@ -163,7 +164,6 @@
   .nav-link.active { color: var(--clr-blue); background: var(--clr-blue-dim); }
 
   .nav-wisers { font-weight: 600; }
-  .nav-wisers.active { color: var(--clr-gold); background: rgba(245, 166, 35, 0.08); }
 
   /* Tools Dropdown */
   .nav-dropdown { position: relative; }
@@ -191,20 +191,6 @@
   .tools-footer a { font-size: 11px; color: var(--clr-text-muted); text-decoration: none; }
   .tools-footer a:hover { color: var(--clr-gold); }
 
-  /* Icon Button */
-  .nav-icon-btn {
-    position: relative; display: flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px; border-radius: 50%;
-    color: var(--clr-text-secondary); text-decoration: none;
-    transition: all 0.1s;
-  }
-  .nav-icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--clr-text-primary); }
-  .notif-badge {
-    position: absolute; top: 1px; right: 0; font-size: 9px; font-weight: 800;
-    background: var(--clr-gold); color: #000; padding: 0 4px;
-    border-radius: 99px; min-width: 14px; text-align: center; line-height: 14px;
-  }
-
   .nav-account { color: var(--clr-gold) !important; margin-left: 2px; }
   .account-avatar {
     display: inline-flex; width: 28px; height: 28px; border-radius: 50%;
@@ -224,7 +210,7 @@
 
   @media (max-width: 768px) {
     .navbar { padding: 0 var(--space-md); }
-    .nav-dropdown, .nav-wisers, .nav-cta, .nav-icon-btn { display: none; }
+    .nav-dropdown, .nav-wisers { display: none; }
     .mobile-toggle { display: flex; }
     .mobile-backdrop {
       display: block; position: fixed; inset: 0; z-index: 98;

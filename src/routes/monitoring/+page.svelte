@@ -118,7 +118,7 @@
 		"applicationCategory": "Monitoring Tool",
 		"description": "Automated website monitoring with hourly checks. Receive email and push alerts when your site health score drops below threshold.",
 		"operatingSystem": "All",
-		"offers": { "@type": "Offer", "price": "9.00", "priceCurrency": "GBP", "description": "Pro plan — £9/month" }
+		"offers": { "@type": "Offer", "price": "9.00", "priceCurrency": "GBP", "description": "Starter plan — £9/month" }
 	}}
 />
 

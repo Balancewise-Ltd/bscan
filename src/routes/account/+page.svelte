@@ -4,7 +4,7 @@
 	import { auth } from '$lib/stores/auth';
 	import { ui } from '$lib/stores/ui';
 	import { formatDate, scoreColor } from '$lib/utils/score';
-	import { safeFaviconUrl, safeGetStorage, safeSetStorage, safeRedirect, isValidEmail } from '$lib/utils/security';
+	import { safeFaviconUrl, safeGetStorage, safeSetStorage, safeRemoveStorage, safeRedirect, isValidEmail } from '$lib/utils/security';
 	import * as api from '$lib/api/client';
 	import type { ScanResult } from '$lib/types';
 	import Seo from '$lib/components/ui/Seo.svelte';
@@ -71,7 +71,7 @@
 	let claimMsg = $state('');
 
 	// ── Dashboard tabs ───────────────────────────────────
-	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'api-keys' | 'security' | 'branding' | 'reports' | 'api-usage';
+	type Tab = 'overview' | 'profile' | 'billing' | 'history' | 'security' | 'branding' | 'reports';
 	let activeTab = $state<Tab>('overview');
 
 	// ── Profile state ────────────────────────────────────
@@ -1348,10 +1348,8 @@
 		{ key: 'profile', label: 'Profile', icon: User },
 		{ key: 'billing', label: 'Billing', icon: CreditCard },
 		{ key: 'history', label: 'History', icon: ClipboardList },
-		{ key: 'api-keys', label: 'API Keys', icon: Key, show: () => isPaid },
 		{ key: 'branding', label: 'Branding', icon: Palette, show: () => isAgency },
 		{ key: 'reports', label: 'Reports', icon: Target },
-		{ key: 'api-usage', label: 'API Usage', icon: BarChart3, show: () => isPaid },
 		{ key: 'security', label: 'Security', icon: ShieldCheck },
 	];
 </script>
@@ -1768,7 +1766,7 @@
 		<aside class="sidebar">
 			<!-- Avatar / Upload -->
 			<div class="sidebar-avatar-wrap">
-				<div class="sidebar-avatar" role="button" tabindex="0" aria-label="Change avatar" onclick={() => document.getElementById('avatar-upload')?.click()}>
+				<div class="sidebar-avatar" role="button" tabindex="0" aria-label="Change avatar" onclick={() => document.getElementById('avatar-upload')?.click()} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('avatar-upload')?.click(); } }}>
 					{#if avatarUrl || user.avatar_url}
 						<img src={avatarUrl || user.avatar_url} alt="Avatar" class="avatar-img" />
 					{:else}
@@ -1817,7 +1815,7 @@
 								class:active={activeTab === tab.key}
 								onclick={() => activeTab = tab.key}
 							>
-								<span class="sidebar-icon"><svelte:component this={tab.icon} size={16} strokeWidth={1.8} /></span>
+								<span class="sidebar-icon"><tab.icon size={16} strokeWidth={1.8} /></span>
 								<span class="sidebar-label">{tab.label}</span>
 							</button>
 						{/if}
@@ -1911,8 +1909,8 @@
 						<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
 							<Gift size={22} strokeWidth={1.8} color="var(--clr-gold)" />
 							<div>
-								<h3 style="margin: 0; font-size: 14px;">Invite Friends, Get Pro Free</h3>
-								<p class="text-muted" style="font-size: 11px; margin: 2px 0 0;">Refer 3 verified users to earn 1 month Pro</p>
+								<h3 style="margin: 0; font-size: 14px;">Invite Friends, Get Starter Free</h3>
+								<p class="text-muted" style="font-size: 11px; margin: 2px 0 0;">Refer 3 verified users to earn 1 month Starter</p>
 							</div>
 						</div>
 						<div style="background: var(--clr-bg-deep); border-radius: 6px; height: 6px; margin-bottom: 10px; overflow: hidden;">
@@ -2004,9 +2002,9 @@
 						</div>
 						{#if showNameChange}
 							<div style="margin-top: 12px; padding: 12px; background: var(--clr-bg-deep); border-radius: var(--radius-md); border: 1px solid var(--clr-border);">
-								<label class="label" style="margin-bottom: 6px;">New Name</label>
+								<label class="label" for="name-change-input" style="margin-bottom: 6px;">New Name</label>
 								<div style="display: flex; gap: 8px;">
-									<input class="input" type="text" placeholder="Your requested name" bind:value={nameChangeInput} style="flex: 1;" />
+									<input class="input" type="text" id="name-change-input" placeholder="Your requested name" bind:value={nameChangeInput} style="flex: 1;" />
 									<button class="btn btn-gold btn-sm" disabled={nameChangeSending} onclick={requestNameChange}>
 										{#if nameChangeSending}<span class="spinner spinner-sm"></span>{/if} Submit
 									</button>
@@ -2159,10 +2157,10 @@
 							</div>
 							<div class="billing-hero-actions">
 								{#if !isPaid}
-									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro — £9/mo</button>
+									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Starter — £9/mo</button>
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Go Agency — £29/mo</button>
 								{:else if user.billing_type === 'gift'}
-									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Subscribe Pro — £9/mo</button>
+									<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Subscribe Starter — £9/mo</button>
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Subscribe Agency — £29/mo</button>
 								{:else if plan === 'pro'}
 									<button class="btn btn-blue" onclick={() => ui.openCheckout('agency')}>Upgrade to Agency</button>
@@ -2313,7 +2311,7 @@
 							<div style="margin-top: 12px; font-size: 11px; color: var(--clr-gold); font-weight: 700;">✓ Your current plan</div>
 						{:else}
 							<button class="btn btn-gold btn-sm" style="margin-top: 12px; width: 100%;" onclick={(e) => { e.stopPropagation(); ui.openCheckout('pro'); }}>
-								{#if plan === 'agency'}Switch to Pro{:else}Upgrade to Pro{/if}
+								{#if plan === 'agency'}Switch to Starter{:else}Upgrade to Starter{/if}
 							</button>
 						{/if}
 					</div>
@@ -2363,7 +2361,7 @@
 				{#if !isPaid}
 					<div class="upgrade-banner">
 						<span><ShieldCheck size={16} strokeWidth={1.8} /></span>
-						<span>Scan history is a Pro feature. <button class="toggle-link" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro →</button></span>
+						<span>Scan history is a Starter feature. <button class="toggle-link" onclick={() => ui.openCheckout('pro')}>Upgrade to Starter →</button></span>
 					</div>
 				{/if}
 
@@ -2397,7 +2395,7 @@
 												try { await api.downloadPdf(s.id, `bscan-${getDomain(s.url)}.pdf`); } catch {}
 											}}>📄 PDF</button>
 										{:else}
-											<button class="btn btn-ghost btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download professional audit reports. Upgrade to Pro to unlock.')}><ShieldCheck size={12} strokeWidth={2} /> PDF</button>
+											<button class="btn btn-ghost btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download professional audit reports. Upgrade to Starter to unlock.')}><ShieldCheck size={12} strokeWidth={2} /> PDF</button>
 										{/if}
 									{/if}
 								</div>
@@ -2409,147 +2407,6 @@
 							<button class="btn btn-outline" disabled={historyLoading} onclick={loadMoreHistory}>
 								{#if historyLoading}<span class="spinner spinner-sm"></span>{/if} Load More
 							</button>
-						</div>
-					{/if}
-				{/if}
-			</div>
-		{/if}
-
-		<!-- ── API KEYS TAB ─────────────────────── -->
-		{#if activeTab === 'api-keys'}
-			<div class="tab-content animate-fade-up">
-				<h3 style="margin-bottom: 20px;">API Keys</h3>
-
-				<div class="card" style="margin-bottom: 20px;">
-					<div class="card-header">
-						<span>➕</span>
-						<span style="font-weight: 700; font-size: 14px;">Create New Key</span>
-					</div>
-					<div class="card-body">
-						<div style="display: flex; gap: 8px;">
-							<input class="input" type="text" placeholder="Key name (e.g. Production)" bind:value={newKeyName} onkeydown={(e) => e.key === 'Enter' && createKey()} style="flex: 1;" />
-							<button class="btn btn-gold" onclick={createKey}>Create</button>
-						</div>
-						{#if newKeyResult}
-							<div class="key-reveal">
-								<div class="text-muted" style="font-size: 11px; margin-bottom: 4px;">Your new API key (copy it now — it won't be shown again):</div>
-								<code class="key-code">{newKeyResult}</code>
-								<button class="btn btn-outline btn-sm" style="margin-top: 8px;" onclick={() => { navigator.clipboard.writeText(newKeyResult || ''); }}>Copy</button>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<div class="card">
-					<div class="card-header">
-						<span><Key size={16} strokeWidth={1.8} /></span>
-						<span style="font-weight: 700; font-size: 14px;">Active Keys</span>
-					</div>
-					<div class="card-body" style="padding: 0;">
-						{#if apiKeys.length === 0}
-							<div class="empty-state"><p class="text-muted">No API keys yet.</p></div>
-						{:else}
-							{#each apiKeys as key}
-								<div class="key-row">
-									<div>
-										<div style="font-weight: 600; font-size: 13px;">{key.name || 'Unnamed'}</div>
-										<div class="text-muted font-mono" style="font-size: 11px;">{key.prefix || key.id}...</div>
-									</div>
-									<button class="btn btn-ghost btn-sm" style="color: var(--clr-danger);" onclick={() => revokeKey(key.id)}>Revoke</button>
-								</div>
-							{/each}
-						{/if}
-					</div>
-				</div>
-			</div>
-		{/if}
-
-		<!-- ── API USAGE TAB ───────────────────── -->
-		{#if activeTab === 'api-usage'}
-			<div class="tab-content animate-fade-up">
-				<h3 style="margin-bottom: 20px;">API Usage</h3>
-
-				{#if apiUsageLoading}
-					<div style="padding: 48px; text-align: center;"><span class="spinner"></span></div>
-				{:else if !apiUsage}
-					<div style="text-align: center; padding: 24px;">
-						<button class="btn btn-gold" onclick={loadApiUsage}>Load Usage Data</button>
-					</div>
-				{:else}
-					<!-- Usage Summary -->
-					<div class="api-usage-grid">
-						<div class="api-stat"><div class="api-stat-val">{apiUsage.credits_used ?? 0}</div><div class="api-stat-lbl">Credits Used</div></div>
-						<div class="api-stat"><div class="api-stat-val">{apiUsage.credits_remaining ?? 0}</div><div class="api-stat-lbl">Remaining</div></div>
-						<div class="api-stat"><div class="api-stat-val">{apiUsage.plan || '—'}</div><div class="api-stat-lbl">Plan</div></div>
-						<div class="api-stat"><div class="api-stat-val">{apiUsage.days_left ?? '—'}</div><div class="api-stat-lbl">Days Left</div></div>
-					</div>
-
-					<!-- Usage History (bar chart) -->
-					{#if apiUsageHistory.length > 0}
-						<div class="card" style="margin-bottom: 16px;">
-							<div class="card-header">
-								<span><BarChart3 size={14} strokeWidth={2} /></span>
-								<span style="font-weight: 700; font-size: 13px;">Daily Usage (Last 30 Days)</span>
-							</div>
-							<div class="card-body">
-								<div class="api-chart">
-									{#each apiUsageHistory as d}
-										{@const maxCredits = Math.max(...apiUsageHistory.map((x: any) => x.credits || 0), 1)}
-										<div class="api-chart-bar" title="{d.date}: {d.credits} credits">
-											<div class="api-chart-fill" style="height: {((d.credits || 0) / maxCredits) * 100}%;"></div>
-										</div>
-									{/each}
-								</div>
-							</div>
-						</div>
-					{/if}
-
-					<!-- Monthly Breakdown -->
-					{#if apiUsageMonthly.length > 0}
-						<div class="card" style="margin-bottom: 16px;">
-							<div class="card-header">
-								<span>📅</span>
-								<span style="font-weight: 700; font-size: 13px;">Monthly Breakdown</span>
-							</div>
-							<div class="card-body" style="padding: 0;">
-								{#each apiUsageMonthly as m}
-									<div class="api-month-row">
-										<span class="api-month-label">{m.month || m.period || '—'}</span>
-										<span class="api-month-val">{m.credits ?? m.total ?? 0} credits</span>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<!-- API Call Logs -->
-					{#if apiUsageLogs.length > 0}
-						<div class="card">
-							<div class="card-header">
-								<span>📋</span>
-								<span style="font-weight: 700; font-size: 13px;">Recent API Calls</span>
-							</div>
-							<div class="card-body" style="padding: 0;">
-								<div class="api-log-header">
-									<span>Endpoint</span>
-									<span>Method</span>
-									<span>Status</span>
-									<span>Credits</span>
-									<span>Date</span>
-								</div>
-								{#each apiUsageLogs as log}
-									<div class="api-log-row">
-										<span class="api-log-endpoint font-mono">{log.endpoint || log.path || '—'}</span>
-										<span class="api-log-method">{log.method || '—'}</span>
-										<span class="api-log-status" class:api-ok={log.status < 400} class:api-err={log.status >= 400}>{log.status || '—'}</span>
-										<span>{log.credits ?? 0}</span>
-										<span class="text-muted">{log.created_at ? new Date(log.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>
-									</div>
-								{/each}
-								<div style="padding: 12px; text-align: center;">
-									<button class="btn btn-ghost btn-sm" onclick={loadMoreLogs}>Load More</button>
-								</div>
-							</div>
 						</div>
 					{/if}
 				{/if}
@@ -2799,12 +2656,7 @@
 						{:else}
 							<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">Choose which notifications you receive.</p>
 							{#each [
-								{ key: 'likes', label: 'Likes', desc: 'When someone likes your post' },
-								{ key: 'comments', label: 'Comments', desc: 'When someone comments on your post' },
-								{ key: 'follows', label: 'Follows', desc: 'When someone follows you' },
-								{ key: 'dms', label: 'Messages', desc: 'Direct message notifications' },
-								{ key: 'mentions', label: 'Mentions', desc: 'When someone mentions you' },
-								{ key: 'community', label: 'Community', desc: 'Community updates and announcements' },
+								{ key: 'push', label: 'Push Notifications', desc: 'Monitoring alerts and downtime notifications' },
 								{ key: 'digest', label: 'Weekly Digest', desc: 'Weekly summary email' },
 							] as item}
 								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
@@ -2952,62 +2804,6 @@
 					</div>
 				</div>
 
-				<!-- Blocked Users -->
-				<div class="card" style="margin-top: 20px;">
-					<div class="card-header">
-						<span>&#x1F6AB;</span>
-						<span style="font-weight: 700; font-size: 14px;">Blocked Users</span>
-					</div>
-					<div class="card-body">
-						{#if blockedLoading}
-							<p class="text-muted" style="font-size: 12px;">Loading...</p>
-						{:else if blockedUsers.length === 0}
-							<p class="text-muted" style="font-size: 12px;">No blocked users</p>
-						{:else}
-							{#each blockedUsers as u}
-								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<div style="width: 32px; height: 32px; border-radius: 50%; background: var(--clr-bg-secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">{(u.display_name || u.username || '?')[0].toUpperCase()}</div>
-										<div>
-											<p style="font-size: 13px; font-weight: 600;">@{u.username}</p>
-											{#if u.display_name}<p class="text-muted" style="font-size: 11px;">{u.display_name}</p>{/if}
-										</div>
-									</div>
-									<button class="btn btn-outline btn-sm" onclick={() => handleUnblock(u.username)}>Unblock</button>
-								</div>
-							{/each}
-						{/if}
-					</div>
-				</div>
-
-				<!-- Muted Users -->
-				<div class="card" style="margin-top: 20px;">
-					<div class="card-header">
-						<span>&#x1F507;</span>
-						<span style="font-weight: 700; font-size: 14px;">Muted Users</span>
-					</div>
-					<div class="card-body">
-						{#if mutedLoading}
-							<p class="text-muted" style="font-size: 12px;">Loading...</p>
-						{:else if mutedUsers.length === 0}
-							<p class="text-muted" style="font-size: 12px;">No muted users</p>
-						{:else}
-							{#each mutedUsers as u}
-								<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--clr-border);">
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<div style="width: 32px; height: 32px; border-radius: 50%; background: var(--clr-bg-secondary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">{(u.display_name || u.username || '?')[0].toUpperCase()}</div>
-										<div>
-											<p style="font-size: 13px; font-weight: 600;">@{u.username}</p>
-											{#if u.display_name}<p class="text-muted" style="font-size: 11px;">{u.display_name}</p>{/if}
-										</div>
-									</div>
-									<button class="btn btn-outline btn-sm" onclick={() => handleUnmute(u.username)}>Unmute</button>
-								</div>
-							{/each}
-						{/if}
-					</div>
-				</div>
-
 				<!-- Active Sessions -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
@@ -3073,80 +2869,6 @@
 					</div>
 				</div>
 
-				<!-- E2E Key Backup -->
-				<div class="card" style="margin-top: 20px;">
-					<div class="card-header">
-						<span>&#x1F512;</span>
-						<span style="font-weight: 700; font-size: 14px;">Message Encryption Key</span>
-					</div>
-					<div class="card-body">
-						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px; line-height: 1.6;">
-							Your messages are end-to-end encrypted. Back up your key to restore encrypted messages on a new device.
-							{#if e2eHasKey}<span style="color: var(--clr-success); font-weight: 600;"> Key active on this device.</span>{:else}<span style="color: var(--clr-danger); font-weight: 600;"> No key on this device.</span>{/if}
-						</p>
-						{#if e2eHasKey}
-							<div style="margin-bottom: 12px;">
-								<label class="label" for="e2e-backup-pw" style="font-size: 11px; margin-bottom: 4px;">Backup passphrase (min 8 chars)</label>
-								<input class="input" type="password" id="e2e-backup-pw" placeholder="Enter a strong passphrase..." bind:value={e2eBackupPassphrase} />
-							</div>
-							{#if e2eBackupError}<div class="msg-error" style="margin-bottom: 8px;">{e2eBackupError}</div>{/if}
-							{#if e2eBackupMsg}<div class="msg-success" style="margin-bottom: 8px;">{e2eBackupMsg}</div>{/if}
-							<div style="display: flex; gap: 8px;">
-								<button class="btn btn-gold btn-sm" disabled={e2eBackupLoading} onclick={backupE2EKey}>
-									{#if e2eBackupLoading}Backing up...{:else}Backup Key{/if}
-								</button>
-								{#if e2eHasBackup}
-									<button class="btn btn-outline btn-sm" style="color: var(--clr-danger); border-color: rgba(239,68,68,0.3);" onclick={deleteE2EBackup}>Delete Backup</button>
-								{/if}
-							</div>
-						{:else}
-							<div style="margin-bottom: 12px;">
-								<label class="label" for="e2e-restore-pw" style="font-size: 11px; margin-bottom: 4px;">Backup passphrase</label>
-								<input class="input" type="password" id="e2e-restore-pw" placeholder="Enter your backup passphrase..." bind:value={e2eRestorePassphrase} />
-							</div>
-							{#if e2eRestoreError}<div class="msg-error" style="margin-bottom: 8px;">{e2eRestoreError}</div>{/if}
-							{#if e2eRestoreMsg}<div class="msg-success" style="margin-bottom: 8px;">{e2eRestoreMsg}</div>{/if}
-							<button class="btn btn-gold btn-sm" disabled={e2eRestoreLoading} onclick={restoreE2EKey}>
-								{#if e2eRestoreLoading}Restoring...{:else}Restore Key from Backup{/if}
-							</button>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Content Appeals -->
-				<div class="card" style="margin-top: 20px;">
-					<div class="card-header">
-						<span>&#x2696;</span>
-						<span style="font-weight: 700; font-size: 14px;">Content Appeals</span>
-					</div>
-					<div class="card-body">
-						<p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">If content was removed by moderation, you can appeal here. Under the UK Online Safety Act, you have the right to appeal content decisions.</p>
-						{#if appealsLoading}
-							<p class="text-muted" style="font-size: 12px;">Loading appeals...</p>
-						{:else if appeals.length === 0}
-							<p class="text-muted" style="font-size: 12px;">No appeals submitted.</p>
-						{:else}
-							<div style="max-height: 250px; overflow-y: auto;">
-								{#each appeals as a}
-									<div style="padding: 10px 0; border-bottom: 1px solid var(--clr-border);">
-										<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-											<span style="font-size: 12px; font-weight: 600;">{a.content_type} #{a.content_id}</span>
-											<span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
-												background: {a.status === 'pending' ? 'rgba(245,166,35,0.1)' : a.status === 'approved' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};
-												color: {a.status === 'pending' ? 'var(--clr-warning)' : a.status === 'approved' ? 'var(--clr-success)' : 'var(--clr-danger)'};">
-												{a.status}
-											</span>
-										</div>
-										<p class="text-muted" style="font-size: 11px; line-height: 1.5;">{a.reason}</p>
-										{#if a.admin_notes}<p style="font-size: 11px; color: var(--clr-text-secondary); margin-top: 4px;">Admin: {a.admin_notes}</p>{/if}
-										<p class="text-muted" style="font-size: 10px; margin-top: 4px;">{new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-
 				<!-- GDPR — Your Data -->
 				<div class="card" style="margin-top: 20px;">
 					<div class="card-header">
@@ -3179,51 +2901,6 @@
 								{/each}
 							{/if}
 						</div>
-					</div>
-				</div>
-
-				<!-- ID Verification -->
-				<div class="card" style="margin-top: 20px;">
-					<div class="card-header">
-						<span>&#x1F4CB;</span>
-						<span style="font-weight: 700; font-size: 14px;">Identity Verification</span>
-					</div>
-					<div class="card-body">
-						{#if idVerifLoading}
-							<p class="text-muted" style="font-size: 12px;">Loading...</p>
-						{:else if idVerifStatus?.status === 'verified'}
-							<div style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(16,185,129,0.08); border-radius: 8px; border: 1px solid rgba(16,185,129,0.2);">
-								<span style="font-size: 18px;">&#x2705;</span>
-								<div>
-									<p style="font-size: 13px; font-weight: 600; color: var(--clr-success);">Identity Verified</p>
-									<p class="text-muted" style="font-size: 11px;">Your identity has been confirmed</p>
-								</div>
-							</div>
-						{:else if idVerifStatus?.status === 'pending'}
-							<div style="display: flex; align-items: center; gap: 8px; padding: 12px; background: rgba(245,166,35,0.08); border-radius: 8px; border: 1px solid rgba(245,166,35,0.2);">
-								<span style="font-size: 18px;">&#x23F3;</span>
-								<div>
-									<p style="font-size: 13px; font-weight: 600; color: var(--clr-warning);">Verification Pending</p>
-									<p class="text-muted" style="font-size: 11px;">Your submission is being reviewed</p>
-								</div>
-							</div>
-						{:else}
-							<p class="text-muted" style="font-size: 12px; line-height: 1.6; margin-bottom: 12px;">Verify your identity to unlock trust badges and higher limits. Upload a government-issued ID.</p>
-							{#if idVerifError}<div class="msg-error" style="margin-bottom: 8px; font-size: 12px;">{idVerifError}</div>{/if}
-							{#if idVerifMsg}<div class="msg-success" style="margin-bottom: 8px; font-size: 12px;">{idVerifMsg}</div>{/if}
-							<div style="display: flex; flex-direction: column; gap: 10px;">
-								<input class="input" type="text" placeholder="Full legal name" bind:value={idVerifFullName} />
-								<select class="input" bind:value={idVerifDocType}>
-									<option value="passport">Passport</option>
-									<option value="driving_license">Driving License</option>
-									<option value="national_id">National ID Card</option>
-								</select>
-								<input class="input" type="url" placeholder="Document image URL (upload to R2 first)" bind:value={idVerifDocUrl} />
-								<button class="btn btn-primary btn-sm" disabled={idVerifSubmitting} onclick={submitIdVerification}>
-									{idVerifSubmitting ? 'Submitting...' : 'Submit Verification'}
-								</button>
-							</div>
-						{/if}
 					</div>
 				</div>
 
@@ -3467,7 +3144,7 @@
 	.big-action-icon { font-size: 36px; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
 	.big-action-text { min-width: 0; }
 	.big-action-text h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; }
-	.big-action-text p { font-size: 11px; opacity: 0.8; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+	.big-action-text p { font-size: 11px; opacity: 0.8; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 	.action-scan { background: linear-gradient(135deg, #1e40af, #3b82f6); }
 	.action-compare { background: linear-gradient(135deg, #065f46, #10b981); }
 	.action-seo { background: linear-gradient(135deg, #92400e, #f59e0b); }
@@ -3593,7 +3270,7 @@
 		.big-action-card { padding: 14px; min-height: 80px; }
 		.big-action-icon { font-size: 28px; }
 		.big-action-text h3 { font-size: 14px; }
-		.big-action-text p { font-size: 10px; -webkit-line-clamp: 1; }
+		.big-action-text p { font-size: 10px; -webkit-line-clamp: 1; line-clamp: 1; }
 	}
 	@media (max-width: 640px) {
 		.form-grid { grid-template-columns: 1fr; }

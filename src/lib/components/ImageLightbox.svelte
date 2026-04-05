@@ -73,7 +73,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="lb-wrap" onclick={handleBackdropClick}
   ontouchstart={handleTouchStart} ontouchmove={handleTouchMove} ontouchend={handleTouchEnd}
-  onwheel={handleWheel} role="dialog" aria-modal="true" aria-label="Image viewer">
+  onwheel={handleWheel} role="dialog" aria-modal="true" aria-label="Image viewer" tabindex="-1">
   <button class="lb-close" onclick={onclose} aria-label="Close">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>

@@ -15,7 +15,7 @@ export const PLAN_PRICING: Record<'pro' | 'agency', PlanPricing> = {
 export const PLAN_LIMITS: Record<Plan, { scans: number; label: string }> = {
 	guest: { scans: 3, label: 'Free' },
 	free: { scans: 3, label: 'Free' },
-	pro: { scans: 30, label: 'Pro' },
+	pro: { scans: 30, label: 'Starter' },
 	agency: { scans: Infinity, label: 'Agency' }
 };
 
@@ -198,6 +198,7 @@ export interface ScanResult {
 	security_score: number;
 	mobile_score: number;
 	links_score: number;
+	status?: 'running' | 'completed' | 'failed';
 	summary?: string;
 	issues: ScanIssue[];
 	enrichment: Enrichment;

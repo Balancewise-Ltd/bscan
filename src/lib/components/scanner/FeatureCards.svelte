@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { sanitize } from '$lib/utils/security';
-	import type { ScanResult } from '$lib/types';
+	import type { ScanResult, BusinessIntel, ConsumerIntel, Benchmarks } from '$lib/types';
 
 	interface Props {
 		scanData: ScanResult;
@@ -16,12 +16,12 @@
 	}
 
 	// ── Feature card definitions ──────────────────────────
-	const bi = $derived(scanData.business_intel || {});
-	const ci = $derived(scanData.consumer_intel || {});
-	const bench = $derived(scanData.benchmarks || {});
-	const ux = $derived(bench?.ux_patterns || {});
-	const industry = $derived(bench?.industry || {});
-	const kw = $derived(bi?.keywords || {});
+	const bi = $derived<BusinessIntel>(scanData.business_intel || {});
+	const ci = $derived<ConsumerIntel>(scanData.consumer_intel || {});
+	const bench = $derived<Benchmarks>(scanData.benchmarks || {});
+	const ux = $derived<NonNullable<Benchmarks['ux_patterns']>>(bench?.ux_patterns || {} as NonNullable<Benchmarks['ux_patterns']>);
+	const industry = $derived<NonNullable<Benchmarks['industry']>>(bench?.industry || {} as NonNullable<Benchmarks['industry']>);
+	const kw = $derived<NonNullable<BusinessIntel['keywords']>>(bi?.keywords || {} as NonNullable<BusinessIntel['keywords']>);
 
 	const features = $derived([
 		{
@@ -102,7 +102,7 @@
 					{:else if openPanel === 'benchmarks'}
 						<p>See how this site ranks against others in its industry. Percentile scores, industry averages, and recommendations.</p>
 					{/if}
-					<a href="/pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
+					<a href="/pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Starter — £9/mo</a>
 				</div>
 
 			{:else if openPanel === 'business_intel'}
@@ -122,7 +122,7 @@
 						<span class="detail-icon">{sec.icon}</span>
 						<div>
 							<strong>{sec.title}</strong><br>
-							<span class="text-secondary">{sanitize(sec.render(bi[sec.key]))}</span>
+							<span class="text-secondary">{sanitize(sec.render((bi as Record<string, any>)[sec.key]))}</span>
 						</div>
 					</div>
 				{/each}
@@ -144,7 +144,7 @@
 						<span class="detail-icon">{sec.icon}</span>
 						<div>
 							<strong>{sec.title}</strong><br>
-							<span class="text-secondary">{sanitize(sec.render(ci[sec.key]))}</span>
+							<span class="text-secondary">{sanitize(sec.render((ci as Record<string, any>)[sec.key]))}</span>
 						</div>
 					</div>
 				{/each}
@@ -178,7 +178,7 @@
 					<div class="kw-group-title" style="margin-top: 12px;">TOP KEYWORDS</div>
 					<div class="ux-tags">
 						{#each kw.top_words as w}
-							{@const word = typeof w === 'string' ? w : (w.word || w)}
+							{@const word = typeof w === 'string' ? w : ((w as any).word || w)}
 							<span class="kw-word-tag">{sanitize(word)}</span>
 						{/each}
 					</div>

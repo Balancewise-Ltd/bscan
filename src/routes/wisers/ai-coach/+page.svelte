@@ -119,7 +119,7 @@
 
       const aiMsg: ChatMessage = {
         role: 'assistant',
-        content: data.reply || data.response || data.message || 'I received your message. Let me help you with your wealth-building journey.',
+        content: data.reply || 'I received your message. Let me help you with your wealth-building journey.',
         timestamp: Date.now()
       };
 
@@ -206,7 +206,7 @@
 <div class="coach-page" data-wisers-theme={theme}>
   <!-- Header -->
   <header class="coach-header">
-    <button class="back-btn" onclick={() => goto('/wisers')}>
+    <button class="back-btn" aria-label="Back to feed" onclick={() => goto('/wisers')}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 12H5M12 19l-7-7 7-7"/>
       </svg>
@@ -316,6 +316,7 @@
       ></textarea>
       <button
         class="send-btn"
+        aria-label="Send message"
         onclick={handleSend}
         disabled={!inputValue.trim() || loading}
       >

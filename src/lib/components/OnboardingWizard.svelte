@@ -145,10 +145,10 @@
         <div class="ob-icon">W</div>
         <h2>Welcome to Wisers</h2>
         <p class="ob-subtitle">The social platform for wealth builders. Let's set up your profile.</p>
-        <label class="ob-label">Choose your username</label>
+        <label class="ob-label" for="ob-username">Choose your username</label>
         <div class="ob-input-wrap">
           <span class="ob-at">@</span>
-          <input type="text" class="ob-input" placeholder="username" bind:value={username} oninput={onUsernameInput} maxlength="30" />
+          <input id="ob-username" type="text" class="ob-input" placeholder="username" bind:value={username} oninput={onUsernameInput} maxlength="30" />
           {#if usernameChecking}
             <span class="ob-check loading">...</span>
           {:else if usernameOk === true}
@@ -171,8 +171,8 @@
       <div class="ob-step">
         <h2>When's your birthday?</h2>
         <p class="ob-subtitle">This won't be shown publicly. We need this to make sure you're old enough to use Wisers.</p>
-        <label class="ob-label">Date of birth</label>
-        <input type="date" class="ob-input ob-date-input" bind:value={dob} max={new Date().toISOString().split('T')[0]} style="color-scheme:dark" />
+        <label class="ob-label" for="ob-dob">Date of birth</label>
+        <input id="ob-dob" type="date" class="ob-input ob-date-input" bind:value={dob} max={new Date().toISOString().split('T')[0]} style="color-scheme:dark" />
         {#if error}<p class="ob-error">{error}</p>{/if}
         <button class="ob-btn" onclick={saveDob} disabled={saving || !dob}>
           {saving ? 'Saving...' : 'Continue'}
@@ -208,8 +208,8 @@
         <h2>Tell us about yourself</h2>
         <p class="ob-subtitle">What are you building? What are your goals?</p>
         <textarea class="ob-textarea" placeholder="I'm building..." bind:value={bio} maxlength="500"></textarea>
-        <label class="ob-label">What interests you?</label>
-        <div class="ob-tags">
+        <span class="ob-label" id="ob-interests-label">What interests you?</span>
+        <div class="ob-tags" role="group" aria-labelledby="ob-interests-label">
           {#each categories as cat}
             <button class="ob-tag" class:active={interests.has(cat)} onclick={() => toggleInterest(cat)}>{cat}</button>
           {/each}

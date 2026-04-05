@@ -83,7 +83,7 @@
 						<div class="rate-limit">3 requests/month</div>
 					</div>
 					<div class="rate-item">
-						<div class="rate-plan">Pro</div>
+						<div class="rate-plan">Starter</div>
 						<div class="rate-limit">30 requests/month</div>
 					</div>
 					<div class="rate-item">

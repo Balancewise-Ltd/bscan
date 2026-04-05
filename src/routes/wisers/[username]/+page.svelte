@@ -73,7 +73,7 @@
           try { followStatus = await api.getFollowStatus(username); } catch {}
         }
       }
-      try { posts = ((await api.getUserPosts(username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
+      try { posts = ((await api.getUserPosts(username)).posts || []).map((p: any) => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
     } catch (e: any) { error = e.message || 'User not found'; }
     loading = false;
     // Load journey + communities
@@ -112,7 +112,7 @@
       const data: any = { title: entryForm.title, description: entryForm.description || undefined, entry_type: entryForm.entry_type };
       if (entryForm.metric_name) { data.metric_name = entryForm.metric_name; data.metric_value = parseFloat(entryForm.metric_value) || 0; data.metric_unit = entryForm.metric_unit; }
       await api.addJourneyEntry(data);
-      journeyData = await api.getJourney($page.params.username);
+      journeyData = await api.getJourney($page.params.username!);
       showEntryForm = false;
       entryForm = { title: '', description: '', entry_type: 'milestone', metric_name: '', metric_value: '', metric_unit: '' };
     } catch {}
@@ -123,7 +123,7 @@
     journeySaving = true;
     try {
       await api.addJourneyGoal({ title: goalForm.title, target_value: parseFloat(goalForm.target_value) || undefined, unit: goalForm.unit || undefined, deadline: goalForm.deadline || undefined });
-      journeyData = await api.getJourney($page.params.username);
+      journeyData = await api.getJourney($page.params.username!);
       showGoalForm = false;
       goalForm = { title: '', target_value: '', unit: '', deadline: '' };
     } catch {}
@@ -131,12 +131,12 @@
   }
   async function deleteEntry(entryId: number) {
     if (!confirm('Delete this entry?')) return;
-    try { await api.deleteJourneyEntry(entryId); journeyData = await api.getJourney($page.params.username); } catch {}
+    try { await api.deleteJourneyEntry(entryId); journeyData = await api.getJourney($page.params.username!); } catch {}
   }
   async function saveGoalProgress(goalId: number) {
     const val = parseFloat(editGoalValue);
     if (isNaN(val)) return;
-    try { await api.updateJourneyGoal(goalId, { current_value: val }); journeyData = await api.getJourney($page.params.username); } catch {}
+    try { await api.updateJourneyGoal(goalId, { current_value: val }); journeyData = await api.getJourney($page.params.username!); } catch {}
     editingGoalId = null; editGoalValue = '';
   }
 
@@ -194,7 +194,7 @@
     try {
       await api.createPost('Updated my profile picture', 'text', '', 0, pendingAvatarUrl);
       // Reload posts to include the new one
-      try { posts = ((await api.getUserPosts(profile.username)).posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
+      try { posts = ((await api.getUserPosts(profile.username)).posts || []).map((p: any) => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted })); } catch {}
       showToast('Posted to your feed!', 'success');
     } catch {
       showToast('Could not post to feed', 'error');
@@ -323,7 +323,7 @@
 {:else if profile}
 
   <div class="pr-banner">
-    <a href="/wisers" class="pr-back-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></a>
+    <a href="/wisers" class="pr-back-link" aria-label="Back to Wisers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></a>
   </div>
 
   <div class="pr-wrap">
@@ -337,7 +337,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
             </button>
             {#if showProfileMore}
-              <div class="pr-more-dropdown" onclick={(e) => e.stopPropagation()}>
+              <div class="pr-more-dropdown" role="menu" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
                 <button class="pr-more-item" onclick={() => { navigator.clipboard.writeText(window.location.href); showProfileMore = false; }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                   Copy profile link
@@ -356,7 +356,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
             </button>
             {#if showProfileMore}
-              <div class="pr-more-dropdown" onclick={(e) => e.stopPropagation()}>
+              <div class="pr-more-dropdown" role="menu" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
                 <button class="pr-more-item" onclick={() => { handleMute(); showProfileMore = false; }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
                   Mute @{profile.username}
@@ -390,7 +390,7 @@
 
     {#if editing}
       <!-- Modal overlay (X standard) -->
-      <div class="pr-modal-overlay" onclick={() => editing = false}></div>
+      <div class="pr-modal-overlay" role="button" tabindex="0" aria-label="Close edit profile" onclick={() => editing = false} onkeydown={(e) => { if (e.key === 'Enter') editing = false; }}></div>
       <div class="pr-modal">
         <div class="pr-modal-header">
           <button class="pr-modal-close" onclick={() => editing = false} aria-label="Close">
@@ -402,7 +402,7 @@
         <div class="pr-modal-body">
           <!-- Avatar with camera overlay -->
           <div class="pr-edit-avatar-wrap">
-            <div class="pr-edit-avatar" onclick={() => document.getElementById('avatar-upload')?.click()}>
+            <div class="pr-edit-avatar" role="button" tabindex="0" aria-label="Upload avatar" onclick={() => document.getElementById('avatar-upload')?.click()} onkeydown={(e) => { if (e.key === 'Enter') document.getElementById('avatar-upload')?.click(); }}>
               {#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{:else}<span>{initial(profile.display_name || profile.name)}</span>{/if}
               <div class="pr-edit-avatar-overlay">{avatarUploading ? '...' : '📷'}</div>
             </div>
@@ -410,39 +410,39 @@
           </div>
           <!-- Core fields (X standard: Name, Bio, Location, Website) -->
           <div class="pr-edit-grid">
-            <div class="pr-edit-field"><label>Name</label><input bind:value={editData.display_name} placeholder="Your display name" maxlength="50" /><span class="pr-field-count">{(editData.display_name || '').length}/50</span></div>
-            <div class="pr-edit-field"><label>Headline</label><input bind:value={editData.headline} placeholder="e.g. Full Stack Developer | Founder" maxlength="100" /></div>
-            <div class="pr-edit-field"><label>Bio</label><textarea bind:value={editData.bio} rows="3" placeholder="Tell your story..." maxlength="160"></textarea><span class="pr-field-count">{(editData.bio || '').length}/160</span></div>
-            <div class="pr-edit-field"><label>Company</label><input bind:value={editData.company} placeholder="Where you work" /></div>
-            <div class="pr-edit-field"><label>Website</label><input bind:value={editData.website} placeholder="https://..." /></div>
+            <div class="pr-edit-field"><label for="edit-name">Name</label><input id="edit-name" bind:value={editData.display_name} placeholder="Your display name" maxlength="50" /><span class="pr-field-count">{(editData.display_name || '').length}/50</span></div>
+            <div class="pr-edit-field"><label for="edit-headline">Headline</label><input id="edit-headline" bind:value={editData.headline} placeholder="e.g. Full Stack Developer | Founder" maxlength="100" /></div>
+            <div class="pr-edit-field"><label for="edit-bio">Bio</label><textarea id="edit-bio" bind:value={editData.bio} rows="3" placeholder="Tell your story..." maxlength="160"></textarea><span class="pr-field-count">{(editData.bio || '').length}/160</span></div>
+            <div class="pr-edit-field"><label for="edit-company">Company</label><input id="edit-company" bind:value={editData.company} placeholder="Where you work" /></div>
+            <div class="pr-edit-field"><label for="edit-website">Website</label><input id="edit-website" bind:value={editData.website} placeholder="https://..." /></div>
           </div>
           <!-- Expandable: Professional details -->
           <details class="pr-edit-details">
             <summary>Professional details</summary>
             <div class="pr-edit-grid">
-              <div class="pr-edit-field"><label>Skills (comma-separated)</label><input bind:value={editData.skills} placeholder="JavaScript, Python, SEO" /></div>
-              <div class="pr-edit-field"><label>Work History (one per line)</label><textarea bind:value={editData.work_history} rows="3" placeholder="Software Engineer at Google (2020-2023)"></textarea></div>
-              <div class="pr-edit-field"><label>Education (one per line)</label><textarea bind:value={editData.education} rows="2" placeholder="BSc Computer Science — MIT (2020)"></textarea></div>
-              <div class="pr-edit-field"><label>Certifications (one per line)</label><textarea bind:value={editData.certifications} rows="2" placeholder="AWS Solutions Architect"></textarea></div>
-              <div class="pr-edit-field"><label>Languages (comma-separated)</label><input bind:value={editData.languages} placeholder="English, French" /></div>
-              <div class="pr-edit-field"><label>Interests (comma-separated)</label><input bind:value={editData.interests} placeholder="AI, Web3, Startups" /></div>
+              <div class="pr-edit-field"><label for="edit-skills">Skills (comma-separated)</label><input id="edit-skills" bind:value={editData.skills} placeholder="JavaScript, Python, SEO" /></div>
+              <div class="pr-edit-field"><label for="edit-work">Work History (one per line)</label><textarea id="edit-work" bind:value={editData.work_history} rows="3" placeholder="Software Engineer at Google (2020-2023)"></textarea></div>
+              <div class="pr-edit-field"><label for="edit-education">Education (one per line)</label><textarea id="edit-education" bind:value={editData.education} rows="2" placeholder="BSc Computer Science — MIT (2020)"></textarea></div>
+              <div class="pr-edit-field"><label for="edit-certs">Certifications (one per line)</label><textarea id="edit-certs" bind:value={editData.certifications} rows="2" placeholder="AWS Solutions Architect"></textarea></div>
+              <div class="pr-edit-field"><label for="edit-languages">Languages (comma-separated)</label><input id="edit-languages" bind:value={editData.languages} placeholder="English, French" /></div>
+              <div class="pr-edit-field"><label for="edit-interests">Interests (comma-separated)</label><input id="edit-interests" bind:value={editData.interests} placeholder="AI, Web3, Startups" /></div>
             </div>
           </details>
           <!-- Expandable: Social links -->
           <details class="pr-edit-details">
             <summary>Social links</summary>
             <div class="pr-edit-grid">
-              <div class="pr-edit-field"><label>GitHub</label><input bind:value={editData.github_url} placeholder="https://github.com/you" /></div>
-              <div class="pr-edit-field"><label>LinkedIn</label><input bind:value={editData.linkedin_url} placeholder="https://linkedin.com/in/you" /></div>
-              <div class="pr-edit-field"><label>X / Twitter</label><input bind:value={editData.twitter_url} placeholder="https://x.com/you" /></div>
+              <div class="pr-edit-field"><label for="edit-github">GitHub</label><input id="edit-github" bind:value={editData.github_url} placeholder="https://github.com/you" /></div>
+              <div class="pr-edit-field"><label for="edit-linkedin">LinkedIn</label><input id="edit-linkedin" bind:value={editData.linkedin_url} placeholder="https://linkedin.com/in/you" /></div>
+              <div class="pr-edit-field"><label for="edit-twitter">X / Twitter</label><input id="edit-twitter" bind:value={editData.twitter_url} placeholder="https://x.com/you" /></div>
             </div>
           </details>
           <!-- Expandable: Privacy -->
           <details class="pr-edit-details">
             <summary>Privacy</summary>
             <div class="pr-edit-field">
-              <label>Who can message you?</label>
-              <div class="pr-privacy-toggle">
+              <span id="privacy-msg-label" class="pr-edit-field-label">Who can message you?</span>
+              <div class="pr-privacy-toggle" role="radiogroup" aria-labelledby="privacy-msg-label">
                 <button class="pr-privacy-opt" class:active={editData.messages_from === 'everyone'} onclick={() => editData.messages_from = 'everyone'} type="button">Everyone</button>
                 <button class="pr-privacy-opt" class:active={editData.messages_from === 'friends_only'} onclick={() => editData.messages_from = 'friends_only'} type="button">Friends only</button>
               </div>
@@ -506,7 +506,7 @@
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                 </button>
                 {#if openPostMenu === post.id}
-                  <div class="w-post-menu-dropdown" onclick={(e) => e.stopPropagation()}>
+                  <div class="w-post-menu-dropdown" role="menu" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
                     {#if $auth.user?.id === post.user_id}
                       <button class="w-menu-item" onclick={() => { handleEditPost(post); openPostMenu = null; }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -547,14 +547,14 @@
               <textarea class="pr-edit-box" bind:value={editingContent} rows="3"></textarea>
             {:else}
               <div class="pr-post-body">{@html renderContent(post.content)}</div>
-            {#if post.image_url}<div class="pr-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>{/if}
+            {#if post.image_url}<div class="pr-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} /></div>{/if}
             {#if post.media?.length}
               <div class="pr-post-media">
                 {#each post.media.filter((m: any) => m.type === 'image') as m}
-                  <div class="pr-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>
+                  <div class="pr-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} /></div>
                 {/each}
                 {#each post.media.filter((m: any) => m.type === 'video') as m}
-                  <div class="pr-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                  <div class="pr-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline><track kind="captions" /></video></div>
                 {/each}
                 {#each post.media.filter((m: any) => m.type === 'audio') as m}
                   <div class="pr-media-audio"><span>🎵</span><audio src={m.url} controls preload="metadata"></audio></div>
@@ -827,10 +827,10 @@
 
         <!-- Add Entry Modal -->
         {#if showEntryForm}
-          <div class="pr-modal-overlay" onclick={() => showEntryForm = false}></div>
+          <div class="pr-modal-overlay" role="button" tabindex="0" aria-label="Close entry form" onclick={() => showEntryForm = false} onkeydown={(e) => { if (e.key === 'Enter') showEntryForm = false; }}></div>
           <div class="pr-modal pr-j-modal">
             <div class="pr-modal-header">
-              <button class="pr-modal-close" onclick={() => showEntryForm = false}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <button class="pr-modal-close" onclick={() => showEntryForm = false} aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               <h3>Add Journey Entry</h3>
               <button class="pr-modal-save" onclick={submitEntry} disabled={journeySaving || !entryForm.title.trim()}>{journeySaving ? 'Saving...' : 'Add'}</button>
             </div>
@@ -869,10 +869,10 @@
 
         <!-- Add Goal Modal -->
         {#if showGoalForm}
-          <div class="pr-modal-overlay" onclick={() => showGoalForm = false}></div>
+          <div class="pr-modal-overlay" role="button" tabindex="0" aria-label="Close goal form" onclick={() => showGoalForm = false} onkeydown={(e) => { if (e.key === 'Enter') showGoalForm = false; }}></div>
           <div class="pr-modal pr-j-modal">
             <div class="pr-modal-header">
-              <button class="pr-modal-close" onclick={() => showGoalForm = false}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <button class="pr-modal-close" onclick={() => showGoalForm = false} aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               <h3>Set a Goal</h3>
               <button class="pr-modal-save" onclick={submitGoal} disabled={journeySaving || !goalForm.title.trim()}>{journeySaving ? 'Setting...' : 'Set'}</button>
             </div>
@@ -986,7 +986,7 @@
 
 <!-- Post to feed confirmation -->
 {#if showAvatarConfirm}
-  <div class="pr-confirm-overlay" onclick={skipAvatarPost}></div>
+  <div class="pr-confirm-overlay" role="button" tabindex="0" aria-label="Skip avatar post" onclick={skipAvatarPost} onkeydown={(e) => { if (e.key === 'Enter') skipAvatarPost(); }}></div>
   <div class="pr-confirm-dialog">
     <div class="pr-confirm-preview">
       {#if avatarSrc(profile.avatar_url)}<img src={avatarSrc(profile.avatar_url)} alt="" />{/if}
@@ -1044,8 +1044,6 @@
   .pr-stat-label { font-size:15px;color:var(--t2);font-weight:500; }
 
   /* Sections */
-  .pr-section { margin-top:20px;padding:20px;background:var(--card);border:1px solid var(--bd);border-radius:14px; }
-  .pr-section h3 { font-size:20px;font-weight:800;margin:0 0 12px; }
   .pr-tags { display:flex;flex-wrap:wrap;gap:6px; }
   .pr-tag { padding:6px 14px;border-radius:14px;font-size:14px;font-weight:600;background:rgba(245,166,35,0.08);color:var(--gold);border:1px solid rgba(245,166,35,0.15); }
   .pr-tag.lang { background:rgba(59,130,246,0.08);color:#3b82f6;border-color:rgba(59,130,246,0.15); }
@@ -1056,15 +1054,11 @@
   .pr-entry-dot.cert { background:#10b981; }
 
   /* Edit form */
-  .pr-edit { margin-top:16px;padding:24px;background:var(--card);border:1px solid var(--bd);border-radius:14px; }
-  .pr-edit h3 { font-size:20px;font-weight:800;margin:0 0 16px; }
   .pr-edit-grid { display:flex;flex-direction:column;gap:12px; }
   .pr-edit-field { display:flex;flex-direction:column;gap:4px; }
-  .pr-edit-field label { font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.05em; }
+  .pr-edit-field label, .pr-edit-field-label { font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.05em; }
   .pr-edit-field input, .pr-edit-field textarea { padding:14px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--t1);font-size:16px;font-family:inherit;outline:none;resize:vertical; }
   .pr-edit-field input:focus, .pr-edit-field textarea:focus { border-color:var(--gold); }
-  .pr-edit-row { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
-  .pr-edit-btns { display:flex;gap:8px;margin-top:16px; }
 
   /* Tabs */
   .pr-tabs-scroll { overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;scrollbar-width:none; }
@@ -1094,9 +1088,7 @@
   .w-action:hover { color:#e4e6ea; }
   .w-liked svg,.w-liked { color:#f43f5e; }
   .w-rocketed svg,.w-rocketed { color:#f97316; }
-  .w-reposted { color:#10b981; }
   .w-bookmarked svg { color:#eab308; }
-  .w-action-del:hover { color:#ef4444 !important; }
 
   .pr-center { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px;color:var(--t3); }
   .pr-center a { color:var(--gold);text-decoration:none; }
@@ -1108,7 +1100,6 @@
     .pr-top { margin-top:-43px; }
     .pr-actions { margin-top:10px; }
     .pr-name-row h1 { font-size:20px; }
-    .pr-edit-row { grid-template-columns:1fr; }
     .pr-btn { padding:8px 14px;font-size:14px; }
     .pr-activity-grid { gap:8px; }
     .pr-activity-card { padding:14px 10px; }
@@ -1116,12 +1107,6 @@
     .pr-wrap { padding:0 16px 80px; }
     .pr-more-dropdown { right:auto;left:0; }
   }
-  .pr-follow-btn { background: var(--pr-gold) !important; color: #000 !important; font-weight: 700; }
-  .pr-follow-btn.following { background: transparent !important; color: var(--pr-t2) !important; border: 1px solid var(--pr-bd); }
-  .pr-follow-btn.following:hover { border-color: #ef4444; color: #ef4444 !important; }
-  .pr-follow-stats { display: flex; gap: 16px; margin-top: 12px; font-size: 16px; color: var(--pr-t2); }
-  .pr-follow-stats strong { color: var(--pr-t); font-weight: 700; }
-  .pr-btn-mute { background: transparent !important; border: 1px solid var(--pr-bd) !important; color: var(--pr-t3) !important; font-size: 14px !important; }
   .pr-btn-block { background: transparent !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #ef4444 !important; font-size: 14px !important; }
   /* Activity tab */
   .pr-activity { padding:16px 0; }
@@ -1144,12 +1129,10 @@
   .pr-activity-item-body { flex:1;min-width:0; }
   .pr-activity-item-text { font-size:16px;color:var(--t1);display:block;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
   .pr-activity-item-time { font-size:14px;color:var(--t3);margin-top:2px;display:block; }
-  .pr-privacy-field { grid-column: 1 / -1; }
   .pr-privacy-toggle { display:flex;gap:8px;margin-top:8px; }
   .pr-privacy-opt { display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--bd,#1e1e2a);background:transparent;color:var(--t2,#8a8d91);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s; }
   .pr-privacy-opt.active { border-color:#f5a623;background:rgba(245,166,35,0.1);color:#f5a623; }
   .pr-privacy-opt:hover:not(.active) { border-color:#555;color:var(--t1,#e4e6ea); }
-  .pr-privacy-hint { font-size:13px;color:var(--t3,#606770);margin-top:6px; }
   /* Theme */
   .pr { --pr-bg: #0a0a0f; --pr-card: #111117; --pr-t: #e4e6ea; --pr-t2: #8a8d91; --pr-t3: #606770; --pr-bd: #1e1e2a; --pr-gold: #f5a623; }
   .pr.light { --pr-bg: #ffffff; --pr-card: #ffffff; --pr-t: #1c1e21; --pr-t2: #606770; --pr-t3: #8a8d91; --pr-bd: #dddfe2; --pr-gold: #d4a017; --hv:rgba(0,0,0,0.04); }
@@ -1176,10 +1159,6 @@
 
   /* Media grid & rendering */
   .pr-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
-  .pr-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; max-height: 300px; }
-  .pr-grid-3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 400px; }
-  .pr-grid-3 .pr-grid-item:first-child { grid-row: 1 / 3; }
-  .pr-grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 300px; }
   .pr-grid-item { overflow: hidden; border-radius: 12px; }
   .pr-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
   .pr-media-video { border-radius: 12px; overflow: hidden; margin-top: 6px; }
@@ -1192,9 +1171,6 @@
   .pr-media-doc-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pr-media-doc-size { font-size: 12px; color: var(--wt2, #8a8d91); }
   .pr-media-doc-dl { color: var(--wt2, #8a8d91); font-size: 18px; }
-  .w.light .pr-media-doc { background: #f0f2f5; border-color: #dddfe2; }
-  .w.light .pr-media-doc:hover { border-color: #d4a017; }
-  .w.light .pr-media-audio { background: #f0f2f5; border-color: #dddfe2; }
 
   /* About section */
   .pr-about-section { display: flex; flex-direction: column; gap: 16px; }
@@ -1257,9 +1233,6 @@
   .pr-j-textarea:focus { border-color: var(--pr-gold); outline: none; }
   .pr-j-metric-group { display: flex; gap: 10px; }
   .pr-j-flex1 { flex: 1; }
-  .pr-j-submit { padding: 14px; border-radius: 24px; border: none; background: var(--pr-gold); color: #000; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
-  .pr-j-submit:hover { opacity: 0.9; }
-  .pr-j-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Communities */
   .pr-communities { display: flex; flex-direction: column; gap: 10px; }
@@ -1269,11 +1242,6 @@
   .pr-comm-info { flex: 1; }
   .pr-comm-name { font-weight: 600; font-size: 16px; }
   .pr-comm-meta { font-size: 14px; color: var(--pr-t3); margin-top: 2px; }
-
-  /* Logout */
-  .pr-logout-wrap { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--pr-bd); }
-  .pr-logout-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 10px 24px; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; transition: all 0.15s; }
-  .pr-logout-btn:hover { background: rgba(239,68,68,0.08); border-color: #ef4444; }
 
   /* More button (X standard "...") */
   .pr-more-wrap { position:relative; }

@@ -103,8 +103,8 @@
 			<div class="card-body" style="text-align: center; padding: 48px;">
 				<div style="font-size: 32px; margin-bottom: 12px;"><Scale size={28} strokeWidth={1.5} /></div>
 				<h3>Upgrade to unlock Compare</h3>
-				<p class="text-secondary" style="margin: 8px 0 20px;">Side-by-side website comparison is a Pro feature.</p>
-				<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro — £9/mo</button>
+				<p class="text-secondary" style="margin: 8px 0 20px;">Side-by-side website comparison is a Starter feature.</p>
+				<button class="btn btn-gold" onclick={() => ui.openCheckout('pro')}>Upgrade to Starter — £9/mo</button>
 			</div>
 		</div>
 	{:else}
@@ -182,7 +182,7 @@
 								<div class="tech-group">
 									<div class="tech-group-label text-muted">Shared ({shared.length})</div>
 									<div class="tech-tags">
-										{#each shared as t}<span class="tech-tag shared">{sanitize(t)}</span>{/each}
+										{#each shared as t}<span class="tech-tag shared">{sanitize(t as string)}</span>{/each}
 									</div>
 								</div>
 							{/if}
@@ -190,7 +190,7 @@
 								<div class="tech-group">
 									<div class="tech-group-label" style="color: var(--clr-blue);">Only {url1.replace('https://','').split('/')[0]} ({onlyA.length})</div>
 									<div class="tech-tags">
-										{#each onlyA as t}<span class="tech-tag side-a">{sanitize(t)}</span>{/each}
+										{#each onlyA as t}<span class="tech-tag side-a">{sanitize(t as string)}</span>{/each}
 									</div>
 								</div>
 							{/if}
@@ -198,7 +198,7 @@
 								<div class="tech-group">
 									<div class="tech-group-label" style="color: var(--clr-gold);">Only {url2.replace('https://','').split('/')[0]} ({onlyB.length})</div>
 									<div class="tech-tags">
-										{#each onlyB as t}<span class="tech-tag side-b">{sanitize(t)}</span>{/each}
+										{#each onlyB as t}<span class="tech-tag side-b">{sanitize(t as string)}</span>{/each}
 									</div>
 								</div>
 							{/if}

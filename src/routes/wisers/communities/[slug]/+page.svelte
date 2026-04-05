@@ -101,7 +101,7 @@
     if (saved === 'light') { theme = 'light'; }
     else if (!saved && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) { theme = 'light'; }
     if (typeof document !== 'undefined') { document.documentElement.setAttribute('data-wisers-theme', theme); document.body.style.background = theme === 'light' ? '#ffffff' : '#0a0a0f'; }
-    slug = $page.params.slug;
+    slug = $page.params.slug ?? '';
     try {
       community = await api.getCommunity(slug);
       const feed = await api.getCommunityFeedBySlug(slug);
@@ -325,14 +325,14 @@
               <div class="cd-milestone">🏆 {post.milestone_value}</div>
             {/if}
             <div class="cd-post-body">{post.content}</div>
-            {#if post.image_url}<div class="cd-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>{/if}
+            {#if post.image_url}<div class="cd-post-img"><img src={post.image_url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} /></div>{/if}
             {#if post.media?.length}
               <div class="cd-post-media">
                 {#each post.media.filter((m: any) => m.type === 'image') as m}
-                  <div class="cd-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} /></div>
+                  <div class="cd-grid-item"><img src={m.url} alt="" loading="lazy" onerror={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} /></div>
                 {/each}
                 {#each post.media.filter((m: any) => m.type === 'video') as m}
-                  <div class="cd-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                  <div class="cd-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline><track kind="captions" /></video></div>
                 {/each}
                 {#each post.media.filter((m: any) => m.type === 'audio') as m}
                   <div class="cd-media-audio"><span>🎵</span><audio src={m.url} controls preload="metadata"></audio></div>
@@ -475,8 +475,8 @@
 
 <!-- Settings Modal -->
 {#if showSettings}
-  <div class="cd-modal-overlay" onclick={() => showSettings = false} role="presentation">
-    <div class="cd-modal" onclick={(e) => e.stopPropagation()}>
+  <div class="cd-modal-overlay" onclick={() => showSettings = false} onkeydown={(e) => { if (e.key === 'Escape') showSettings = false; }} role="presentation">
+    <div class="cd-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
       <div class="cd-modal-header">
         <h3>Community Settings</h3>
         <button class="cd-modal-close" onclick={() => showSettings = false}>✕</button>
@@ -571,8 +571,6 @@
   .cd-join:hover { filter: brightness(0.9); }
   .cd-joined { background: none; border: 1.5px solid #10b981; color: #10b981; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 15px; cursor: pointer; flex-shrink: 0; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
   .cd-joined:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.06); }
-  .cd-leave { background: none; border: 1px solid #ef4444; color: #ef4444; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 15px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
-  .cd-leave:hover { background: rgba(239,68,68,0.1); }
   .cd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--cd-bd); padding-bottom: 12px; margin-bottom: 16px; }
   .cd-tabs button { background: none; border: none; color: var(--cd-t3); font-size: 16px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; }
   .cd-tabs button.active { color: var(--cd-gold); background: rgba(245,166,35,0.1); }
@@ -664,10 +662,6 @@
 
   /* Media rendering in posts */
   .cd-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
-  .cd-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; max-height: 300px; }
-  .cd-grid-3 { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 400px; }
-  .cd-grid-3 .cd-grid-item:first-child { grid-row: 1 / 3; }
-  .cd-grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; max-height: 300px; }
   .cd-grid-item { overflow: hidden; border-radius: 12px; }
   .cd-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
   .cd-media-video { border-radius: 12px; overflow: hidden; margin-top: 6px; }

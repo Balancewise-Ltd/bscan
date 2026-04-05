@@ -212,7 +212,7 @@
 			<div class="popular-tag">Most Popular</div>
 			<div class="plan-top">
 				<div class="plan-icon">⚡</div>
-				<div class="plan-name">Pro</div>
+				<div class="plan-name">Starter</div>
 				<div class="plan-price-row">
 					<span class="plan-price">£{proPrice}</span>
 					<span class="plan-cadence">/ mo{interval === 'annual' ? ' · billed annually' : ''}</span>
@@ -225,7 +225,7 @@
 					<div class="current-plan-badge">✓ Your current plan</div>
 				{:else}
 					<button class="btn btn-gold" style="width:100%;" onclick={() => ui.openCheckout('pro')}>
-						{plan === 'agency' ? 'Switch to Pro' : 'Upgrade to Pro →'}
+						{plan === 'agency' ? 'Switch to Starter' : 'Upgrade to Starter →'}
 					</button>
 				{/if}
 			</div>
@@ -291,7 +291,7 @@
 		<div class="matrix-cols-header">
 			<div class="mc-feature-col"></div>
 			<div class="mc-col">Free</div>
-			<div class="mc-col gold">Pro</div>
+			<div class="mc-col gold">Starter</div>
 			<div class="mc-col blue">Agency</div>
 		</div>
 
@@ -337,7 +337,7 @@
 				{#if plan === 'pro'}
 					<span style="font-size:12px; color:var(--clr-gold); font-weight:700;">✓ Active</span>
 				{:else}
-					<button class="btn btn-gold btn-sm" onclick={() => ui.openCheckout('pro')}>Get Pro</button>
+					<button class="btn btn-gold btn-sm" onclick={() => ui.openCheckout('pro')}>Get Starter</button>
 				{/if}
 			</div>
 			<div class="mc-col">
@@ -368,25 +368,25 @@
 			<div class="callout-icon">💼</div>
 			<h3>Client Intelligence</h3>
 			<p>Scan a prospect's site and instantly understand their CTAs, payment stack, trust signals, UX patterns, and industry ranking — before you even pitch.</p>
-			<span class="callout-plan badge-gold-sm">Pro</span>
+			<span class="callout-plan badge-gold-sm">Starter</span>
 		</div>
 		<div class="callout-card">
 			<div class="callout-icon">⚔️</div>
 			<h3>Competitor Compare</h3>
 			<p>Head-to-head audit of any two sites across all six categories. Show clients exactly where their site wins and loses against their competition.</p>
-			<span class="callout-plan badge-gold-sm">Pro</span>
+			<span class="callout-plan badge-gold-sm">Starter</span>
 		</div>
 		<div class="callout-card">
 			<div class="callout-icon">🔔</div>
 			<h3>Monitoring & Alerts</h3>
 			<p>BSCAN watches your clients' sites and alerts you the moment a score drops. Catch issues before your clients do.</p>
-			<span class="callout-plan badge-gold-sm">Pro</span>
+			<span class="callout-plan badge-gold-sm">Starter</span>
 		</div>
 		<div class="callout-card">
 			<div class="callout-icon">🤖</div>
 			<h3>AI Fix Generator</h3>
 			<p>Every critical issue comes with AI-generated code fixes — complete with file names, language, and implementation steps. Not just problems, but solutions.</p>
-			<span class="callout-plan badge-gold-sm">Pro</span>
+			<span class="callout-plan badge-gold-sm">Starter</span>
 		</div>
 	</div>
 
@@ -418,7 +418,7 @@
 			<p class="text-secondary" style="margin-top: 8px; font-size: 15px;">No card required. 3 full audits every month, forever.</p>
 			<div class="final-cta-btns">
 				<a href="/" class="btn btn-gold" style="font-size: 15px; padding: 14px 32px;">Start Free Audit →</a>
-				<button class="btn btn-outline" style="font-size: 15px; padding: 14px 32px;" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro · £{proPrice}/mo</button>
+				<button class="btn btn-outline" style="font-size: 15px; padding: 14px 32px;" onclick={() => ui.openCheckout('pro')}>Upgrade to Starter · £{proPrice}/mo</button>
 			</div>
 			<p class="text-muted" style="font-size: 12px; margin-top: 16px;">Cancel anytime · Stripe-secured payments · Instant access</p>
 		</div>

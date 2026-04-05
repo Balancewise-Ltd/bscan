@@ -32,7 +32,7 @@
 	let gateError = $state(false);
 	let gateLoading = $state(false);
 	let scansRemaining = $state(3);
-	let userPlan: Plan = $state('guest');
+	let userPlan = $state<Plan>('guest');
 
 	// Detail panel
 	let openDetail = $state<string | null>(null);
@@ -165,21 +165,22 @@
 		scanCooldown.fire();
 		const url = normalizeUrl(urlInput);
 
-		// If we have a saved email, skip gate
-		const savedEmail = safeGetStorage('bscan_email');
-		if (savedEmail && safeGetStorage('bscan_token')) {
-			gateEmail = savedEmail;
+		// Logged-in users skip the email gate — we already know their email
+		if ($auth.user?.email) {
+			gateEmail = $auth.user.email;
 			await runFullScan(url);
 			return;
 		}
 
+		// Guest: check for a previously saved email
+		const savedEmail = safeGetStorage('bscan_email');
 		if (savedEmail) {
 			gateEmail = savedEmail;
 			await runFullScan(url);
 			return;
 		}
 
-		// Show email gate
+		// Guest with no saved email: show the email/company gate
 		showGate = true;
 	}
 
@@ -206,7 +207,7 @@
 				gateLoading = false;
 				ui.showPaywall(
 					check.has_account ? 'Scan limit reached' : "You've used your 3 free scans",
-					check.message || 'Create an account and upgrade to Pro for 30 scans/month.'
+					check.message || 'Create an account and upgrade to Starter for 30 scans/month.'
 				);
 				return;
 			}
@@ -429,7 +430,7 @@
 						</button>
 					{:else}
 						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('AI Fix All', 'Get AI-generated code fixes for every issue in your scan. Available on Pro and Agency.')}>Fix All</button>
-						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download a professional audit report as PDF. Upgrade to Pro to unlock.')}>📄 PDF Report</button>
+						<button class="btn btn-outline btn-sm" onclick={() => ui.showPaywall('PDF Export', 'Download a professional audit report as PDF. Upgrade to Starter to unlock.')}>📄 PDF Report</button>
 					{/if}
 					<button class="btn btn-outline btn-sm" onclick={() => { scan.reset(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>New Scan</button>
 				</div>
@@ -795,7 +796,7 @@
 				<p class="text-secondary" style="margin: 12px 0 24px; line-height: 1.6;">{$ui.paywallMessage}</p>
 				<div style="display: flex; flex-direction: column; gap: 10px;">
 					<a href="https://balancewises.io/#contact" class="btn btn-gold">Get Us to Fix Your Site →</a>
-					<button class="btn btn-blue" onclick={() => { ui.closePaywall(); ui.openCheckout('pro'); }}>Upgrade to Pro · £9/month</button>
+					<button class="btn btn-blue" onclick={() => { ui.closePaywall(); ui.openCheckout('pro'); }}>Upgrade to Starter · £9/month</button>
 					<button class="btn btn-ghost" onclick={() => ui.closePaywall()}>Maybe later</button>
 				</div>
 			</div>

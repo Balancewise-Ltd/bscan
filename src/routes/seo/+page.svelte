@@ -608,7 +608,7 @@
 					<div class="card-header">
 						<span><Link2 size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700;">Link Intelligence</span>
-						{#if !isPaid}<span class="badge badge-blue" style="margin-left: auto;">Pro</span>{/if}
+						{#if !isPaid}<span class="badge badge-blue" style="margin-left: auto;">Starter</span>{/if}
 					</div>
 					<div class="card-body">
 						{#if isPaid}
@@ -625,7 +625,7 @@
 								<div style="margin-bottom: 12px;"><Link2 size={28} strokeWidth={1.5} /></div>
 								<h3>Link Intelligence</h3>
 								<p class="text-secondary" style="max-width: 420px; margin: 0 auto; line-height: 1.6;">Outbound link health analysis, dofollow/nofollow detection, backlink estimates, AI-powered recommendations, and Google Search Console integration.</p>
-								<a href="/pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Pro — £9/mo</a>
+								<a href="/pricing" class="btn btn-gold" style="margin-top: 16px;">Upgrade to Starter — £9/mo</a>
 								<div style="margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
 									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">Dofollow / Nofollow detection</span>
 									<span style="font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--clr-bg-primary); border: 1px solid var(--clr-border); color: var(--clr-text-muted);">Outbound link audit</span>
@@ -946,6 +946,8 @@
 							</div>
 
 							<!-- AI Fix buttons for each recommendation -->
+							{#if linkHealthData?.summary?.link_analysis}
+							{@const r = linkHealthData.summary.link_analysis}
 							<div style="border-top: 1px solid var(--clr-border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px;">
 								{#if r.nofollow_pct === 0 && r.external_links > 0}
 									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Add nofollow to untrusted external links', `All ${r.external_links} external links are dofollow`, blInput.trim())} disabled={!!aiFixLoading['Add nofollow to untrusted external links']}>
@@ -958,7 +960,7 @@
 									</button>
 								{/if}
 								{#if r.broken_anchors > 0}
-									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Empty anchor tags', `${r.broken_anchors} links with href=# or empty href found. Samples: ${(r.broken_anchor_samples || []).slice(0,3).map(s => s.text).join(', ')}`, blInput.trim())} disabled={!!aiFixLoading['Empty anchor tags']}>
+									<button class="btn-ai-fix" onclick={() => getAiFixForRec('Empty anchor tags', `${r.broken_anchors} links with href=# or empty href found. Samples: ${(r.broken_anchor_samples || []).slice(0,3).map((s: any) => s.text).join(', ')}`, blInput.trim())} disabled={!!aiFixLoading['Empty anchor tags']}>
 										{#if aiFixLoading['Empty anchor tags']}<span class="spinner spinner-sm"></span>{:else if aiFixes['Empty anchor tags']}View Fix{:else}AI Fix: Empty Anchors{/if}
 									</button>
 								{/if}
@@ -978,6 +980,7 @@
 									</button>
 								{/if}
 							</div>
+							{/if}
 
 							<!-- AI Fix results panel -->
 							{#each Object.entries(aiFixes) as [key, fix]}
@@ -1092,8 +1095,8 @@
 								</div>
 							{:else}
 								<div class="gsc-site-row">
-									<label class="text-muted" style="font-size: 11px; font-weight: 600;">SITE</label>
-									<select class="input" bind:value={gscSelectedSite} onchange={loadGscOverview} style="flex: 1;">
+									<label class="text-muted" style="font-size: 11px; font-weight: 600;" for="gsc-site-select">SITE</label>
+									<select id="gsc-site-select" class="input" bind:value={gscSelectedSite} onchange={loadGscOverview} style="flex: 1;">
 										{#each gscSites as site}
 											<option value={site.site_url}>{site.site_url}</option>
 										{/each}
@@ -1370,7 +1373,7 @@
 					<div class="card-header">
 						<span><Eye size={14} strokeWidth={2} /></span>
 						<span style="font-weight: 700;">AI Visibility Check</span>
-						<span class="badge badge-gold" style="margin-left: auto;">Pro</span>
+						<span class="badge badge-gold" style="margin-left: auto;">Starter</span>
 					</div>
 					<div class="card-body">
 						<p class="text-secondary" style="font-size: 13px; margin-bottom: 16px;">
@@ -1380,9 +1383,9 @@
 						{#if !isPaid}
 							<div class="upgrade-gate">
 								<div style="font-size: 32px; margin-bottom: 12px;">🤖</div>
-								<h3>AI Visibility is a Pro feature</h3>
-								<p class="text-secondary" style="margin: 8px 0 20px; font-size: 13px;">Upgrade to Pro or Agency to check if AI systems recommend your site.</p>
-								<a href="/pricing" class="btn btn-gold">Upgrade to Pro</a>
+								<h3>AI Visibility is a Starter feature</h3>
+								<p class="text-secondary" style="margin: 8px 0 20px; font-size: 13px;">Upgrade to Starter or Agency to check if AI systems recommend your site.</p>
+								<a href="/pricing" class="btn btn-gold">Upgrade to Starter</a>
 							</div>
 						{:else}
 							<div class="search-row" style="margin-bottom: 16px;">
@@ -1540,7 +1543,7 @@
 							<p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Found {suggestData.total_keywords || suggestData.suggestions?.length || 0} suggestions</p>
 							<div style="max-height: 400px; overflow-y: auto;">
 								{#each (suggestData.suggestions || []) as s}
-									<div style="padding: 6px 0; border-bottom: 1px solid var(--clr-border); font-size: 13px; cursor: pointer;" onclick={() => { kwInput = s; activeTab = 'keywords'; searchKeywords(); }}>{s}</div>
+									<div style="padding: 6px 0; border-bottom: 1px solid var(--clr-border); font-size: 13px; cursor: pointer;" role="button" tabindex="0" onclick={() => { kwInput = s; activeTab = 'keywords'; searchKeywords(); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kwInput = s; activeTab = 'keywords'; searchKeywords(); } }}>{s}</div>
 								{/each}
 							</div>
 						{/if}
@@ -1767,22 +1770,10 @@
 	.alpha-word { font-size: 11px; color: var(--clr-text-secondary); padding: 2px 0; }
 
 	/* ── Backlink Results ─────────────── */
-	.bl-results { margin-top: var(--space-md); }
-
 	.bl-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: var(--space-md); }
 	.bl-stat { background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); padding: var(--space-md); text-align: center; }
 	.bl-stat-label { font-size: 10px; color: var(--clr-text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 	.bl-stat-value { font-size: 22px; font-weight: 800; }
-
-	.bl-quality { padding: 10px 16px; border-radius: var(--radius-md); font-size: 13px; text-align: center; margin-bottom: var(--space-md); background: var(--clr-bg-card); border: 1px solid var(--clr-border); }
-	.quality-good { border-color: rgba(16,185,129,0.3); color: var(--clr-success); }
-	.quality-bad { border-color: rgba(239,68,68,0.3); color: var(--clr-danger); }
-
-	.bl-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); font-size: 13px; }
-	.bl-row:last-child { border-bottom: none; }
-	.bl-anchor, .bl-domain { color: var(--clr-text-secondary); }
-	.bl-count { font-size: 11px; color: var(--clr-text-muted); }
-	.bl-source { font-size: 10px; margin-top: var(--space-md); text-align: right; }
 
 	/* ── History ──────────────────────── */
 	.hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--clr-border); }
@@ -1848,8 +1839,6 @@
 	.rec-detail code { font-size: 11px; padding: 1px 5px; background: var(--clr-bg-primary); border-radius: 3px; border: 1px solid var(--clr-border); }
 
 	/* ── AI Fix Panel ─────────────────── */
-	.rec-fix-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--clr-border); }
-	.rec-fix-row:last-child { border-bottom: none; }
 	.btn-ai-fix { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; font-size: 11px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.03em; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); color: var(--clr-blue); border-radius: var(--radius-full); cursor: pointer; transition: all 0.15s; }
 	.btn-ai-fix:hover { background: rgba(59,130,246,0.15); border-color: var(--clr-blue); }
 	.btn-ai-fix:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -33,7 +33,7 @@ describe('PLAN_LIMITS', () => {
 
 	it('all plans have labels', () => {
 		expect(PLAN_LIMITS.free.label).toBe('Free');
-		expect(PLAN_LIMITS.pro.label).toBe('Pro');
+		expect(PLAN_LIMITS.pro.label).toBe('Starter');
 		expect(PLAN_LIMITS.agency.label).toBe('Agency');
 	});
 });

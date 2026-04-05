@@ -138,16 +138,21 @@ interface AuthResponse {
 export async function login(email: string, password: string, totp_code?: string): Promise<AuthResponse> {
 	const body: Record<string, string> = { email, password };
 	if (totp_code) body.totp_code = totp_code;
+	// Send device trust token as header so backend can skip email verification for trusted devices
+	const deviceToken = typeof window !== 'undefined' ? localStorage.getItem('bscan_device_trust') : null;
+	const headers: HeadersInit = {};
+	if (deviceToken) (headers as Record<string, string>)['X-Device-Trust'] = deviceToken;
 	return request('/api/auth/login', {
 		method: 'POST',
+		headers,
 		body: JSON.stringify(body)
 	});
 }
 
-export async function verifyLoginCode(email: string, code: string): Promise<AuthResponse> {
+export async function verifyLoginCode(email: string, code: string, save_login: boolean = true): Promise<AuthResponse> {
 	return request('/api/auth/verify-login-code', {
 		method: 'POST',
-		body: JSON.stringify({ email, code })
+		body: JSON.stringify({ email, code, save_login })
 	});
 }
 

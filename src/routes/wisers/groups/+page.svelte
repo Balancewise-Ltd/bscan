@@ -228,13 +228,13 @@
 <div class="g" class:light={theme === 'light'} onclick={closeEmojiOnOutside}>
   <!-- Top bar -->
   <header class="g-top">
-    <a href="/wisers" class="g-back">
+    <a href="/wisers" class="g-back" aria-label="Back to Wisers">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     </a>
     <a href="/wisers" class="g-logo">W<span>isers</span></a>
     <h1 class="g-title">Group Chats</h1>
     <div class="g-top-right">
-      <button class="g-theme-btn" onclick={toggleTheme}>
+      <button class="g-theme-btn" onclick={toggleTheme} aria-label="Toggle theme">
         {#if theme === 'dark'}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         {:else}
@@ -327,7 +327,7 @@
         <!-- Chat header -->
         {#if activeGroupData}
           <div class="g-chat-header">
-            <button class="g-chat-back" onclick={() => { activeGroup = null; messages = []; }}>
+            <button class="g-chat-back" onclick={() => { activeGroup = null; messages = []; }} aria-label="Back to groups list">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div class="g-chat-avatar">
@@ -447,7 +447,7 @@
             placeholder="Type a message..."
             onkeydown={(e) => { if (e.key === 'Enter') send(); }}
           />
-          <button class="g-send" onclick={send} disabled={sending || !newMsg.trim()}>
+          <button class="g-send" onclick={send} disabled={sending || !newMsg.trim()} aria-label="Send message">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -464,14 +464,15 @@
     <div class="g-modal" onclick={(e) => { e.stopPropagation(); }}>
       <div class="g-modal-header">
         <h2>Create Group Chat</h2>
-        <button class="g-modal-close" onclick={() => { showCreateModal = false; newGroupName = ''; selectedMembers = []; }}>
+        <button class="g-modal-close" onclick={() => { showCreateModal = false; newGroupName = ''; selectedMembers = []; }} aria-label="Close modal">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
       <div class="g-modal-body">
-        <label class="g-modal-label">Group Name</label>
+        <label class="g-modal-label" for="group-name-input">Group Name</label>
         <input
+          id="group-name-input"
           type="text"
           class="g-modal-input"
           bind:value={newGroupName}
@@ -479,13 +480,13 @@
           maxlength="50"
         />
 
-        <label class="g-modal-label">Select Members</label>
+        <span class="g-modal-label">Select Members</span>
         {#if selectedMembers.length > 0}
           <div class="g-selected-members">
             {#each selectedMembers as username}
               <span class="g-selected-tag">
                 @{username}
-                <button onclick={() => toggleMember(username)}>
+                <button aria-label="Remove {username}" onclick={() => toggleMember(username)}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </span>

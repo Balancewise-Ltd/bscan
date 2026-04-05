@@ -94,6 +94,7 @@
     </a>
     <div class="ws-search-wrap">
       <svg class="ws-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <!-- svelte-ignore a11y_autofocus -->
       <input type="text" class="ws-search" placeholder="Search wisers..." bind:value={query} onkeydown={(e) => e.key === 'Enter' && handleSearch()} autofocus />
       {#if query}
         <button class="ws-clear" onclick={() => { query = ''; users = []; posts = []; communities = []; searched = false; }} aria-label="Clear">
@@ -168,7 +169,7 @@
               <span class="ws-time">{timeAgo(post.created_at)}</span>
             </div>
             <div class="ws-post-body">{@html renderContent(post.content)}</div>
-            {#if post.image_url}<img src={post.image_url} alt="" class="ws-post-img" loading="lazy" onerror={(e) => { e.currentTarget.style.display = 'none'; }} />{/if}
+            {#if post.image_url}<img src={post.image_url} alt="" class="ws-post-img" loading="lazy" onerror={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />{/if}
           </a>
         {/each}
       {/if}
@@ -277,7 +278,7 @@
   .ws-user-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .ws-user-name { font-weight: 700; font-size: 17px; }
   .ws-user-handle { font-size: 15px; color: var(--wst2); }
-  .ws-user-bio { font-size: 15px; color: var(--wst2); margin: 2px 0 0; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ws-user-bio { font-size: 15px; color: var(--wst2); margin: 2px 0 0; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
 
   .ws-follow-btn {
     padding: 6px 18px; border-radius: 20px; border: none;

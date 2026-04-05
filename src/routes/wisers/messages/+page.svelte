@@ -314,7 +314,7 @@
 <div class="m" class:light={theme === 'light'}>
   <!-- Top bar -->
   <header class="m-top">
-    <a href="/wisers" class="m-back">
+    <a href="/wisers" class="m-back" aria-label="Back to Wisers">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     </a>
     <a href="/wisers" class="m-logo">W<span>isers</span></a>
@@ -452,7 +452,7 @@
         <!-- Chat header -->
         {#if getActiveConv()}
           <div class="m-chat-header">
-            <button class="m-chat-back" onclick={() => { activeConv = null; messages = []; }}>
+            <button class="m-chat-back" onclick={() => { activeConv = null; messages = []; }} aria-label="Back to conversations">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <a href="/wisers/{getActiveConv().other_username}" class="m-chat-user">
@@ -582,7 +582,7 @@
                 lastTypingSent = now;
               }
             }} />
-          <button class="m-send" onclick={send} disabled={sending || (!newMsg.trim() && !attachment)}>
+          <button class="m-send" onclick={send} disabled={sending || (!newMsg.trim() && !attachment)} aria-label="Send message">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>

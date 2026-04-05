@@ -269,7 +269,7 @@
             <div class="w-char-count">{bio.length}/160</div>
           </div>
           <div class="w-form-group">
-            <label class="w-label">Avatar</label>
+            <span class="w-label">Avatar</span>
             <div class="w-avatar-upload">
               <div class="w-avatar-preview">{initial(displayName || 'U')}</div>
               <button class="w-upload-btn">Change avatar</button>
@@ -291,7 +291,7 @@
               <div class="w-toggle-label">Likes</div>
               <div class="w-toggle-desc">Get notified when someone likes your post</div>
             </div>
-            <button class="w-toggle" class:on={notifLikes} onclick={() => { notifLikes = !notifLikes; saveNotifications(); }} role="switch" aria-checked={notifLikes}>
+            <button class="w-toggle" class:on={notifLikes} onclick={() => { notifLikes = !notifLikes; saveNotifications(); }} role="switch" aria-checked={notifLikes} aria-label="Toggle like notifications">
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -300,7 +300,7 @@
               <div class="w-toggle-label">Comments</div>
               <div class="w-toggle-desc">Get notified when someone comments on your post</div>
             </div>
-            <button class="w-toggle" class:on={notifComments} onclick={() => { notifComments = !notifComments; saveNotifications(); }} role="switch" aria-checked={notifComments}>
+            <button class="w-toggle" class:on={notifComments} onclick={() => { notifComments = !notifComments; saveNotifications(); }} role="switch" aria-checked={notifComments} aria-label="Toggle comment notifications">
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -309,7 +309,7 @@
               <div class="w-toggle-label">Friend Requests</div>
               <div class="w-toggle-desc">Get notified when someone sends you a friend request</div>
             </div>
-            <button class="w-toggle" class:on={notifFriendReqs} onclick={() => { notifFriendReqs = !notifFriendReqs; saveNotifications(); }} role="switch" aria-checked={notifFriendReqs}>
+            <button class="w-toggle" class:on={notifFriendReqs} onclick={() => { notifFriendReqs = !notifFriendReqs; saveNotifications(); }} role="switch" aria-checked={notifFriendReqs} aria-label="Toggle friend request notifications">
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -318,7 +318,7 @@
               <div class="w-toggle-label">Messages</div>
               <div class="w-toggle-desc">Get notified for new direct messages</div>
             </div>
-            <button class="w-toggle" class:on={notifMessages} onclick={() => { notifMessages = !notifMessages; saveNotifications(); }} role="switch" aria-checked={notifMessages}>
+            <button class="w-toggle" class:on={notifMessages} onclick={() => { notifMessages = !notifMessages; saveNotifications(); }} role="switch" aria-checked={notifMessages} aria-label="Toggle message notifications">
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -327,7 +327,7 @@
               <div class="w-toggle-label">Email Notifications</div>
               <div class="w-toggle-desc">Receive a daily email digest of activity</div>
             </div>
-            <button class="w-toggle" class:on={notifEmail} onclick={() => { notifEmail = !notifEmail; saveNotifications(); }} role="switch" aria-checked={notifEmail}>
+            <button class="w-toggle" class:on={notifEmail} onclick={() => { notifEmail = !notifEmail; saveNotifications(); }} role="switch" aria-checked={notifEmail} aria-label="Toggle email notifications">
               <div class="w-toggle-knob"></div>
             </button>
           </div>
@@ -360,7 +360,7 @@
               <div class="w-toggle-label">Show activity status</div>
               <div class="w-toggle-desc">Let others see when you're online</div>
             </div>
-            <button class="w-toggle" class:on={showActivityStatus} onclick={() => showActivityStatus = !showActivityStatus} role="switch" aria-checked={showActivityStatus}>
+            <button class="w-toggle" class:on={showActivityStatus} onclick={() => showActivityStatus = !showActivityStatus} role="switch" aria-checked={showActivityStatus} aria-label="Toggle activity status visibility">
               <div class="w-toggle-knob"></div>
             </button>
           </div>

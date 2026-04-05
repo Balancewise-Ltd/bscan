@@ -308,7 +308,7 @@
   .mt-card-name:hover { color: var(--mt-gold); }
   .mt-card-handle { font-size: 15px; color: var(--mt-t3); }
   .mt-level-badge { font-size: 11px; color: var(--mt-gold); border: 1px solid rgba(245,166,35,0.3); padding: 3px 10px; border-radius: 12px; text-transform: capitalize; font-weight: 500; flex-shrink: 0; }
-  .mt-card-bio { font-size: 15px; color: var(--mt-t2); line-height: 1.5; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mt-card-bio { font-size: 15px; color: var(--mt-t2); line-height: 1.5; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
   .mt-card-section { font-size: 15px; color: var(--mt-t2); }
   .mt-card-label { color: var(--mt-t3); font-weight: 500; margin-right: 6px; }
   .mt-card-actions { display: flex; gap: 8px; margin-top: 4px; }

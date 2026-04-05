@@ -51,11 +51,15 @@ async function login(email: string, password: string, totp_code?: string) {
 	return result;
 }
 
-async function verifyLoginCode(email: string, code: string) {
-	const result = await api.verifyLoginCode(email, code);
+async function verifyLoginCode(email: string, code: string, save_login: boolean = true) {
+	const result = await api.verifyLoginCode(email, code, save_login);
 	safeSetStorage('bscan_token', result.access_token);
 	if (result.refresh_token) safeSetStorage('bscan_refresh_token', result.refresh_token);
 	safeSetStorage('bscan_email', email);
+	// Store device trust token so next login skips email verification
+	if ((result as any).device_token) {
+		safeSetStorage('bscan_device_trust', (result as any).device_token);
+	}
 	_token.set(result.access_token);
 	_user.set(result.user);
 	return result;

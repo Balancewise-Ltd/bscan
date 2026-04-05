@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Enrichment } from '$lib/types';
+	import type { Enrichment, TechStack } from '$lib/types';
 	import { sanitize, sanitizeUrl } from '$lib/utils/security';
 
 	interface Props {
@@ -28,7 +28,7 @@
 		return 'var(--clr-danger)';
 	}
 
-	function techColor(name: string, cats: typeof tech.categories): { bg: string; fg: string } {
+	function techColor(name: string, cats?: TechStack['categories']): { bg: string; fg: string } {
 		if (!cats) return { bg: 'var(--clr-bg-primary)', fg: 'var(--clr-text-secondary)' };
 		if (name === cats.cms) return { bg: 'rgba(240,165,0,0.1)', fg: 'var(--clr-gold)' };
 		if (name === cats.js_framework) return { bg: 'rgba(59,130,246,0.1)', fg: 'var(--clr-blue)' };
@@ -193,8 +193,8 @@
 		<div class="enrich-upgrade">
 			<div style="font-size: 24px; margin-bottom: 8px;">🔬</div>
 			<h3>Full Site Intelligence</h3>
-			<p>Upgrade to Pro to unlock domain age, WHOIS data, W3C validation, Mozilla Observatory score, Wayback history, and more.</p>
-			<a href="/pricing" class="btn btn-gold" style="margin-top: 12px;">Upgrade to Pro — £9/mo</a>
+			<p>Upgrade to Starter to unlock domain age, WHOIS data, W3C validation, Mozilla Observatory score, Wayback history, and more.</p>
+			<a href="/pricing" class="btn btn-gold" style="margin-top: 12px;">Upgrade to Starter — £9/mo</a>
 		</div>
 	{/if}
 </div>

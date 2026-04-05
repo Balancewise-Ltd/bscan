@@ -35,7 +35,7 @@ function closeCheckout() { _checkoutOpen.set(false); }
 
 function showPaywall(title?: string, message?: string) {
 	_paywallTitle.set(title || "You've used your 3 free scans");
-	_paywallMessage.set(message || 'Upgrade to Pro for unlimited website audits, PDF exports, and scan history — or let our team handle the fixes for you.');
+	_paywallMessage.set(message || 'Upgrade to Starter for unlimited website audits, PDF exports, and scan history — or let our team handle the fixes for you.');
 	_paywallOpen.set(true);
 }
 function closePaywall() { _paywallOpen.set(false); }

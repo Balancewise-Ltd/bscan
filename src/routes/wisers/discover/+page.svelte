@@ -58,7 +58,7 @@
     const labels: Record<string, string> = {
       free: 'Free',
       starter: 'Starter',
-      pro: 'Pro',
+      pro: 'Starter',
       enterprise: 'Enterprise'
     };
     return labels[plan] || plan;
@@ -202,7 +202,7 @@
   </header>
 
   <!-- Tab Bar -->
-  <nav class="dc-tabs" role="tablist">
+  <div class="dc-tabs" role="tablist">
     <button class="dc-tab" class:active={activeTab === 'for-you'} onclick={() => switchTab('for-you')} role="tab" aria-selected={activeTab === 'for-you'}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       For You
@@ -219,7 +219,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
       Mentors
     </button>
-  </nav>
+  </div>
 
   <!-- Content Area -->
   <div class="dc-body">
@@ -753,6 +753,7 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
   }
   .dc-post-image {
@@ -850,6 +851,7 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
   }
   .dc-user-bottom {
@@ -985,6 +987,7 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
   }
   .dc-mentor-actions {

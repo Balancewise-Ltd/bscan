@@ -62,11 +62,11 @@
 		<!-- Pro -->
 		<div class="plan-card featured">
 			<div class="popular-tag">Most Popular</div>
-			<div class="plan-name">Pro</div>
+			<div class="plan-name">Starter</div>
 			<div class="plan-price">£{proPrice}</div>
 			<div class="plan-period">per month{interval === 'annual' ? ' (billed annually)' : ''}</div>
 			<p class="plan-desc">Full audit power for freelancers and small businesses.</p>
-			<button class="btn btn-gold" style="width:100%;" onclick={() => ui.openCheckout('pro')}>Upgrade to Pro</button>
+			<button class="btn btn-gold" style="width:100%;" onclick={() => ui.openCheckout('pro')}>Upgrade to Starter</button>
 			<a href="/pricing" class="see-more">See full comparison →</a>
 
 			<div class="plan-features">

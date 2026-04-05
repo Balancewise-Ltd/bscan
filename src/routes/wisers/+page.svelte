@@ -272,9 +272,9 @@
       const res = feedType === 'friends'
         ? await api.getFriendsFeed(feedPage)
         : await api.getFeed(feedPage);
-      const newPosts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
-      const existingKeys = new Set(posts.map((p, i) => `${p.id}-${p.reposted_by || ''}`));
-      const unique = newPosts.filter(p => !existingKeys.has(`${p.id}-${p.reposted_by || ''}`));
+      const newPosts = (res.posts || []).map((p: any) => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
+      const existingKeys = new Set(posts.map((p: any, i: number) => `${p.id}-${p.reposted_by || ''}`));
+      const unique = newPosts.filter((p: any) => !existingKeys.has(`${p.id}-${p.reposted_by || ''}`));
       posts = [...posts, ...unique];
       hasMore = newPosts.length >= 20;
     } catch {}
@@ -288,7 +288,7 @@
       const res = feedType === 'friends' && $auth.token
         ? await api.getFriendsFeed(1)
         : await api.getCommunityFeed(1);
-      posts = (res.posts || []).map(p => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
+      posts = (res.posts || []).map((p: any) => ({ ...p, _liked: !!p.my_liked, my_rocket: !!p.my_rocketed, my_repost: !!p.my_reposted }));
     } catch (err) {
       posts = [];
       feedError = err instanceof Error ? err.message : 'Unable to load feed right now.';
@@ -628,7 +628,7 @@
     return html;
   }
 
-  function handleDoubleTap(e: MouseEvent, post: any) {
+  function handleDoubleTap(e: MouseEvent | KeyboardEvent, post: any) {
     const now = Date.now();
     if (lastTap.id === post.id && now - lastTap.time < 400) {
       // Double tap — like
@@ -1068,7 +1068,7 @@
               <div class="w-emoji-wrap">
               <button class="w-emoji-btn" onclick={() => showEmoji = !showEmoji} type="button">😀</button>
               {#if showEmoji}
-                <div class="w-emoji-backdrop" onclick={() => showEmoji = false} role="presentation"></div>
+                <div class="w-emoji-backdrop" onclick={() => showEmoji = false} onkeydown={(e) => { if (e.key === 'Escape') showEmoji = false; }} role="presentation"></div>
                 <div class="w-emoji-picker">
                   {#each emojis as e}
                     <button class="w-emoji-item" onclick={() => { newPost += e; showEmoji = false; }} type="button">{e}</button>
@@ -1133,7 +1133,7 @@
                   </button>
                 {/if}
                 {#if $auth.token}
-                  <div class="w-post-menu-wrap" onclick={(e) => e.stopPropagation()}>
+                  <div class="w-post-menu-wrap" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
                     <button class="w-post-menu-btn" onclick={() => openPostMenu = openPostMenu === post.id ? null : post.id} title="More" aria-label="More options">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
@@ -1192,7 +1192,7 @@
                 <span class="w-milestone-type">{post.milestone_type}</span>
               </div>
               {/if}
-              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
+              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} onkeydown={(e) => { if (e.key === 'Enter') handleDoubleTap(e, post); }} role="presentation">{@html renderContent(post.content)}</div>
               {#if post.post_type === 'poll'}
                 {#if !pollData[post.id]}
                   <button class="w-poll-load" onclick={() => loadPoll(post.id)}>View Poll</button>
@@ -1216,14 +1216,14 @@
                 {/if}
               {/if}
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
-              {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><img src={post.image_url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onclick={() => openLightbox(post.image_url)} onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.parentElement) el.parentElement.style.display = 'none'; }} role="button" tabindex="0" /></div>{/if}
+              {#if post.image_url && post.image_url.trim().length > 0 && !post.image_url.includes('undefined')}<div class="w-post-img"><button class="w-post-img-btn" onclick={() => openLightbox(post.image_url)} type="button" aria-label="View image"><img src={post.image_url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.parentElement) el.parentElement.style.display = 'none'; }} /></button></div>{/if}
               {#if post.media?.filter((m: any) => m.url && m.url.trim()).length}
                 <div class="w-post-media" class:w-media-grid-2={post.media.filter((m: any) => m.type === 'image' && m.url).length === 2} class:w-media-grid-3={post.media.filter((m: any) => m.type === 'image' && m.url).length === 3} class:w-media-grid-4={post.media.filter((m: any) => m.type === 'image' && m.url).length >= 4}>
                   {#each post.media.filter((m: any) => m.url && m.url.trim()) as m}
                     {#if m.type === 'image'}
-                      <div class="w-media-item"><img src={m.url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onclick={() => openLightbox(m.url)} onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const item = (e.currentTarget as HTMLElement).parentElement; if (item) { item.style.display = 'none'; const container = item.parentElement; if (container && !container.querySelector('.w-media-item:not([style*="display: none"])')) container.style.display = 'none'; } }} /></div>
+                      <div class="w-media-item"><button class="w-post-img-btn" onclick={() => openLightbox(m.url)} type="button" aria-label="View image"><img src={m.url} alt="" loading="lazy" style="cursor:zoom-in;opacity:0;height:0" onload={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.opacity = '1'; el.style.height = 'auto'; }} onerror={(e) => { const item = (e.currentTarget as HTMLElement).parentElement; if (item) { item.style.display = 'none'; const container = item.parentElement; if (container && !container.querySelector('.w-media-item:not([style*="display: none"])')) container.style.display = 'none'; } }} /></button></div>
                     {:else if m.type === 'video'}
-                      <div class="w-media-item w-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline></video></div>
+                      <div class="w-media-item w-media-video"><video src={m.url} poster={m.thumbnail_url} controls preload="metadata" playsinline><track kind="captions" /></video></div>
                     {:else if m.type === 'document'}
                       <a href={m.url} target="_blank" rel="noopener" class="w-media-doc">
                         <span class="w-doc-icon">📄</span>
@@ -1248,7 +1248,7 @@
               {/if}
               {#if linkPreviews[post.id]?.title || linkPreviews[post.id]?.image}
                 <a href={linkPreviews[post.id]?.url} target="_blank" rel="noopener" class="w-link-preview">
-                  {#if linkPreviews[post.id]?.image}<img src={linkPreviews[post.id]?.image} alt="" class="w-lp-img" onerror={(e) => { e.currentTarget.style.display = 'none'; }} />{/if}
+                  {#if linkPreviews[post.id]?.image}<img src={linkPreviews[post.id]?.image} alt="" class="w-lp-img" onerror={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />{/if}
                   <div class="w-lp-text">
                     <div class="w-lp-title">{linkPreviews[post.id]?.title || ''}</div>
                     {#if linkPreviews[post.id]?.description}<div class="w-lp-desc">{linkPreviews[post.id]?.description}</div>{/if}
@@ -1259,7 +1259,7 @@
               <div class="w-post-actions">
                 <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post._liked ? '#f43f5e' : 'none'} stroke={post._liked ? '#f43f5e' : 'currentColor'} stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  <span class="w-likes-clickable" onclick={(e) => { e.stopPropagation(); if (post.likes_count > 0) showLikes(post.id); }}>{post.likes_count || 0}</span>
+                  <span class="w-likes-clickable" onclick={(e) => { e.stopPropagation(); if (post.likes_count > 0) showLikes(post.id); }} onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); if (post.likes_count > 0) showLikes(post.id); } }} role="button" tabindex="0">{post.likes_count || 0}</span>
                 </button>
                 <button class="w-action w-rocket-btn" class:w-rocketed={post.my_rocket} onclick={() => handleRocket(post)} title="Rocket & Share">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={post.my_rocket ? '#f97316' : 'none'} stroke={post.my_rocket ? '#f97316' : 'currentColor'} stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
@@ -1373,7 +1373,7 @@
                 <span class="w-milestone-type">{post.milestone_type}</span>
               </div>
               {/if}
-              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} role="presentation">{@html renderContent(post.content)}</div>
+              <div class="w-post-body" onclick={(e) => handleDoubleTap(e, post)} onkeydown={(e) => { if (e.key === 'Enter') handleDoubleTap(e, post); }} role="presentation">{@html renderContent(post.content)}</div>
               {#if heartAnim === post.id}<div class="w-heart-anim"><svg width="64" height="64" viewBox="0 0 24 24" fill="#f43f5e" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>{/if}
                 <div class="w-post-actions">
                   <button class="w-action" class:w-liked={post._liked} onclick={() => toggleLike(post.id)} title="Like">
@@ -1666,7 +1666,7 @@
 
   <!-- CREATE BOTTOM SHEET -->
   {#if showCreateSheet}
-    <div class="w-sheet-overlay" onclick={() => showCreateSheet = false} role="presentation"></div>
+    <div class="w-sheet-overlay" onclick={() => showCreateSheet = false} onkeydown={(e) => { if (e.key === 'Escape') showCreateSheet = false; }} role="presentation"></div>
     <div class="w-create-sheet">
       <div class="w-sheet-handle"></div>
       <div class="w-sheet-title">Create</div>
@@ -1699,8 +1699,8 @@
 
 <!-- Analytics Modal -->
 {#if analyticsPost !== null}
-  <div class="w-modal-overlay" onclick={() => analyticsPost = null} role="presentation">
-    <div class="w-modal" onclick={(e) => e.stopPropagation()}>
+  <div class="w-modal-overlay" onclick={() => analyticsPost = null} onkeydown={(e) => { if (e.key === 'Escape') analyticsPost = null; }} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
       <div class="w-modal-header">
         <h3>Post Analytics</h3>
         <button class="w-modal-close" onclick={() => analyticsPost = null}>✕</button>
@@ -1741,8 +1741,8 @@
 
 <!-- Likes List Modal -->
 {#if likesPostId !== null}
-  <div class="w-modal-overlay" onclick={() => likesPostId = null} role="presentation">
-    <div class="w-modal" onclick={(e) => e.stopPropagation()}>
+  <div class="w-modal-overlay" onclick={() => likesPostId = null} onkeydown={(e) => { if (e.key === 'Escape') likesPostId = null; }} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
       <div class="w-modal-header">
         <h3>Liked by</h3>
         <button class="w-modal-close" onclick={() => likesPostId = null}>✕</button>
@@ -1768,8 +1768,8 @@
 {/if}
 
 {#if editHistoryPost !== null}
-  <div class="w-modal-overlay" onclick={() => editHistoryPost = null} role="presentation">
-    <div class="w-modal" onclick={(e) => e.stopPropagation()} role="dialog">
+  <div class="w-modal-overlay" onclick={() => editHistoryPost = null} onkeydown={(e) => { if (e.key === 'Escape') editHistoryPost = null; }} role="presentation">
+    <div class="w-modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Escape') editHistoryPost = null; }} role="dialog" tabindex="-1">
       <div class="w-modal-header">
         <h3>Edit History</h3>
         <button class="w-modal-close" onclick={() => editHistoryPost = null}>&#x2715;</button>
@@ -1865,7 +1865,7 @@
   .w-profile-stats { display: flex; align-items: center; gap: 4px; margin-top: 12px; width: 100%; justify-content: center; font-size: 13px; color: var(--wt2); flex-wrap: wrap; }
   .w-stat { display: flex; align-items: center; gap: 3px; }
   .w-stat-num { font-weight: 700; color: var(--wt); }
-  .w-stat-label { }
+  .w-stat-label { display: inline; }
   .w-stat-sep { color: var(--wt3); }
   .w-badge-amber { background: var(--wgold) !important; color: #000 !important; font-weight: 800; font-size: 11px; min-width: 20px; text-align: center; padding: 2px 8px; border-radius: 10px; }
 
@@ -2107,7 +2107,7 @@
   .w-media-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .w-media-thumb-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 8px; text-align: center; color: var(--wt2); gap: 4px; }
   .w-media-thumb-icon svg { opacity: 0.7; flex-shrink: 0; }
-  .w-media-thumb-name { font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; color: var(--wt); }
+  .w-media-thumb-name { font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; color: var(--wt); }
   .w-media-thumb-size { font-size: 9px; color: var(--wt3); }
   .w-media-thumb-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
   .w-media-fail-overlay { background: rgba(239,68,68,0.3); }
@@ -2125,7 +2125,7 @@
   .w-post-img { margin-top: 10px; border-radius: 12px; overflow: hidden; min-height: 0; }
   .w-post-img:empty { display: none; }
   .w-post-img img { width: 100%; max-height: 500px; object-fit: cover; border-radius: 12px; display: block; transition: opacity 0.2s; }
-  .w-post-img img[style*="opacity: 0"], .w-post-img img[style*="opacity:0"] { height: 0 !important; overflow: hidden; }
+  .w-post-img-btn { all: unset; display: block; width: 100%; cursor: zoom-in; }
 
   /* ═══ MULTI-MEDIA RENDERING ═══ */
   .w-post-media { margin-top: 10px; border-radius: 12px; overflow: hidden; }
@@ -2291,7 +2291,7 @@
     .w-composer { margin: 0; border-radius: 0; border-left: none; border-right: none; padding: 12px 14px; }
     .w-composer-top { gap: 10px; }
     .w-composer-avatar { display: none; }
-    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+    .w-composer-top textarea { font-size: 16px; min-height: 48px; padding: 8px 0; -webkit-appearance: none; appearance: none; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
     .w-composer-bottom { gap: 6px; flex-wrap: nowrap; align-items: center; }
     .w-feed-tabs { order: -1; }
     .w-feed-tabs button { font-size: 14px; padding: 7px 14px; border-radius: 16px; }
@@ -2555,8 +2555,6 @@
   /* Empty state */
   .w-empty-state { text-align: center; padding: 48px 20px; }
   .w-empty-icon { color: var(--wt3); margin-bottom: 16px; }
-  .w-empty-state h3 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
-  .w-empty-state p { font-size: 16px; color: var(--wt3); margin: 0 0 24px; }
   .w-empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .w-empty-btn { padding: 12px 26px; border-radius: 24px; background: var(--wgold); color: #000; font-weight: 600; font-size: 15px; text-decoration: none; }
   .w-empty-btn.secondary { background: none; border: 1px solid var(--wbd); color: var(--wt2); }
@@ -2567,8 +2565,8 @@
   .w-link-preview:hover { border-color: var(--wgold); }
   .w-lp-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
   .w-lp-text { padding: 10px 14px; }
-  .w-lp-title { font-weight: 600; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .w-lp-desc { font-size: 15px; color: var(--wt2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .w-lp-title { font-weight: 600; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .w-lp-desc { font-size: 15px; color: var(--wt2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .w-lp-domain { font-size: 14px; color: var(--wt3); margin-top: 6px; }
 
   /* ═══ POLL FORM ═══ */
