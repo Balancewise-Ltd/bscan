@@ -48,6 +48,14 @@ async function login(email: string, password: string, totp_code?: string) {
 	safeSetStorage('bscan_email', email);
 	_token.set(result.access_token);
 	_user.set(result.user);
+	// Save profile snapshot for quick re-login after logout
+	if (result.user) {
+		safeSetStorage('bscan_saved_profile', JSON.stringify({
+			email: result.user.email,
+			display_name: result.user.display_name || result.user.name || '',
+			avatar_url: result.user.avatar_url || ''
+		}));
+	}
 	return result;
 }
 
@@ -62,6 +70,14 @@ async function verifyLoginCode(email: string, code: string, save_login: boolean 
 	}
 	_token.set(result.access_token);
 	_user.set(result.user);
+	// Save profile snapshot for quick re-login after logout
+	if (result.user) {
+		safeSetStorage('bscan_saved_profile', JSON.stringify({
+			email: result.user.email,
+			display_name: result.user.display_name || result.user.name || '',
+			avatar_url: result.user.avatar_url || ''
+		}));
+	}
 	return result;
 }
 
@@ -88,6 +104,8 @@ function logout() {
 	disconnectWS();
 	safeRemoveStorage('bscan_email');
 	safeRemoveStorage('bscan_name');
+	// Keep bscan_saved_profile and bscan_device_trust so user sees
+	// the "Continue as..." card and skips email code on next login
 	_token.set(null);
 	_user.set(null);
 }

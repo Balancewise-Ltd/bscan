@@ -196,6 +196,13 @@
 	// Avatar state (for instant update after upload)
 	let avatarUrl = $state('');
 
+	// ── Saved Profile (Instagram-style quick login) ──────
+	let savedProfile = $state<{ email: string; display_name: string; avatar_url: string } | null>(null);
+	let savedProfilePassword = $state('');
+	let savedProfileError = $state('');
+	let savedProfileLoading = $state(false);
+	let showRemoveConfirm = $state(false);
+
 	// ── Push Notification state ─────────────────────────
 	let pushSupported = $state(false);
 	let pushPermission = $state<string>('default');
@@ -553,6 +560,11 @@
 	onMount(async () => {
 		const saved = safeGetStorage('bscan_email');
 		if (saved) authEmail = saved;
+		// Load saved profile for quick re-login card
+		try {
+			const raw = safeGetStorage('bscan_saved_profile');
+			if (raw) savedProfile = JSON.parse(raw);
+		} catch {}
 		if (user) loadDashboard();
 		// Check E2E key state
 		try {
@@ -813,6 +825,44 @@
 			reinstateMsg = err instanceof Error ? err.message : 'Could not reinstate account.';
 		}
 		reinstateLoading = false;
+	}
+
+	// ── Saved profile quick login (password only) ──────
+	async function handleSavedProfileLogin() {
+		if (!savedProfile || !savedProfilePassword) { savedProfileError = 'Enter your password.'; return; }
+		savedProfileLoading = true;
+		savedProfileError = '';
+		try {
+			const result = await auth.login(savedProfile.email, savedProfilePassword);
+			if (result.requires_verification) {
+				loginCodeEmail = savedProfile.email;
+				showLoginCode = true;
+				savedProfile = null;
+				savedProfilePassword = '';
+				savedProfileLoading = false;
+				return;
+			}
+			if (result.requires_2fa) {
+				authEmail = savedProfile.email;
+				authPassword = savedProfilePassword;
+				savedProfile = null;
+				savedProfilePassword = '';
+				savedProfileLoading = false;
+				return;
+			}
+			loadDashboard();
+		} catch (err) {
+			savedProfileError = err instanceof Error ? err.message : 'Login failed. Try again.';
+		}
+		savedProfileLoading = false;
+	}
+
+	function removeSavedProfile() {
+		safeRemoveStorage('bscan_saved_profile');
+		safeRemoveStorage('bscan_device_trust');
+		savedProfile = null;
+		savedProfilePassword = '';
+		showRemoveConfirm = false;
 	}
 
 	async function handleLoginCode() {
@@ -1450,7 +1500,57 @@
 	</div>
 	{:else}
 	<!-- ══════ AUTH FORM ══════ -->
-	{#if !isRegister}
+	{#if savedProfile && !isRegister}
+	<!-- ══════ SAVED PROFILE — QUICK LOGIN ══════ -->
+	<div class="auth-section animate-fade-up" style="max-width: 400px; margin: 0 auto; padding: 48px 32px; text-align: center;">
+		<!-- Avatar -->
+		{#if savedProfile.avatar_url}
+			<img src={savedProfile.avatar_url} alt="" style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px; border: 3px solid var(--clr-border);" />
+		{:else}
+			<div style="width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(135deg, var(--clr-gold), #d4a017); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 36px; font-weight: 800; color: #000;">
+				{(savedProfile.display_name || savedProfile.email)[0].toUpperCase()}
+			</div>
+		{/if}
+
+		<h2 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 4px;">Welcome back</h2>
+		<p style="color: var(--clr-text-secondary); font-size: 14px; margin: 0 0 4px;">{savedProfile.display_name || ''}</p>
+		<p style="color: var(--clr-text-muted); font-size: 13px; margin: 0 0 24px;">{savedProfile.email}</p>
+
+		<!-- Password-only field -->
+		<div class="field" style="margin-bottom: 12px;">
+			<input class="input" type="password" placeholder="Password" bind:value={savedProfilePassword} onkeydown={(e) => { if (e.key === 'Enter') handleSavedProfileLogin(); }} style="width: 100%; box-sizing: border-box; text-align: center;" />
+		</div>
+		{#if savedProfileError}<div class="msg-error" style="margin-bottom: 12px;">{savedProfileError}</div>{/if}
+
+		<button
+			style="width: 100%; padding: 12px 16px; border-radius: 9999px; border: none; background: #f5a623; color: #000; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;"
+			disabled={savedProfileLoading}
+			onclick={handleSavedProfileLogin}
+		>
+			{#if savedProfileLoading}<span class="spinner spinner-sm"></span>{:else}Sign In{/if}
+		</button>
+
+		<!-- Use another account -->
+		<div style="margin-top: 24px; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+			<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 13px; cursor: pointer; font-family: inherit; text-decoration: underline;" onclick={() => { savedProfile = null; }}>
+				Use another account
+			</button>
+			{#if !showRemoveConfirm}
+				<button style="background: none; border: none; color: var(--clr-text-muted); font-size: 12px; cursor: pointer; font-family: inherit;" onclick={() => showRemoveConfirm = true}>
+					Remove saved login
+				</button>
+			{:else}
+				<div style="padding: 12px; background: var(--clr-bg-card); border: 1px solid var(--clr-border); border-radius: var(--radius-lg); margin-top: 4px;">
+					<p style="font-size: 12px; color: var(--clr-text-secondary); margin: 0 0 8px;">Remove this saved login? You'll need to enter your email next time.</p>
+					<div style="display: flex; gap: 8px; justify-content: center;">
+						<button class="btn" style="background: #ef4444; color: #fff; border: none; font-size: 12px; padding: 6px 16px;" onclick={removeSavedProfile}>Remove</button>
+						<button class="btn" style="background: var(--clr-bg-deep); color: var(--clr-text-secondary); border: 1px solid var(--clr-border); font-size: 12px; padding: 6px 16px;" onclick={() => showRemoveConfirm = false}>Cancel</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
+	{:else if !isRegister}
 	<!-- ── SPLIT LOGIN LAYOUT (X-style) ── -->
 	<div class="auth-section animate-fade-up" style="max-width: 100%; padding: 0; min-height: 60vh; background: radial-gradient(ellipse at top center, rgba(30, 25, 15, 0.8) 0%, #0c0c0c 60%); display: flex; flex-direction: row; align-items: stretch; justify-content: center;">
 		<!-- LEFT SIDE: BS Logo -->
